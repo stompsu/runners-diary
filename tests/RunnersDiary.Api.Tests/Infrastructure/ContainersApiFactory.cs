@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc.Testing;
 using DotNet.Testcontainers.Builders;
 using Testcontainers.Azurite;
@@ -33,6 +34,10 @@ public sealed class ContainersApiFactory : WebApplicationFactory<Program>, IAsyn
         }
     }
 
+    /// <summary>Connection string of the SQL container (server level; callers pick their own database name).</summary>
+    public string SqlConnectionString =>
+        (_sql ?? throw new InvalidOperationException("Containers are not running; call SkipIfDockerUnavailable() first.")).GetConnectionString();
+
     private static bool IsCi => string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Call at the start of each test that needs the containers.</summary>
@@ -46,8 +51,19 @@ public sealed class ContainersApiFactory : WebApplicationFactory<Program>, IAsyn
             throw new InvalidOperationException("Containers are not running; call SkipIfDockerUnavailable() first.");
         }
 
-        builder.UseSetting("ConnectionStrings:runnersdiary", _sql.GetConnectionString());
+        // A dedicated database; the host applies the real migrations at startup (what the AppHost does locally).
+        var apiDatabase = new SqlConnectionStringBuilder(_sql.GetConnectionString()) { InitialCatalog = "runnersdiary_api_tests" };
+        builder.UseSetting("ConnectionStrings:runnersdiary", apiDatabase.ConnectionString);
+        builder.UseSetting("Database:MigrateOnStartup", "true");
+        TestHost.ConfigureAuth(builder, entraEnabled: true);
         builder.UseSetting("ConnectionStrings:blobs", _azurite.GetConnectionString());
+        // The "gpx" container does not exist in a fresh Azurite; the host creates it (as in the AppHost). Azure never sets this.
+        builder.UseSetting("Storage:CreateContainerOnStartup", "true");
+        // Functional tests create many guests from one (absent) client IP and own the expiry timeline: no background cleanup, no
+        // creation limit. Dedicated tests switch these back on through WithWebHostBuilder.
+        builder.UseSetting("Guests:Cleanup:Enabled", "false");
+        builder.UseSetting("RateLimiting:GuestCreate:PermitLimit", "100000");
+        builder.UseSetting("RateLimiting:GuestCreate:GlobalPermitLimit", "100000");
     }
 
     public override async ValueTask DisposeAsync()

@@ -25,3 +25,7 @@ dotnet_diagnostic.CA2007.severity = none
 [tests/**.cs]
 # CA1707 (no underscores in identifiers): test names use Method_Scenario_Result.
 dotnet_diagnostic.CA1707.severity = none
+
+[src/RunnersDiary.Infrastructure/Persistence/Migrations/*.cs]
+# EF-generated migrations and snapshot: not hand-maintained, so style/quality analyzers (CA1861, IDE0161, ...) don't apply.
+generated_code = true

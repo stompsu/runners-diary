@@ -21,6 +21,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/guest-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a 24 h guest account with demo data and returns its bearer token. */
+        post: operations["createGuestSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's profile. */
+        get: operations["getMe"];
+        /** Updates the caller's profile (display name, time zone, units). */
+        put: operations["updateMe"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/run-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The fixed run-type catalog. */
+        get: operations["listRunTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/months/{year}/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The month grid (Monday-first) with the caller's runs and ISO-week totals. */
+        get: operations["getCalendarMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's runs in an inclusive date range (at most 92 days). */
+        get: operations["listRuns"];
+        put?: never;
+        /** Creates a planned or completed run for the caller. */
+        post: operations["createRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of the caller's runs. Other users' runs are indistinguishable from missing ones (404). */
+        get: operations["getRun"];
+        /** Replaces one of the caller's runs. 'version' must match the current one, otherwise 409. */
+        put: operations["updateRun"];
+        post?: never;
+        /** Deletes one of the caller's runs (and its track records). */
+        delete: operations["deleteRun"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31,6 +137,229 @@ export interface components {
         };
         /** @enum {unknown} */
         ApiHealthStatus: "Unhealthy" | "Degraded" | "Healthy";
+        CalendarMonthResponse: {
+            /** Format: int32 */
+            year: number;
+            /** Format: int32 */
+            month: number;
+            /** Format: date */
+            gridStart: string;
+            /** Format: date */
+            gridEnd: string;
+            runs: components["schemas"]["RunDto"][];
+            weeks: components["schemas"]["CalendarWeekDto"][];
+        };
+        CalendarWeekDto: {
+            /** Format: int32 */
+            isoYear: number;
+            /** Format: int32 */
+            isoWeek: number;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            end: string;
+            completed: components["schemas"]["TotalsDto"];
+            planned: components["schemas"]["TotalsDto"];
+        };
+        /** @enum {unknown} */
+        GpxTrackKind: "PlannedCourse" | "RecordedTrack";
+        /** @enum {unknown} */
+        GpxTrackStatus: "Pending" | "Processed" | "Failed";
+        GuestSessionResponse: {
+            accessToken: string;
+            tokenType: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            userId: string;
+        };
+        HttpValidationProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number;
+            detail?: null | string;
+            instance?: null | string;
+            errors?: {
+                [key: string]: string[];
+            };
+        };
+        LocationDto: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            name?: null | string;
+        };
+        MeResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["UserKind"];
+            displayName: null | string;
+            timeZoneId: string;
+            timeZoneIsDefault: boolean;
+            unitSystem: components["schemas"]["UnitSystem"];
+            /** Format: date */
+            today: string;
+            /** Format: date-time */
+            guestExpiresAt: null | string;
+        };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number;
+            detail?: null | string;
+            instance?: null | string;
+        };
+        /** @enum {unknown} */
+        RaceDistanceCategory: "FiveK" | "TenK" | "HalfMarathon" | "Marathon" | "Other";
+        RaceDto: {
+            name: string;
+            distanceCategory: components["schemas"]["RaceDistanceCategory"];
+            /** Format: double */
+            officialDistanceMeters?: null | number;
+            bibNumber?: null | string;
+            /** Format: int32 */
+            targetTimeSeconds?: null | number;
+            /** Format: int32 */
+            resultTimeSeconds?: null | number;
+            /** Format: int32 */
+            overallPlace?: null | number;
+            /** Format: int32 */
+            categoryPlace?: null | number;
+            categoryName?: null | string;
+            resultsUrl?: null | string;
+        };
+        RatingDto: {
+            /** Format: int32 */
+            stars: number;
+            comment?: null | string;
+        };
+        RunDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            date: string;
+            /** @description Local time of day, HH:mm. */
+            startTime: null | string;
+            timeZoneId: string;
+            /** Format: date-time */
+            startUtc: null | string;
+            status: components["schemas"]["RunStatus"];
+            /** Format: int16 */
+            runTypeId: number;
+            title: null | string;
+            notes: null | string;
+            location: null | components["schemas"]["LocationDto"];
+            /** Format: double */
+            distanceMeters: null | number;
+            /** Format: int32 */
+            durationSeconds: null | number;
+            /** Format: double */
+            elevationGainMeters: null | number;
+            /** Format: double */
+            elevationLossMeters: null | number;
+            /** Format: int32 */
+            avgHeartRate: null | number;
+            /** Format: int32 */
+            maxHeartRate: null | number;
+            /** Format: int32 */
+            rpe: null | number;
+            gear: null | string;
+            weather: null | string;
+            surface: null | components["schemas"]["Surface"];
+            race: null | components["schemas"]["RaceDto"];
+            rating: null | components["schemas"]["RatingDto"];
+            version: string;
+            tracks: components["schemas"]["RunTrackDto"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RunListResponse: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            items: components["schemas"]["RunDto"][];
+        };
+        /** @enum {unknown} */
+        RunStatus: "Planned" | "Completed";
+        RunTrackDto: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["GpxTrackKind"];
+            status: components["schemas"]["GpxTrackStatus"];
+        };
+        /** @enum {unknown} */
+        RunTypeCategory: "Race" | "Training" | "Other";
+        RunTypeDto: {
+            /** Format: int16 */
+            id: number;
+            code: string;
+            category: components["schemas"]["RunTypeCategory"];
+            countsTowardRunningDistance: boolean;
+            countsTowardLoad: boolean;
+            isRestDay: boolean;
+            /** Format: int16 */
+            sortOrder: number;
+        };
+        RunWriteRequest: {
+            /** Format: date */
+            date: string;
+            /** @description Local time of day, HH:mm. */
+            startTime?: null | string;
+            timeZoneId?: null | string;
+            status: components["schemas"]["RunStatus"];
+            /** Format: int16 */
+            runTypeId: number;
+            title?: null | string;
+            notes?: null | string;
+            location?: null | components["schemas"]["LocationDto"];
+            /** Format: double */
+            distanceMeters?: null | number;
+            /** Format: int32 */
+            durationSeconds?: null | number;
+            /** Format: double */
+            elevationGainMeters?: null | number;
+            /** Format: double */
+            elevationLossMeters?: null | number;
+            /** Format: int32 */
+            avgHeartRate?: null | number;
+            /** Format: int32 */
+            maxHeartRate?: null | number;
+            /** Format: int32 */
+            rpe?: null | number;
+            gear?: null | string;
+            weather?: null | string;
+            surface?: null | components["schemas"]["Surface"];
+            race?: null | components["schemas"]["RaceDto"];
+            rating?: null | components["schemas"]["RatingDto"];
+            version?: null | string;
+        };
+        /** @enum {unknown} */
+        Surface: "Road" | "Trail" | "Track" | "Treadmill" | "Mixed" | null;
+        TotalsDto: {
+            /** Format: int32 */
+            runCount: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int64 */
+            durationSeconds: number;
+            /** Format: double */
+            elevationGainMeters: number;
+        };
+        /** @enum {unknown} */
+        UnitSystem: "Metric" | "Imperial";
+        UpdateMeRequest: {
+            displayName?: null | string;
+            timeZoneId: string;
+            unitSystem: components["schemas"]["UnitSystem"];
+        };
+        /** @enum {unknown} */
+        UserKind: "User" | "Guest";
     };
     responses: never;
     parameters: never;
@@ -65,6 +394,606 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiHealthResponse"];
+                };
+            };
+        };
+    };
+    createGuestSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestSessionResponse"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    listRunTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunTypeDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getCalendarMonth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+                month: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarMonthResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    listRuns: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    createRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    deleteRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

@@ -38,4 +38,37 @@ public sealed class OpenApiDocumentTests
         Assert.False(paths.TryGetProperty("/health", out _));
         Assert.False(paths.TryGetProperty("/alive", out _));
     }
+
+    [Fact]
+    public void Document_ContainsEveryM2OperationId_WithBearerSecurityOnProtectedOnes()
+    {
+        using var doc = LoadDocument();
+        var operations = doc.RootElement.GetProperty("paths").EnumerateObject()
+            .SelectMany(p => p.Value.EnumerateObject().Select(m => (Path: p.Name, Operation: m.Value)))
+            .ToDictionary(x => x.Operation.GetProperty("operationId").GetString()!, x => x);
+
+        string[] protectedIds = ["getMe", "updateMe", "listRunTypes", "listRuns", "getRun", "createRun", "updateRun", "deleteRun", "getCalendarMonth"];
+        foreach (var id in protectedIds)
+        {
+            Assert.True(operations.ContainsKey(id), id);
+            Assert.True(operations[id].Operation.TryGetProperty("security", out var security), id + " has no security requirement");
+            Assert.Contains("Bearer", security[0].EnumerateObject().Select(p => p.Name));
+        }
+
+        Assert.False(operations["getApiHealth"].Operation.TryGetProperty("security", out _));
+        var scheme = doc.RootElement.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
+        Assert.Equal("http", scheme.GetProperty("type").GetString());
+        Assert.Equal("bearer", scheme.GetProperty("scheme").GetString());
+    }
+
+    [Fact]
+    public void Document_DescribesTimeOnlyAsHHmm_AndKeepsNumbersStrict()
+    {
+        using var doc = LoadDocument();
+        var request = doc.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("RunWriteRequest").GetProperty("properties");
+
+        Assert.Equal(@"^\d{2}:\d{2}$", request.GetProperty("startTime").GetProperty("pattern").GetString());
+        Assert.False(request.GetProperty("startTime").TryGetProperty("format", out _));
+        Assert.DoesNotContain("string", request.GetProperty("runTypeId").GetProperty("type").ToString(), StringComparison.Ordinal);
+    }
 }

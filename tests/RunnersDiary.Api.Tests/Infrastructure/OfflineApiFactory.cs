@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,20 +26,35 @@ public sealed class OfflineApiFactory : WebApplicationFactory<Program>
         // Fail fast instead of retrying against the unreachable endpoints.
         builder.UseSetting("Aspire:Microsoft:EntityFrameworkCore:SqlServer:DisableRetry", "true");
         builder.UseSetting("Aspire:Azure:Storage:Blobs:ClientOptions:Retry:MaxRetries", "0");
+        // Entra disabled: this factory proves the anonymous/401 behaviour and never needs a database for authentication.
+        TestHost.ConfigureAuth(builder, entraEnabled: false);
 
         builder.ConfigureServices(services => services.AddSingleton<IStartupFilter, ThrowingEndpointStartupFilter>());
     }
 
-    /// <summary>Appends a test-only path that throws, after the app's own pipeline (so its exception handler applies).</summary>
+    /// <summary>
+    /// A test-only anonymous endpoint that throws, so the app's exception handler (and nothing else) is under test. The endpoint is set
+    /// before routing, i.e. it exists outside the app's endpoint table and cannot affect the endpoint inventory tests.
+    /// </summary>
     private sealed class ThrowingEndpointStartupFilter : IStartupFilter
     {
+        private static readonly Endpoint ThrowEndpoint = new(
+            _ => throw new InvalidOperationException("Test exception with secret detail"),
+            new EndpointMetadataCollection(new AllowAnonymousAttribute()),
+            "test-throw");
+
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
         {
-            next(app);
             app.Use((context, nextMiddleware) =>
-                context.Request.Path == ThrowPath
-                    ? throw new InvalidOperationException("Test exception with secret detail")
-                    : nextMiddleware(context));
+            {
+                if (context.Request.Path == ThrowPath)
+                {
+                    context.SetEndpoint(ThrowEndpoint);
+                }
+
+                return nextMiddleware(context);
+            });
+            next(app);
         };
     }
 }
