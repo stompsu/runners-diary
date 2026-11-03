@@ -1,0 +1,33 @@
+{
+  "app": {
+    "name": "Runners Diary",
+    "skipToContent": "Skip to content"
+  },
+  "nav": {
+    "label": "Main",
+    "diary": "Diary",
+    "insights": "Insights"
+  },
+  "apiStatus": {
+    "label": "API status",
+    "checking": "Checking API…",
+    "healthy": "API healthy",
+    "degraded": "API degraded",
+    "unhealthy": "API unavailable"
+  },
+  "diary": {
+    "title": "Diary – {{month}}",
+    "placeholder": "The calendar arrives in M3."
+  },
+  "insights": {
+    "title": "Insights",
+    "placeholder": "Training insights arrive in M5."
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The page you're looking for doesn't exist.",
+    "goToDiary": "Go to the diary",
+    "unexpectedTitle": "Something went wrong",
+    "unexpectedBody": "An unexpected error occurred. Please try again."
+  }
+}

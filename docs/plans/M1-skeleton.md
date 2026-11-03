@@ -258,3 +258,22 @@ Not in M1: react-hook-form, zod (M3), Recharts (M5), MSAL (M3), map libs (M4).
 4. **Run time-zone storage** (pending, M2): no impact on M1.
 5. Do you want an automated AppHost end-to-end test (`Aspire.Hosting.Testing`) in CI now, or keep AC2 as a manual check until later? (Plan assumes manual.)
 6. OK to include `@tanstack/react-query-devtools` (dev-only)?
+
+## 10. Implementation notes & deviations (2026-11-03)
+
+| # | Deviation from this plan | Reason |
+|---|---|---|
+| 1 | Azurite image pinned to `3.37.0` (AppHost `WithImageTag` + test fixture) | Aspire 13.6.4 defaults to 3.35.0, which rejects the Storage SDK's API version `2026-06-06` (health check 400). Remove the pin once Aspire's default catches up. |
+| 2 | `System.Security.Cryptography.Pkcs` pinned to 10.0.14 (central transitive pinning) | CVE-2026-84008 / GHSA-846f-f764-76mx in 10.0.12, pulled in by `Aspire.Microsoft.EntityFrameworkCore.SqlServer` 13.6.4; restore fails under `TreatWarningsAsErrors`. |
+| 3 | TypeScript 5.9 instead of 7.0 (Vite 8 template default) | `openapi-typescript` 7.x has a `typescript ^5` peer dependency (uses the TS compiler API). |
+| 4 | **oxlint** instead of ESLint + plugins | Vite 8 template default; jsx-a11y, react hooks and import rules built in; replaces ~6 dev dependencies. `no-restricted-globals` blocks `fetch` outside `src/api/` (tests exempt). |
+| 5 | `cn` instead of `clsx` + `tailwind-merge` | Installed by the shadcn CLI 4.x (package from `shadcn-ui/cn`, no install scripts, no dependencies). |
+| 6 | `--report-xunit-trx` instead of `--report-trx` | xunit.v3's built-in TRX reporter; `--report-trx` needs an extra MTP extension package. |
+| 7 | `fetchClient` `baseUrl` = `window.location.origin` instead of `/` | openapi-fetch builds a `Request`, which needs an absolute URL outside browsers (Vitest). Still same-origin; no API host in the bundle. |
+| 8 | AppHost `http` profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true` | Missing from the 13.6.4 template; needed to run without trusting the dev certificate. |
+| 9 | Container-backed API tests skip (not fail) without Docker locally; fail when `CI=true` | Lets offline tests run anywhere without hiding a broken CI runner. |
+| 10 | Local SQL: container works on Apple M1 (Docker Desktop, Rosetta) | Cloud dev DB fallback (assumption 10) not needed. |
+
+Verified locally: AppHost brings up `sql`, `storage`, `api`, `web`; `/alive`, `/health`, `/api/health` 200; stopping SQL → 503 and "API unavailable" badge; restart → 200. Release build 0 warnings; 9/9 .NET tests, 24/24 Vitest, 3/3 Playwright; no OpenAPI/TS contract drift.
+
+**Review follow-ups applied before commit:** `/health` and `/alive` explicitly `.AllowAnonymous()`; endpoint-inventory test (every endpoint needs authorization unless allowlisted); `/api/health` served from a 30 s cached health result and the SPA no longer polls it (serverless SQL must be able to auto-pause); container fixtures build lazily; `strict` in `tsconfig.node.json`; lint also blocks `window/globalThis/self.fetch` and `XMLHttpRequest`; the drift check also catches untracked generated files. Still open for M7: readiness probes must not hit SQL on every call; consider pinning a SQL Server CU image tag.
