@@ -8,7 +8,9 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 
 - **Phase 0** (agents + project memory) — done.
 - **M1 – Skeleton** — implemented and verified locally; awaiting CI + approval. Plan: [`docs/plans/M1-skeleton.md`](docs/plans/M1-skeleton.md).
-- Next: **M2 – Domain & Runs API** (architect writes `docs/plans/M2-*.md` first).
+- Next: **M2 – Domain & Runs API** (architect writes `docs/plans/M2-*.md` first). Decided inputs from the user (2026-11-03):
+  - Run date/time storage: [ADR 0008](docs/adr/0008-run-date-and-time-storage.md) (local date + optional time + IANA zone).
+  - Entra External ID: the **user creates a new external tenant** themself; M2's plan must list exactly what to configure (app registrations, scopes, user flow, redirect URIs) and which non-secret IDs the app needs. Until it exists, M2 work proceeds with guest tokens and test-only token issuance in integration tests.
 - Architecture: [`docs/architecture.md`](docs/architecture.md); decisions: [`docs/adr/`](docs/adr/) (0001–0007).
 
 ## Prerequisites (local dev)
@@ -88,7 +90,7 @@ CI (`.github/workflows/ci.yml`) runs three jobs on every PR and push to `main`: 
 - **Backend**: C# only, .NET 10, Minimal APIs organized as vertical slices (endpoint + request/response + validator + handler in one feature file/folder). Nullable on, `TreatWarningsAsErrors`, analyzers on. RFC 9457 problem details for errors.
 - **Domain purity**: load metrics, GPX parsing/metrics, ISO-week logic live in `RunnersDiary.Domain` with no EF/ASP.NET/Azure references, and are unit tested.
 - **Units**: store SI (metres, seconds, m/s, metres of elevation); format in the UI only (km, min/km). Metric by default.
-- **Time**: store run start as local date + local time plus the user's IANA time zone (decision to confirm in M2 ADR); weeks are ISO, Monday-first.
+- **Time** ([ADR 0008](docs/adr/0008-run-date-and-time-storage.md)): a run stores `Date` (`DateOnly`, source of truth for calendar and all metrics), optional `StartTime` (`TimeOnly?`), `TimeZoneId` (IANA, default from the user's profile) and a derived `StartUtc` (ordering/GPX only, never grouping). "Today" is computed in the user's zone. Weeks are ISO, Monday-first.
 - **Frontend**: TypeScript `strict` (pinned to 5.9 until `openapi-typescript` supports TS 7); call the API only via `$api`/`fetchClient` in `web/src/api/client.ts` (oxlint blocks `fetch` elsewhere); relative `/api` only — never an API host; no user-facing string literals in components (typed i18n keys in `web/src/i18n/en/*.json`); accessible calendar (ARIA grid, keyboard nav); responsive. UI kit: shadcn/ui (Radix base) + Tailwind v4 — add components with `npx shadcn add <name>` from `web/`.
 - **Routing to the API**: the browser only talks to the web origin; `/api/*` is proxied (Vite in dev, the web container in Azure). The API never gets public ingress (ADR 0004).
 - **Package pins**: versions live in `Directory.Packages.props` (central management). Vulnerable transitive packages are pinned in its "Security pins" group with the CVE and a removal condition. Container image tags that override Aspire defaults (Azurite) are pinned in both `AppHost.cs` and the test fixtures — keep them in sync.
