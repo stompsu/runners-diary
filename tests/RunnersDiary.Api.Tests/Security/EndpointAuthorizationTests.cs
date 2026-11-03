@@ -20,10 +20,11 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
         "/alive",
         "/health",
         "/api/health",
+        "/api/client-config",
         "/api/guest-sessions",
     };
 
-    private static readonly string[] ExistingToday = ["/alive", "/health", "/api/health"];
+    private static readonly string[] ExistingToday = ["/alive", "/health", "/api/health", "/api/client-config"];
 
     private static string Route(RouteEndpoint e) => "/" + e.RoutePattern.RawText?.TrimStart('/');
 

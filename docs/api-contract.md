@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (awaiting approval)**.
+Living document, owned by the `architect` agent. Status: **M2 implemented (merged); M3 adds `GET /api/client-config` (implemented, awaiting approval)**.
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -44,7 +44,7 @@ Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.A
 | `DELETE /api/runs/{id}` | `deleteRun` | Auth | 204 | 401, 404 |
 | `GET /api/calendar/months/{year}/{month}` | `getCalendarMonth` | Auth | 200 `CalendarMonthResponse` | 400 (year ∉ 1950–2100, month ∉ 1–12), 401 |
 
-All `/api` endpoints except the two Anon ones also pass the general per-caller rate limiter (429). Every `/api` route (Anon included) may answer 413.
+All `/api` endpoints except the Anon ones (these two and, since M3, `GET /api/client-config`) also pass the general per-caller rate limiter (429). Every `/api` route (Anon included) may answer 413.
 
 ### Limits (configuration, defaults in `appsettings.json`)
 
@@ -129,6 +129,22 @@ Totals = { runCount: number; distanceMeters: number; durationSeconds: number /* 
 - `timeZoneId` is a valid IANA id in Area/Location form (`Europe/Warsaw`, `Etc/UTC`) or bare `UTC`/`GMT`, ≤ 64 chars; Windows ids are rejected even where the runtime could resolve them; `date` within 1950-01-01 … 2100-12-31.
 - Status may change in either direction via `PUT` (full replace); the client sends `rating: null` when moving back to Planned.
 
-## Planned for later milestones (not in M2)
+## Added in M3 ([plan](plans/M3-calendar-ui.md), [ADR 0015](adr/0015-spa-runtime-configuration.md))
 
-GPX upload/download/GeoJSON (M4, maps-gpx), Maps token (M4), insights/metrics (M5), AI summaries (M6), SPA runtime auth config if needed (M3).
+| Method & path | operationId | Policy | Success | Errors |
+|---|---|---|---|---|
+| `GET /api/client-config` | `getClientConfig` | Anon (anonymous group shared with health: no rate limiting, no DB; response built once at startup) | 200 `ClientConfigResponse`, `Cache-Control: public, max-age=300` | — |
+
+```ts
+ClientConfigResponse = {
+  entra: { clientId: string /* Auth:Entra:SpaClientId (trimmed) */; authority: string /* https://<TenantSubdomain>.ciamlogin.com/ */;
+           apiScope: string /* Auth:Entra:ApiScope, default api://<Audience>/<RequiredScope> = …/access_as_user */ } | null
+           // null: Entra disabled, or enabled without Auth:Entra:SpaClientId (startup warning, not a failure)
+}
+```
+
+The SPA never sends a token to this endpoint (nor to `/api/health` or `POST /api/guest-sessions`).
+
+## Planned for later milestones
+
+GPX upload/download/GeoJSON (M4, maps-gpx), Maps token (M4), insights/metrics (M5), AI summaries (M6).

@@ -78,6 +78,18 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Run-type colour families (plan §3.6). Fills carry white --run-ink text at >= 4.5:1; outlines are >= 3:1 on white. */
+  --run-ink: oklch(1 0 0);
+  --run-race: oklch(0.5 0.19 27);
+  --run-easy: oklch(0.48 0.12 150);
+  --run-long: oklch(0.47 0.16 255);
+  --run-quality: oklch(0.48 0.18 305);
+  --run-trail: oklch(0.47 0.09 70);
+  --run-treadmill: oklch(0.47 0.09 205);
+  --run-cross: oklch(0.5 0.17 350);
+  --run-rest: oklch(0.45 0 0);
+  --run-unknown: oklch(0.45 0 0);
 }
 
 .dark {
@@ -112,6 +124,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --run-ink: oklch(0.145 0 0);
+  --run-race: oklch(0.72 0.17 27);
+  --run-easy: oklch(0.75 0.14 150);
+  --run-long: oklch(0.74 0.12 255);
+  --run-quality: oklch(0.75 0.14 305);
+  --run-trail: oklch(0.76 0.1 70);
+  --run-treadmill: oklch(0.76 0.09 205);
+  --run-cross: oklch(0.75 0.14 350);
+  --run-rest: oklch(0.75 0 0);
+  --run-unknown: oklch(0.75 0 0);
 }
 
 @layer base {

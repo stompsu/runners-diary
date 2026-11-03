@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using RunnersDiary.Api.Auth;
 using RunnersDiary.Api.Features.Calendar;
+using RunnersDiary.Api.Features.ClientConfig;
 using RunnersDiary.Api.Features.GuestSessions;
 using RunnersDiary.Api.Features.Health;
 using RunnersDiary.Api.Features.Account;
@@ -51,6 +52,11 @@ if (!auth.EntraEnabled)
     StartupLog.EntraDisabled(app.Logger, auth.EntraDisabledReason ?? "unknown");
 }
 
+if (auth.SpaClientIdMissing)
+{
+    StartupLog.EntraSpaClientIdMissing(app.Logger);
+}
+
 if (auth.GuestKeyIsEphemeral)
 {
     StartupLog.EphemeralGuestKey(app.Logger);
@@ -82,6 +88,7 @@ if (!isOpenApiGeneration)
 // Every /api endpoint requires an authenticated caller and passes the general limiter; the few anonymous ones opt out explicitly.
 var anonymousApi = app.MapGroup("/api").AllowAnonymous().DisableRateLimiting();
 anonymousApi.MapHealthEndpoints();
+anonymousApi.MapClientConfigEndpoints();
 // The only anonymous write: guest creation, guarded by the per-IP "guest-create" limiter. It needs its own group because
 // DisableRateLimiting on a group always wins over a policy on the endpoint.
 var guestApi = app.MapGroup("/api").AllowAnonymous();

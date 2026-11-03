@@ -56,6 +56,8 @@ public sealed class OpenApiDocumentTests
         }
 
         Assert.False(operations["getApiHealth"].Operation.TryGetProperty("security", out _));
+        Assert.False(operations["getClientConfig"].Operation.TryGetProperty("security", out _));
+        Assert.Equal("/api/client-config", operations["getClientConfig"].Path);
         var scheme = doc.RootElement.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
         Assert.Equal("http", scheme.GetProperty("type").GetString());
         Assert.Equal("bearer", scheme.GetProperty("scheme").GetString());

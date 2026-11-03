@@ -1,0 +1,23 @@
+{
+  "roadRace": "Road race",
+  "trailRace": "Trail race",
+  "ultra": "Ultra",
+  "trackRace": "Track race",
+  "crossCountry": "Cross country",
+  "virtualRace": "Virtual race",
+  "easy": "Easy run",
+  "recovery": "Recovery run",
+  "long": "Long run",
+  "tempo": "Tempo run",
+  "intervals": "Intervals",
+  "fartlek": "Fartlek",
+  "hillRepeats": "Hill repeats",
+  "progression": "Progression run",
+  "racePace": "Race pace",
+  "stridesDrills": "Strides and drills",
+  "trailTraining": "Trail run",
+  "treadmill": "Treadmill run",
+  "crossTraining": "Cross-training",
+  "rest": "Rest day",
+  "unknown": "Other"
+}

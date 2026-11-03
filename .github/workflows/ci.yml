@@ -4,13 +4,15 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs only; every push to main runs to completion (incl. e2e-fullstack).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -56,7 +58,10 @@ jobs:
       - run: npm run typecheck
       - run: npx prettier --check .
       - run: npm test -- --run
+      # Date logic must not depend on the runner's zone (ADR 0017): UTC-8 and UTC+14.
+      - run: npm run test:tz
       - run: npm run build
+      # One browser is enough: the phone project is chromium with a mobile viewport (ADR 0019).
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
@@ -93,3 +98,107 @@ jobs:
             git diff -- src/RunnersDiary.Api/openapi web/src/api/generated
             exit 1
           fi
+
+  # Real stack (SQL Server + Azurite + API + built SPA) with no mocks (plan M3 section 9, Q1). Not on PRs: it is slow and the
+  # frontend job already covers the mocked suite. Plain containers + `dotnet run` rather than the Aspire AppHost: no DCP
+  # orchestrator, dashboard or persistent volumes to bootstrap in CI, and the same images as the test fixtures.
+  e2e-fullstack:
+    name: e2e-fullstack
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_URL: http://127.0.0.1:5080
+      WEB_URL: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Generate throwaway secrets
+        run: |
+          # Per-run random values, masked in logs, never stored. Letters and digits only.
+          sql_password="Aa1$(openssl rand -hex 16)"
+          guest_key="$(openssl rand -hex 32)"
+          echo "::add-mask::$sql_password"
+          echo "::add-mask::$guest_key"
+          echo "SQL_PASSWORD=$sql_password" >> "$GITHUB_ENV"
+          echo "GUEST_KEY=$guest_key" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server and Azurite
+        run: |
+          # Keep the tags in sync with the AppHost and tests/RunnersDiary.Api.Tests/Infrastructure/ContainersApiFactory.cs.
+          docker run -d --name sql -p 1433:1433 -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=$SQL_PASSWORD" \
+            mcr.microsoft.com/mssql/server:2022-latest
+          docker run -d --name azurite -p 10000:10000 \
+            mcr.microsoft.com/azure-storage/azurite:3.37.0 \
+            azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --inMemoryPersistence
+          for i in $(seq 1 60); do
+            if docker exec sql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SQL_PASSWORD" -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server ready after ~$((i * 2))s"; exit 0
+            fi
+            sleep 2
+          done
+          docker logs sql | tail -50
+          echo "::error::SQL Server did not become ready"; exit 1
+
+      - run: dotnet build src/RunnersDiary.Api -c Release
+
+      - name: Start the API
+        run: |
+          # Development: guest limits and rate limits are the Development ones (appsettings.Development.json). Entra off: guests only.
+          export ASPNETCORE_ENVIRONMENT=Development
+          export ASPNETCORE_URLS="$API_URL"
+          export ConnectionStrings__runnersdiary="Server=127.0.0.1,1433;Database=runnersdiary;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=True;Encrypt=False"
+          # Azurite's published, well-known development account (not a secret).
+          export ConnectionStrings__blobs="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+          export Database__MigrateOnStartup=true
+          export Storage__CreateContainerOnStartup=true
+          export ForwardedHeaders__Enabled=false
+          export Auth__Entra__Enabled=false
+          export Auth__Guest__SigningKey="$GUEST_KEY"
+          nohup dotnet run --project src/RunnersDiary.Api -c Release --no-build --no-launch-profile > api.log 2>&1 &
+
+      - run: npm --prefix web ci
+      - run: npm --prefix web run build
+      - name: Serve the SPA with /api proxied to the API
+        run: |
+          # vite preview inherits server.proxy; API_HTTP is the existing override in web/vite.config.ts.
+          API_HTTP="$API_URL" nohup npm --prefix web run preview -- --host 127.0.0.1 --port 4173 --strictPort > web.log 2>&1 &
+
+      - name: Wait for the stack (through the proxy)
+        run: |
+          for i in $(seq 1 60); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' "$WEB_URL/api/health")" = "200" ]; then
+              echo "Stack ready after ~$((i * 2))s"; exit 0
+            fi
+            sleep 2
+          done
+          echo "::group::api.log"; tail -100 api.log; echo "::endgroup::"
+          echo "::group::web.log"; tail -50 web.log; echo "::endgroup::"
+          echo "::error::/api/health did not return 200"; exit 1
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run test:e2e:fullstack
+        working-directory: web
+        env:
+          CI: true
+          FULLSTACK_BASE_URL: ${{ env.WEB_URL }}
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-fullstack-report
+          path: |
+            web/playwright-report
+            web/test-results
+            api.log
+            web.log
+          retention-days: 7

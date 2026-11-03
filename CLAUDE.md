@@ -8,10 +8,10 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 
 - **Phase 0** (agents + project memory) — done.
 - **M1 – Skeleton** — done (merged, stompsu/runners-diary#1). Plan: [`docs/plans/M1-skeleton.md`](docs/plans/M1-skeleton.md).
-- **M2 – Domain & Runs API** — implemented and verified locally; awaiting CI + approval. Plan, deviations (§11) and the Entra tenant checklist (§10): [`docs/plans/M2-domain-runs-api.md`](docs/plans/M2-domain-runs-api.md).
+- **M2 – Domain & Runs API** — done (merged, stompsu/runners-diary#4). Plan, deviations (§11) and the Entra tenant checklist (§10): [`docs/plans/M2-domain-runs-api.md`](docs/plans/M2-domain-runs-api.md).
   - The user creates the Entra external tenant themself (checklist §10). Until its IDs are in AppHost user-secrets, the API runs with Entra disabled; guests work and tests mint their own tokens.
-- Next: **M3 – Calendar UI** (architect writes `docs/plans/M3-*.md` first).
-- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0013).
+- **M3 – Calendar UI** — implemented and verified locally on branch `m3-calendar-ui`; awaiting CI + approval. Plan and deviations (§12): [`docs/plans/M3-calendar-ui.md`](docs/plans/M3-calendar-ui.md).
+- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0019).
 
 ## Prerequisites (local dev)
 
@@ -71,8 +71,11 @@ npm --prefix web run dev           # standalone: proxies /api to https://localho
 npm --prefix web run lint          # oxlint, warnings are errors
 npm --prefix web run typecheck
 npm --prefix web test -- --run     # Vitest (watch mode without --run)
+npm --prefix web run test:tz       # Vitest for dates/features under America/Los_Angeles and Pacific/Kiritimati
 npm --prefix web run build
-npm --prefix web run test:e2e      # Playwright smoke vs `vite preview`; first time: npx --prefix web playwright install chromium
+npm --prefix web run test:e2e      # Playwright (fake API) vs `vite preview`: desktop + phone-la projects; first time: npx --prefix web playwright install chromium
+# Full-stack journey against a running stack (AppHost or the CI job's setup); CI runs it on push to main + manual dispatch
+FULLSTACK_BASE_URL=http://localhost:5173 npm --prefix web run test:e2e:fullstack
 npm --prefix web run format        # Prettier
 
 # API contract: after changing endpoints, build the API first, then regenerate the TS schema and commit both
@@ -89,7 +92,7 @@ dotnet user-secrets set "Entra:TenantId" "<tenant GUID>" --project src/RunnersDi
 az bicep build --file infra/main.bicep   # M7 — validation only; never deploy without explicit user confirmation
 ```
 
-CI (`.github/workflows/ci.yml`) runs three jobs on every PR and push to `main`: **backend** (build + tests with Testcontainers), **frontend** (lint, typecheck, Prettier, Vitest, build, Playwright), **api-contract** (fails if the committed OpenAPI doc or generated TS schema is stale).
+CI (`.github/workflows/ci.yml`) runs three jobs on every PR and push to `main`: **backend** (build + tests with Testcontainers), **frontend** (lint, typecheck, Prettier, Vitest incl. `test:tz`, build, Playwright), **api-contract** (fails if the committed OpenAPI doc or generated TS schema is stale). A fourth job, **e2e-fullstack** (SQL + Azurite containers, API, `vite preview`, full-stack Playwright journey), runs only on push to `main` and manual dispatch; superseded PR runs are cancelled, `main` runs never are.
 
 ## Conventions
 

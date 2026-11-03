@@ -19,6 +19,12 @@ public sealed class EntraAuthOptions
     public IList<string> ValidIssuers { get; } = [];
 
     public string RequiredScope { get; set; } = "access_as_user";
+
+    /// <summary>The SPA application (client) id handed to MSAL via <c>GET /api/client-config</c>. Optional: without it sign-in is hidden.</summary>
+    public string? SpaClientId { get; set; }
+
+    /// <summary>Scope the SPA requests; defaults to <c>api://{Audience}/{RequiredScope}</c>.</summary>
+    public string? ApiScope { get; set; }
 }
 
 /// <summary>App-issued guest token settings (<c>Auth:Guest</c>). <see cref="SigningKey"/> is a secret.</summary>

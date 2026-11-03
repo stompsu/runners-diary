@@ -1,0 +1,44 @@
+{
+  "title": "Diary – {{month}}",
+  "today": "Today",
+  "showingMonth": "Showing {{month}}",
+  "previousMonth": "Previous month",
+  "nextMonth": "Next month",
+  "monthList": "Month list",
+  "picker": {
+    "title": "Choose month and year",
+    "year": "Year {{year}}",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "months": "Months",
+    "trigger": "{{month}}, choose month and year"
+  },
+  "grid": {
+    "label": "Calendar for {{month}}"
+  },
+  "weekColumn": "Week",
+  "week": "Week {{week}}",
+  "weekShort": "W{{week}}",
+  "weekTotals": "Week totals",
+  "totals": {
+    "distance": "Distance",
+    "time": "Time",
+    "elevation": "Elevation gain"
+  },
+  "plannedDistance": "Planned {{distance}}",
+  "more": "+{{count}}",
+  "cell": {
+    "empty": "{{date}}, no runs",
+    "runs_one": "{{date}}, {{count}} run: {{runs}}",
+    "runs_other": "{{date}}, {{count}} runs: {{runs}}",
+    "run": "{{type}}, {{status}}",
+    "runWithDistance": "{{type}}, {{status}}, {{distance}}",
+    "bubble": "{{type}}, {{status}}"
+  },
+  "status": {
+    "planned": "Planned",
+    "completed": "Completed"
+  },
+  "race": "Race",
+  "loading": "Loading the calendar…"
+}

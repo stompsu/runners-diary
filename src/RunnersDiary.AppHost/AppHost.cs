@@ -49,6 +49,11 @@ if (!string.IsNullOrWhiteSpace(entraTenantId) && !string.IsNullOrWhiteSpace(entr
         .WithEnvironment("Auth__Entra__TenantId", entraTenantId)
         .WithEnvironment("Auth__Entra__TenantSubdomain", entraSubdomain)
         .WithEnvironment("Auth__Entra__Audience", entraApiClientId);
+    if (builder.Configuration["Entra:SpaClientId"] is { Length: > 0 } spaClientId)
+    {
+        api.WithEnvironment("Auth__Entra__SpaClientId", spaClientId);
+    }
+
     if (builder.Configuration["Entra:Issuer"] is { Length: > 0 } issuer)
     {
         api.WithEnvironment("Auth__Entra__ValidIssuers__0", issuer);

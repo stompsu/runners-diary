@@ -36,6 +36,27 @@
         }
       }
     },
+    "/api/client-config": {
+      "get": {
+        "tags": [
+          "ClientConfig"
+        ],
+        "summary": "Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable).",
+        "operationId": "getClientConfig",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/guest-sessions": {
       "post": {
         "tags": [
@@ -906,6 +927,45 @@
         },
         "additionalProperties": false
       },
+      "ClientConfigResponse": {
+        "required": [
+          "entra"
+        ],
+        "type": "object",
+        "properties": {
+          "entra": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EntraClientConfig"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "EntraClientConfig": {
+        "required": [
+          "clientId",
+          "authority",
+          "apiScope"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "authority": {
+            "type": "string"
+          },
+          "apiScope": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "GpxTrackKind": {
         "enum": [
           "PlannedCourse",
@@ -1760,6 +1820,9 @@
   "tags": [
     {
       "name": "Health"
+    },
+    {
+      "name": "ClientConfig"
     },
     {
       "name": "GuestSessions"

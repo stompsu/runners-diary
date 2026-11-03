@@ -1,0 +1,171 @@
+{
+  "fields": {
+    "distance": "Distance (km)",
+    "duration": "Duration (h:mm:ss)",
+    "durationHint": "Hours, minutes and seconds, e.g. 1:05:30 or 45:10",
+    "durationPlaceholder": "h:mm:ss",
+    "pace": "Pace",
+    "paceUnknown": "Enter distance and duration",
+    "elevationGain": "Elevation gain (m)",
+    "elevationLoss": "Elevation loss (m)",
+    "date": "Date",
+    "startTime": "Start time (optional)",
+    "timeZone": "Time zone",
+    "status": "Status",
+    "type": "Run type",
+    "title": "Title",
+    "notes": "Notes",
+    "avgHeartRate": "Average heart rate (bpm)",
+    "maxHeartRate": "Max heart rate (bpm)",
+    "rpe": "Effort (RPE)",
+    "rpeHint": "1 (very easy) to 10 (all out)",
+    "gear": "Gear",
+    "weather": "Weather",
+    "surface": "Surface",
+    "surfaceNone": "Not set"
+  },
+  "actions": {
+    "view": "View details",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "add": "Add run",
+    "addForDay": "Add run on this day",
+    "markCompleted": "Mark as completed",
+    "rate": "Rate",
+    "changeRating": "Change rating",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "close": "Close",
+    "changeZone": "Change time zone"
+  },
+  "status": {
+    "planned": "Planned",
+    "completed": "Completed"
+  },
+  "surface": {
+    "Road": "Road",
+    "Trail": "Trail",
+    "Track": "Track",
+    "Treadmill": "Treadmill",
+    "Mixed": "Mixed"
+  },
+  "day": {
+    "empty": "No runs on this day."
+  },
+  "list": {
+    "title": "Runs in {{month}}",
+    "empty": "No runs this month.",
+    "week": "Week {{week}}",
+    "completedTotals": "Completed: {{totals}}",
+    "plannedTotals": "Planned: {{distance}}"
+  },
+  "delete": {
+    "title": "Delete this run?",
+    "description": "{{run}} will be deleted. This cannot be undone.",
+    "summary": "{{type}} on {{date}}"
+  },
+  "toast": {
+    "created": "Run added.",
+    "saved": "Run saved.",
+    "deleted": "Run deleted.",
+    "rated": "Rating saved.",
+    "gone": "This run no longer exists.",
+    "reloaded": "Loaded the latest version of this run."
+  },
+  "gone": {
+    "title": "Run not found"
+  },
+  "details": {
+    "loading": "Loading the run…",
+    "zone": "Time zone"
+  },
+  "form": {
+    "addTitle": "Add run",
+    "editTitle": "Edit run",
+    "completeTitle": "Complete run",
+    "when": "When",
+    "what": "What",
+    "numbers": "Numbers",
+    "details": "Details",
+    "rating": "Rating",
+    "typeGroup": {
+      "Race": "Races",
+      "Training": "Training",
+      "Other": "Other"
+    }
+  },
+  "race": {
+    "legend": "Race",
+    "name": "Race name",
+    "distanceCategory": "Race distance",
+    "categories": {
+      "FiveK": "5K",
+      "TenK": "10K",
+      "HalfMarathon": "Half marathon",
+      "Marathon": "Marathon",
+      "Other": "Other distance"
+    },
+    "officialDistance": "Official distance (km)",
+    "officialDistanceHint": "For other distances and ultras",
+    "bib": "Bib number",
+    "categoryName": "Age category",
+    "targetTime": "Target time (h:mm:ss)",
+    "resultTime": "Result time (h:mm:ss)",
+    "overallPlace": "Overall place",
+    "categoryPlace": "Category place",
+    "resultsUrl": "Results link",
+    "openResults": "Open results"
+  },
+  "rating": {
+    "label": "How did it go?",
+    "comment": "Comment",
+    "starsOption_one": "{{count}} star",
+    "starsOption_other": "{{count}} stars",
+    "selected_one": "{{count}} out of 5 stars",
+    "selected_other": "{{count}} out of 5 stars",
+    "none": "No rating yet",
+    "clear": "Clear rating"
+  },
+  "rate": {
+    "title": "Rate this run",
+    "conflict": "This run was changed elsewhere. We loaded the latest version; your rating is kept. Save again to apply it."
+  },
+  "conflict": {
+    "explanation": "Your changes are still here. You can load the latest version (this discards your edits) or save your version over it.",
+    "reload": "Reload latest",
+    "overwrite": "Save mine anyway"
+  },
+  "validation": {
+    "distance": "Enter a distance in km, for example 10.5.",
+    "duration": "Enter a duration as h:mm:ss or mm:ss, for example 1:05:30.",
+    "elevation": "Enter metres, 0 or more.",
+    "heartRate": "Heart rate must be between 30 and 250.",
+    "place": "Enter a whole number, 1 or more.",
+    "resultsUrl": "Enter a web link starting with http:// or https://.",
+    "raceNameRequired": "Enter the race name.",
+    "raceNameLength": "Race name must be at most 150 characters.",
+    "bibLength": "Bib number must be at most 20 characters.",
+    "categoryNameLength": "Category must be at most 50 characters.",
+    "dateInvalid": "Enter a valid date.",
+    "dateRange": "Date must be between 1950 and 2100.",
+    "startTime": "Enter a time as hh:mm.",
+    "timeZone": "Choose a valid time zone.",
+    "titleLength": "Title must be at most 120 characters.",
+    "notesLength": "Notes must be at most 4000 characters.",
+    "gearLength": "Gear must be at most 100 characters.",
+    "weatherLength": "Weather must be at most 200 characters.",
+    "commentLength": "Comment must be at most 500 characters.",
+    "rpe": "Effort must be a whole number from 1 to 10.",
+    "runType": "Choose a run type.",
+    "ratingCompletedOnly": "Only completed runs can be rated.",
+    "ratingRequired": "Choose a star rating first.",
+    "raceTypeOnly": "Race details are only for race run types.",
+    "resultCompletedOnly": "Results can only be entered for completed runs.",
+    "restDayNoMetrics": "A rest day has no distance, time or effort.",
+    "restDayNoRace": "A rest day cannot be a race.",
+    "restDayNoRating": "A rest day cannot be rated.",
+    "maxBelowAvg": "Max heart rate must be at least the average."
+  }
+}
