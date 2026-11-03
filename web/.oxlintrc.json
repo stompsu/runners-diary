@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc", "jsx-a11y", "import", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "react/react-in-jsx-scope": "off",
+    // Side-effect imports are intentional here (CSS, test setup, i18next type augmentation).
+    "import/no-unassigned-import": "off",
+    // i18next's documented API is `i18n.use(...)` on the default export.
+    "import/no-named-as-default-member": "off",
+    "no-restricted-globals": [
+      "error",
+      { "name": "fetch", "message": "Call the API through the generated client in src/api/client.ts (CLAUDE.md)." },
+      {
+        "name": "XMLHttpRequest",
+        "message": "Call the API through the generated client in src/api/client.ts (CLAUDE.md)."
+      }
+    ],
+    "no-restricted-properties": [
+      "error",
+      {
+        "object": "window",
+        "property": "fetch",
+        "message": "Call the API through the generated client in src/api/client.ts (CLAUDE.md)."
+      },
+      {
+        "object": "globalThis",
+        "property": "fetch",
+        "message": "Call the API through the generated client in src/api/client.ts (CLAUDE.md)."
+      },
+      {
+        "object": "self",
+        "property": "fetch",
+        "message": "Call the API through the generated client in src/api/client.ts (CLAUDE.md)."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/api/**", "src/test/**", "**/*.test.ts", "**/*.test.tsx", "e2e/**"],
+      "rules": { "no-restricted-globals": "off", "no-restricted-properties": "off" }
+    },
+    {
+      "files": ["src/components/ui/**"],
+      "rules": { "react/only-export-components": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist", "src/api/generated", "playwright-report", "test-results"]
+}

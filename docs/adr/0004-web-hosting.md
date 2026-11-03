@@ -27,6 +27,7 @@ Rationale: same-origin removes CORS and runtime-config problems; one hosting pro
 ## Consequences
 
 - M1: frontend always uses relative `/api/...`; Vite dev server proxies `/api` to `API_HTTPS || API_HTTP`. No CORS configured in the API.
+- **The API is never exposed publicly (user requirement, 2026-11-03):** the `api` Container App uses **internal ingress only**; the `web` Container App is the single public entry point and reverse-proxies `/api/*` to it inside the Container Apps environment. Health probes (`/alive`, `/health`) are reached internally by the platform. Option C (SWA cross-origin) is therefore excluded, because it requires a public API.
 - M7 must verify SPA fallback + headers on the YARP site and choose B or A; if the user picks SWA, add CORS + `VITE_API_BASE_URL` then.
 
 ## References

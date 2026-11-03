@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RunnersDiary.Api/RunnersDiary.Api.csproj" />
+    <Project Path="src/RunnersDiary.AppHost/RunnersDiary.AppHost.csproj" />
+    <Project Path="src/RunnersDiary.Domain/RunnersDiary.Domain.csproj" />
+    <Project Path="src/RunnersDiary.Infrastructure/RunnersDiary.Infrastructure.csproj" />
+    <Project Path="src/RunnersDiary.ServiceDefaults/RunnersDiary.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RunnersDiary.Api.Tests/RunnersDiary.Api.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -6,8 +6,16 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 
 ## Current status
 
-- **Phase 0** (agents + project memory) — done, awaiting approval.
-- Next: **M1 – Skeleton**. No application code exists yet; the commands below are the *target* and will be verified in M1.
+- **Phase 0** (agents + project memory) — done.
+- **M1 – Skeleton** — implemented and verified locally; awaiting CI + approval. Plan: [`docs/plans/M1-skeleton.md`](docs/plans/M1-skeleton.md).
+- Next: **M2 – Domain & Runs API** (architect writes `docs/plans/M2-*.md` first).
+- Architecture: [`docs/architecture.md`](docs/architecture.md); decisions: [`docs/adr/`](docs/adr/) (0001–0007).
+
+## Prerequisites (local dev)
+
+- .NET SDK 10.0.400+ (pinned in `global.json`), Node 26 (`web/.nvmrc`).
+- **Docker Desktop running** — Aspire runs SQL Server + Azurite, and API tests use Testcontainers. On Apple Silicon, enable *Use Rosetta for x86_64/amd64 emulation* (SQL Server has no arm64 image).
+- First `dotnet run` of the AppHost asks macOS to trust the ASP.NET dev certificate (Keychain password prompt). Declining works only with `--launch-profile http`.
 
 ## Repo layout (target)
 
@@ -43,29 +51,37 @@ runners-diary/
 └── docs/                                 # brief, architecture, ADRs, data model, API contract, milestone plans
 ```
 
-## Commands (target — confirmed in M1)
+## Commands (verified in M1)
 
 ```bash
-# Run everything locally (API, web, SQL, Azurite) via Aspire
+# Run everything locally (SQL, Azurite, API, web) via Aspire; prints the dashboard URL
 dotnet run --project src/RunnersDiary.AppHost
 
 # Backend
-dotnet build                       # must be warning-free (TreatWarningsAsErrors)
-dotnet test                        # Docker required for Testcontainers
-dotnet ef migrations add <Name> --project src/RunnersDiary.Infrastructure --startup-project src/RunnersDiary.Api
+dotnet build                       # must be warning-free (TreatWarningsAsErrors); also regenerates the OpenAPI doc
+dotnet test                        # Microsoft.Testing.Platform (global.json); Docker needed for container tests
+                                   # without Docker they are skipped locally, but fail when CI=true
+dotnet test --report-xunit-trx     # TRX output (as CI does)
 
 # Frontend (from repo root)
-npm --prefix web install
-npm --prefix web run dev
-npm --prefix web run lint
+npm --prefix web ci
+npm --prefix web run dev           # standalone: proxies /api to https://localhost:7080 (API https profile)
+npm --prefix web run lint          # oxlint, warnings are errors
 npm --prefix web run typecheck
-npm --prefix web test              # Vitest
-npm --prefix web run test:e2e      # Playwright
-npm --prefix web run generate:api  # regenerate TS client from the API's OpenAPI document
+npm --prefix web test -- --run     # Vitest (watch mode without --run)
+npm --prefix web run build
+npm --prefix web run test:e2e      # Playwright smoke vs `vite preview`; first time: npx --prefix web playwright install chromium
+npm --prefix web run format        # Prettier
 
-# Infra (validation only — never deploy without explicit user confirmation)
-az bicep build --file infra/main.bicep
+# API contract: after changing endpoints, build the API first, then regenerate the TS schema and commit both
+dotnet build src/RunnersDiary.Api && npm --prefix web run generate:api
+
+# Later milestones
+dotnet ef migrations add <Name> --project src/RunnersDiary.Infrastructure --startup-project src/RunnersDiary.Api   # M2
+az bicep build --file infra/main.bicep   # M7 — validation only; never deploy without explicit user confirmation
 ```
+
+CI (`.github/workflows/ci.yml`) runs three jobs on every PR and push to `main`: **backend** (build + tests with Testcontainers), **frontend** (lint, typecheck, Prettier, Vitest, build, Playwright), **api-contract** (fails if the committed OpenAPI doc or generated TS schema is stale).
 
 ## Conventions
 
@@ -73,7 +89,9 @@ az bicep build --file infra/main.bicep
 - **Domain purity**: load metrics, GPX parsing/metrics, ISO-week logic live in `RunnersDiary.Domain` with no EF/ASP.NET/Azure references, and are unit tested.
 - **Units**: store SI (metres, seconds, m/s, metres of elevation); format in the UI only (km, min/km). Metric by default.
 - **Time**: store run start as local date + local time plus the user's IANA time zone (decision to confirm in M2 ADR); weeks are ISO, Monday-first.
-- **Frontend**: TypeScript `strict`; call the API only via the generated client; no user-facing string literals in components (i18n keys); accessible calendar (ARIA grid, keyboard nav); responsive.
+- **Frontend**: TypeScript `strict` (pinned to 5.9 until `openapi-typescript` supports TS 7); call the API only via `$api`/`fetchClient` in `web/src/api/client.ts` (oxlint blocks `fetch` elsewhere); relative `/api` only — never an API host; no user-facing string literals in components (typed i18n keys in `web/src/i18n/en/*.json`); accessible calendar (ARIA grid, keyboard nav); responsive. UI kit: shadcn/ui (Radix base) + Tailwind v4 — add components with `npx shadcn add <name>` from `web/`.
+- **Routing to the API**: the browser only talks to the web origin; `/api/*` is proxied (Vite in dev, the web container in Azure). The API never gets public ingress (ADR 0004).
+- **Package pins**: versions live in `Directory.Packages.props` (central management). Vulnerable transitive packages are pinned in its "Security pins" group with the CVE and a removal condition. Container image tags that override Aspire defaults (Azurite) are pinned in both `AppHost.cs` and the test fixtures — keep them in sync.
 - **Security**: every endpoint requires auth (users or guests) except health and guest-token issuance; every query is scoped to the caller's user id from claims; 404 for foreign resources. Every upload validated (size, type, safe XML: DTD prohibited, no resolver).
 - **Secrets**: none in the repo — Aspire parameters / user-secrets locally, Key Vault + managed identity in Azure. Azure Maps keys never reach the browser.
 - **Dependencies**: every new NuGet/npm package gets a one-line justification in the PR/commit or report; prefer well-maintained ones.
