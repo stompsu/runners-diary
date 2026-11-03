@@ -1,0 +1,33 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+coverage*/
+
+# Node / web
+node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
+
+# Local config & secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+*.pfx
+*.pem
+
+# Azure / azd
+.azure/
+
+# Claude Code local settings
+.claude/settings.local.json
