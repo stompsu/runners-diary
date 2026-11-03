@@ -9,14 +9,15 @@ public sealed class ProblemDetailsTests(OfflineApiFactory factory) : IClassFixtu
     private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
-    public async Task UnknownApiRoute_Returns404ProblemDetails()
+    public async Task UnknownApiRoute_WithoutToken_Returns401ProblemDetails()
     {
+        // The fallback policy also covers unmatched routes: unauthenticated callers cannot probe which routes exist.
         var response = await _client.GetAsync(new Uri("/api/does-not-exist", UriKind.Relative), TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(404, json.RootElement.GetProperty("status").GetInt32());
+        Assert.Equal(401, json.RootElement.GetProperty("status").GetInt32());
     }
 
     [Fact]

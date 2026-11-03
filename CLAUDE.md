@@ -7,11 +7,11 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 ## Current status
 
 - **Phase 0** (agents + project memory) — done.
-- **M1 – Skeleton** — implemented and verified locally; awaiting CI + approval. Plan: [`docs/plans/M1-skeleton.md`](docs/plans/M1-skeleton.md).
-- Next: **M2 – Domain & Runs API** (architect writes `docs/plans/M2-*.md` first). Decided inputs from the user (2026-11-03):
-  - Run date/time storage: [ADR 0008](docs/adr/0008-run-date-and-time-storage.md) (local date + optional time + IANA zone).
-  - Entra External ID: the **user creates a new external tenant** themself; M2's plan must list exactly what to configure (app registrations, scopes, user flow, redirect URIs) and which non-secret IDs the app needs. Until it exists, M2 work proceeds with guest tokens and test-only token issuance in integration tests.
-- Architecture: [`docs/architecture.md`](docs/architecture.md); decisions: [`docs/adr/`](docs/adr/) (0001–0007).
+- **M1 – Skeleton** — done (merged, stompsu/runners-diary#1). Plan: [`docs/plans/M1-skeleton.md`](docs/plans/M1-skeleton.md).
+- **M2 – Domain & Runs API** — implemented and verified locally; awaiting CI + approval. Plan, deviations (§11) and the Entra tenant checklist (§10): [`docs/plans/M2-domain-runs-api.md`](docs/plans/M2-domain-runs-api.md).
+  - The user creates the Entra external tenant themself (checklist §10). Until its IDs are in AppHost user-secrets, the API runs with Entra disabled; guests work and tests mint their own tokens.
+- Next: **M3 – Calendar UI** (architect writes `docs/plans/M3-*.md` first).
+- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0013).
 
 ## Prerequisites (local dev)
 
@@ -78,8 +78,14 @@ npm --prefix web run format        # Prettier
 # API contract: after changing endpoints, build the API first, then regenerate the TS schema and commit both
 dotnet build src/RunnersDiary.Api && npm --prefix web run generate:api
 
+# EF Core migrations (dotnet-ef is a local tool in .config/dotnet-tools.json); the AppHost applies them on start
+dotnet tool restore
+dotnet ef migrations add <Name> --project src/RunnersDiary.Infrastructure --startup-project src/RunnersDiary.Api
+
+# Entra External ID (once the tenant exists; non-secret, never committed) — see M2 plan §10
+dotnet user-secrets set "Entra:TenantId" "<tenant GUID>" --project src/RunnersDiary.AppHost   # also TenantSubdomain, ApiClientId, SpaClientId, optional Issuer
+
 # Later milestones
-dotnet ef migrations add <Name> --project src/RunnersDiary.Infrastructure --startup-project src/RunnersDiary.Api   # M2
 az bicep build --file infra/main.bicep   # M7 — validation only; never deploy without explicit user confirmation
 ```
 
