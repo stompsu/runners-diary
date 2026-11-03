@@ -10,7 +10,7 @@ using RunnersDiary.Infrastructure.Users;
 namespace RunnersDiary.Api.Auth;
 
 /// <summary>What <see cref="AuthenticationSetup.AddAppAuthentication"/> decided; Program logs it once the logger exists.</summary>
-public sealed record AuthSetupResult(bool EntraEnabled, string? EntraDisabledReason, bool GuestKeyIsEphemeral);
+public sealed record AuthSetupResult(bool EntraEnabled, string? EntraDisabledReason, bool GuestKeyIsEphemeral, bool SpaClientIdMissing = false);
 
 /// <summary>
 /// Two JWT bearer schemes (Entra External ID, app-issued guest tokens) behind one policy scheme that picks the validator by the
@@ -73,7 +73,10 @@ public static class AuthenticationSetup
             .SetDefaultPolicy(authenticated)
             .SetFallbackPolicy(authenticated);
 
-        return new AuthSetupResult(entraEnabled, entraReason, ephemeral);
+        builder.Services.AddSingleton(Features.ClientConfig.GetClientConfig.Build(entra, entraEnabled));
+
+        // A missing SPA client id is not a startup failure (ADR 0015): sign-in is optional, guests keep working; Program logs a warning.
+        return new AuthSetupResult(entraEnabled, entraReason, ephemeral, entraEnabled && string.IsNullOrWhiteSpace(entra.SpaClientId));
     }
 
     private static (bool Enabled, string? Reason) ResolveEntra(EntraAuthOptions entra, bool lenient)

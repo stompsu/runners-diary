@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Redirect</title>
+  </head>
+  <body>
+    <!-- MSAL v5 redirect bridge (ADR 0014 §3). No React, router or MsalProvider here; must be served without COOP. -->
+    <script type="module" src="/src/auth/redirectBridge.ts"></script>
+  </body>
+</html>

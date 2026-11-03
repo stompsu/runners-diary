@@ -1,0 +1,23 @@
+{
+  "notFoundTitle": "Page not found",
+  "notFoundBody": "The page you're looking for doesn't exist.",
+  "goToDiary": "Go to the diary",
+  "unexpectedTitle": "Something went wrong",
+  "unexpectedBody": "An unexpected error occurred. Please try again.",
+  "problem": {
+    "validation": "Some values are not valid. Check the highlighted fields.",
+    "concurrency": "This run was changed elsewhere since you opened it.",
+    "runLimit": "You have reached the maximum number of runs.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "rateLimitedWait": "Too many requests. Please try again in {{seconds}} s.",
+    "guestCapacity": "The demo is full right now. Please try again later.",
+    "guestCapacityWait": "The demo is full right now. Please try again in {{seconds}} s.",
+    "notFound": "This item no longer exists.",
+    "unauthorized": "Your session has ended. Please sign in again.",
+    "payloadTooLarge": "The request is too large.",
+    "unavailable": "The server is not reachable right now. Please try again.",
+    "unknown": "Something went wrong. Please try again."
+  },
+  "retry": "Try again",
+  "loadFailedTitle": "Couldn't load this page"
+}

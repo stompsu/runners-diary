@@ -10,6 +10,16 @@
     "react/exhaustive-deps": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
     "react/react-in-jsx-scope": "off",
+    // No user-facing literals in components (AC15): text goes through t(). className/data-* props are fine;
+    // user-visible attributes are restricted explicitly. Punctuation separators are allowed.
+    "react/jsx-no-literals": [
+      "error",
+      {
+        "allowedStrings": ["·", "–", "—", "/", "|", "-", ":", "(", ")", "…", "%", "+", "×"],
+        "restrictedAttributes": ["aria-label", "aria-description", "aria-placeholder", "title", "placeholder", "alt"]
+      }
+    ],
+    "react/no-danger": "error",
     // Side-effect imports are intentional here (CSS, test setup, i18next type augmentation).
     "import/no-unassigned-import": "off",
     // i18next's documented API is `i18n.use(...)` on the default export.
@@ -43,12 +53,34 @@
   },
   "overrides": [
     {
-      "files": ["src/api/**", "src/test/**", "**/*.test.ts", "**/*.test.tsx", "e2e/**"],
+      "files": ["src/api/**", "src/test/**", "**/*.test.ts", "**/*.test.tsx", "e2e/**", "e2e-fullstack/**"],
       "rules": { "no-restricted-globals": "off", "no-restricted-properties": "off" }
     },
     {
-      "files": ["src/components/ui/**"],
-      "rules": { "react/only-export-components": "off" }
+      "files": [
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/field.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/native-select.tsx",
+        "src/components/ui/popover.tsx",
+        "src/components/ui/separator.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/sonner.tsx",
+        "src/components/ui/textarea.tsx"
+      ],
+      "rules": {
+        "react/only-export-components": "off",
+        "react/jsx-no-literals": "off",
+        "jsx-a11y/prefer-tag-over-role": "off"
+      }
+    },
+    {
+      "files": ["src/test/**", "**/*.test.tsx", "e2e/**", "e2e-fullstack/**"],
+      "rules": { "react/jsx-no-literals": "off" }
     }
   ],
   "ignorePatterns": ["dist", "src/api/generated", "playwright-report", "test-results"]

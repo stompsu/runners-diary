@@ -304,7 +304,7 @@ public sealed class M2HardeningTests(ContainersApiFactory factory)
 
         var anonymous = operations.Where(o => !o.Value.TryGetProperty("security", out _)).Select(o => o.Key).Order().ToArray();
 
-        Assert.Equal(["createGuestSession", "getApiHealth"], anonymous);
+        Assert.Equal(["createGuestSession", "getApiHealth", "getClientConfig"], anonymous);
     }
 
     private static string LocateCommittedDocument()
