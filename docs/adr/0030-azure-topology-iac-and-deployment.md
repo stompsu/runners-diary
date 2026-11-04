@@ -1,6 +1,6 @@
 # 0030 – Azure topology, IaC (Bicep + azd) and the deploy pipeline
 
-**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, and 2026-11-04 for the Foundry deployment type, see the end)
+**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, 2026-11-04 for the Foundry deployment type, and 2026-11-04 for the region at G1/G2, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -155,6 +155,25 @@ User decision 2026-11-04 (M7 plan §12 deviation **D-AI**; normative detail in t
 - **Region (§3) unchanged: `swedencentral`.** It still offers gpt-5.4-mini as Global Standard ([region availability](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability), Global Standard → Europe, page updated 2026-10-19), plus Container Apps, the SQL free offer, Key Vault and Storage. `polandcentral` is no longer an advantage for AI quota (Data Zone is 0 there too).
 - **§3 "processing stays in the EU" is narrowed:** all resources and data at rest stay in the EU (Foundry included), but **AI prompts and responses may be processed in any Azure region** ([deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types)). Only the metrics-only fact sheet is sent ([ADR 0026 amendment](0026-training-insights-agent-and-grounding.md)).
 - Switching back to Data Zone if EU quota is granted: one Bicep value + G1 + G2.
+
+## Amendment: Region (2026-11-04, M7 Part B gates G1 and G2)
+
+Recorded after G1 (what-if) and G2 (provision), both run with the user's explicit approval. Run log: [M7 plan §12.7](../plans/M7-azure-deployment.md#127-part-b-outcomes).
+
+1. **Primary region `westeurope`** (user decision, plan Q2), replacing `swedencentral` in §3. Everything is in `westeurope` except the SQL server and database: the resource group, Container Apps environment, ACR, Key Vault, Storage, Log Analytics / App Insights and Foundry. The Maps account was already in `westeurope`, so it is now co-located. gpt-5.4-mini Global Standard is offered in `westeurope`, and the Global Standard quota is a subscription-wide pool (300k of 1 000k TPM free), so the AI decision is unaffected.
+2. **SQL in `polandcentral`**, through a new Bicep parameter `sqlLocation` (azd value `SQL_LOCATION`; empty = the primary region), passed to `infra/modules/sql.bicep`.
+   - **Why:** new SQL servers are restricted for this subscription, not the template. G2 failed twice with `RegionDoesNotAllowProvisioning` (West Europe, North Europe). The SQL capabilities API (`GET /subscriptions/{sub}/providers/Microsoft.Sql/locations/{region}/capabilities`, [REST reference](https://learn.microsoft.com/rest/api/sql/capabilities/list-by-location)) returned "Provisioning is restricted in this region" for `westeurope`, `northeurope` and `norwayeast` (a support request would be needed), "Subscriptions are restricted" for `uksouth`, and "Available" for `swedencentral`, `germanywestcentral`, `francecentral`, `polandcentral`, `italynorth`, `spaincentral` and `switzerlandnorth`. The user chose `polandcentral` (closest to Gliwice).
+   - **Consequences:** app ↔ DB traffic crosses regions (West Europe → Poland Central), adding latency per round trip and a small inter-region transfer charge (⚠ both to be observed at G5 and in the 48 h cost check). All data at rest stays in the EU. The free offer applied in `polandcentral` (database created with `useFreeLimit` + `AutoPause`, Online).
+   - **Rule for the future:** check the capabilities API before any provision that creates a SQL server (plan §10 step 5.1).
+3. **Name-suffix rule.** When `SQL_LOCATION` is set, the server is named `sql-rd-<token>-<sqlLocation>` (module param `nameSuffix`; prod: `sql-rd-m3dcwctu5kpwi-polandcentral`); otherwise `sql-rd-<token>` as before. Reason: a failed create in another region kept holding the plain name (`InvalidResourceLocation` with no server existing), and server names are global. `<token>` still comes from the primary location, so the other resource names are unchanged.
+4. **Hooks are run by hand** (changes §6 and the Part A amendment §4 in practice; the hook scripts are unchanged).
+   - azd validates required Bicep parameters **before** the `preprovision` hook runs, so `BUDGET_START_DATE` must be set with `azd env set` before the first provision.
+   - `azd provision` (azd 1.37.2, also with `--no-prompt`) did **not** run the project `preprovision`/`postprovision` hooks in this setup. ⚠ Cause not yet known (azure-infra to investigate).
+   - Required procedure until then: `azd hooks run preprovision` → `azd provision` → `azd hooks run postprovision`. Skipping the last step leaves `GUEST_KEY_BOOTSTRAP` in the local azd env file.
+5. **what-if limits** (affects "every `azd provision --preview` is a user-confirmed action" in §1): azd's preview prints only main resource types; `az deployment sub what-if` gives the full detail. After resources exist, what-if can report `NestedDeploymentShortCircuited` and skip modules whose parameters depend on existing resources' outputs (an ARM limitation). Later G1 reviews must note which modules were skipped.
+6. **azd env name `prod`** (not `rd-prod` as in §2); the resource group is `rg-runnersdiary-prod` as decided.
+
+**Alternatives considered:** keep `swedencentral` for everything (SQL "Available" there): rejected by the user in favour of West Europe before G1. Request SQL access in West Europe through a support ticket: slower and uncertain; can still be done later, but moving the database would need an export/import or a new free-offer database, so it is not planned. `germanywestcentral` or `swedencentral` for SQL: equally available; `polandcentral` chosen by the user.
 
 ## References (checked 2026-11-04)
 

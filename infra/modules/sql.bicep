@@ -3,13 +3,15 @@
 param location string
 param tags object
 param token string
+@description('Optional suffix for the server name, e.g. the region when SQL lives outside the primary region (a failed create in westeurope still holds the plain name).')
+param nameSuffix string = ''
 param databaseName string = 'runnersdiary'
 param migratorName string
 @description('Client (application) id of the migrator identity: the admin sid for a managed identity (ADR 0031).')
 param migratorClientId string
 
 resource server 'Microsoft.Sql/servers@2025-01-01' = {
-  name: 'sql-rd-${token}'
+  name: empty(nameSuffix) ? 'sql-rd-${token}' : 'sql-rd-${token}-${nameSuffix}'
   location: location
   tags: tags
   properties: {
@@ -29,7 +31,7 @@ resource server 'Microsoft.Sql/servers@2025-01-01' = {
 // ACA Consumption has no fixed egress IP; Entra-only authentication is the control (ADR 0031 §3).
 resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2025-01-01' = {
   parent: server
-  name: 'AllowAllWindowsAzureIps'
+  name: 'AllowAzureServices' // 0.0.0.0-0.0.0.0 = allow Azure services; the old name contains the reserved word "Windows"
   properties: { startIpAddress: '0.0.0.0', endIpAddress: '0.0.0.0' }
 }
 
