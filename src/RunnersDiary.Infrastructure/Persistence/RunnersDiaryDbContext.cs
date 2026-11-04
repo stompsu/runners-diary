@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RunnersDiary.Domain.Ai;
 using RunnersDiary.Domain.RunTypes;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.Tracks;
@@ -23,6 +24,14 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
 
     public DbSet<GpxTrack> GpxTracks => Set<GpxTrack>();
 
+    public DbSet<AiSummary> AiSummaries => Set<AiSummary>();
+
+    /// <summary>
+    /// The AI usage ledger: a system table without the Owner filter (ADR 0028 §4). Only <c>EfAiGenerationStore</c> reads or writes it
+    /// (the per-request ledger and the guest cleanup's 30-day purge both go through it); every per-user read there filters by an explicit user id.
+    /// </summary>
+    public DbSet<AiGeneration> AiGenerations => Set<AiGeneration>();
+
     /// <summary>Read by the query filter on every query (EF parameterizes it per context instance) and by the ownership guard.</summary>
     internal Guid? CurrentUserId => currentUser.UserIdOrNull;
 
@@ -33,6 +42,7 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
 
         modelBuilder.Entity<Run>().HasQueryFilter(OwnerFilter, r => r.UserId == CurrentUserId);
         modelBuilder.Entity<GpxTrack>().HasQueryFilter(OwnerFilter, t => t.UserId == CurrentUserId);
+        modelBuilder.Entity<AiSummary>().HasQueryFilter(OwnerFilter, s => s.UserId == CurrentUserId);
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

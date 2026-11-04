@@ -16,6 +16,8 @@ public static class GetInsightsReport
 
     public static IEndpointRouteBuilder MapInsightsEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        GetInsightsSummary.Map(endpoints.MapGroup("/insights"));
+        GenerateInsightsSummary.Map(endpoints.MapGroup("/insights"));
         endpoints.MapGet("/insights/report", HandleAsync)
             .WithName("getInsightsReport")
             .WithTags("Insights")
@@ -33,6 +35,28 @@ public static class GetInsightsReport
         [FromServices] IInsightsReportService service,
         HttpContext context,
         CancellationToken cancellationToken)
+    {
+        var errors = ValidateRange(from, to);
+
+        if (!TryParseCompare(compare, out var kind))
+        {
+            errors["compare"] = [$"Must be one of: {CompareNone}, {ComparePrevious}, {ComparePreviousYear}."];
+        }
+
+        if (errors.Count > 0)
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        var report = await service.GetReportAsync(from, to, kind, cancellationToken);
+
+        // Per-user and always recomputed: nothing may be stored by a shared cache or reused after a run changes.
+        context.Response.Headers.CacheControl = "private, no-store";
+        return TypedResults.Ok(InsightsMapping.ToResponse(report));
+    }
+
+    /// <summary>The shared range rules of the report and the summary: dates 1950-2100, <c>to</c> not before <c>from</c>, at most 366 days.</summary>
+    internal static Dictionary<string, string[]> ValidateRange(DateOnly from, DateOnly to)
     {
         var errors = new Dictionary<string, string[]>();
         var min = new DateOnly(MinYear, 1, 1);
@@ -57,24 +81,10 @@ public static class GetInsightsReport
             errors["to"] = [$"The range must not exceed {InsightsPeriod.MaxDays} days."];
         }
 
-        if (!TryParseCompare(compare, out var kind))
-        {
-            errors["compare"] = [$"Must be one of: {CompareNone}, {ComparePrevious}, {ComparePreviousYear}."];
-        }
-
-        if (errors.Count > 0)
-        {
-            return TypedResults.ValidationProblem(errors);
-        }
-
-        var report = await service.GetReportAsync(from, to, kind, cancellationToken);
-
-        // Per-user and always recomputed: nothing may be stored by a shared cache or reused after a run changes.
-        context.Response.Headers.CacheControl = "private, no-store";
-        return TypedResults.Ok(InsightsMapping.ToResponse(report));
+        return errors;
     }
 
-    private static bool TryParseCompare(string? value, out ComparisonKind kind)
+    internal static bool TryParseCompare(string? value, out ComparisonKind kind)
     {
         switch (value)
         {

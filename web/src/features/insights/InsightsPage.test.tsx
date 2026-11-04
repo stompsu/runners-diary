@@ -143,6 +143,17 @@ describe('empty and data quality states', () => {
     expect(screen.queryByTestId('kpi-grid')).not.toBeInTheDocument()
   })
 
+  it('still shows the summary card in an empty period, so the automatic note can appear', async () => {
+    stubResizeObserver()
+    resetFakeApi({ today: DEMO_REPORT_TODAY, summary: { scenario: 'template' } })
+    renderRoute('/insights?view=month&at=2025-03-10')
+
+    const card = await screen.findByTestId('summary-card', undefined, { timeout: 10_000 })
+    expect(screen.getByTestId('insights-empty')).toBeInTheDocument()
+    await within(card).findByTestId('summary-badge')
+    expect(within(card).queryByRole('button', { name: 'Generate summary' })).not.toBeInTheDocument()
+  })
+
   it('shows the data quality note only when load is estimated', async () => {
     open('/insights', 'estimated')
 
@@ -312,5 +323,31 @@ describe('request errors', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }))
 
     await loaded()
+  })
+})
+
+describe('AI summary card on the page', () => {
+  it('sits below the KPI grid and loads the stored summary for the shown period', async () => {
+    open()
+
+    const grid = await loaded()
+    const card = await screen.findByTestId('summary-card')
+    expect(grid.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(card).getByRole('heading', { level: 2, name: 'AI summary' })).toBeInTheDocument()
+    await within(card).findByRole('button', { name: 'Generate summary' })
+    expect(getFakeApi().requests).toContain('GET /api/insights/summary')
+  })
+
+  it('loads the summary of another period when the period changes (and aborts nothing it did not start)', async () => {
+    const user = userEvent.setup()
+    open()
+    await loaded()
+    await screen.findByRole('button', { name: 'Generate summary' })
+
+    await user.click(screen.getByRole('button', { name: 'Show earlier period' }))
+
+    await waitFor(() =>
+      expect(getFakeApi().requests.filter((request) => request === 'GET /api/insights/summary').length).toBe(2),
+    )
   })
 })

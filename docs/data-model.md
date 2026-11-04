@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing` (both merged); M5 (Insights) has no schema change (implemented, awaiting CI + approval)**.
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 adds migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; implemented, awaiting CI + approval)**.
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -9,8 +9,11 @@ Conventions: SI units (metres, seconds, metres of elevation); enums stored as `t
 
 ```
 Users 1 ──< Runs >── 1 RunTypes (catalog, seeded)
-              │  └─ (complex, same row) Location?, Race?, Rating?
-              └──< GpxTracks  (0..1 per Kind; blobs = original GPX + processed GeoJSON)
+  │           │  └─ (complex, same row) Location?, Race?, Rating?
+  │           └──< GpxTracks  (0..1 per Kind; blobs = original GPX + processed GeoJSON)
+  └──< AiSummaries  (M6; one per period + compare + language)
+
+AiGenerations  (M6; system usage ledger: UserId without FK, no Owner filter)
 ```
 
 ## Users
@@ -167,6 +170,56 @@ Each track has its own prefix, so deleting a track or a run is a prefix delete p
 
 `InsightsReportService` reads through the `Owner`-filtered context with `AsNoTracking` **projections** only: the user's `TimeZoneId` (`Users` PK); then, each a seek on `CX_Runs_User_Date (UserId, Date)`, run facts (`Id, Date, Status, RunTypeId, DistanceMeters, DurationSeconds, ElevationGainMeters, Rpe, Surface, AvgHeartRate`) for the bucket/load window; the comparison window's part outside it (when needed); `MIN(Date)` of completed load-counting runs; race facts (the `Race_*` scalars and `Rating_Stars`, `Date ≤ to`). `Notes`, `Location_*`, `Title` and `GpxTracks` are never read. 1–5 queries per report.
 
+## AiSummaries (M6)
+
+Migration `20261104070212_AiSummaries`; [ADR 0028](adr/0028-summary-cache-quotas-and-demo-summaries.md) §1–2. Cache of **model-written** summaries only. Demo and template summaries are computed on read and never stored. User-owned: `Owner` query filter; the owner of a new row is always the current user.
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Id` | `uniqueidentifier` | no | PK **non-clustered**, v7. |
+| `UserId` | `uniqueidentifier` | no | FK → `Users.Id` **ON DELETE CASCADE** (guest cleanup removes the rows). Owner filter. |
+| `PeriodFrom` / `PeriodTo` | `date` | no | The requested period. |
+| `Compare` | `tinyint` | no | `None = 0`, `Previous = 1`, `PreviousYear = 2`. |
+| `Language` | `varchar(8)` | no | `en`. |
+| `MetricsVersion` / `FactSheetVersion` / `PromptVersion` | `smallint` | no | Part of the validity tuple. |
+| `ModelDeployment` | `varchar(64)` | no | The configured deployment when written (validity tuple). |
+| `ModelId` | `varchar(100)` | yes | Provider-reported model id (audit, shown in the UI); truncated to 100 characters. |
+| `Fingerprint` | `binary(32)` | no | SHA-256 of the canonical fact sheet (validity tuple). |
+| `ContentJson` | `nvarchar(max)` | no | The validated draft + resolved `values`. ≤ 16 KB, enforced in Domain (`SummaryValues.MaxContentBytes`). Holds no user free text. |
+| `InputTokens` / `OutputTokens` | `int` | no | Provider-reported usage. |
+| `CreatedAt` | `datetime2(0)` | no | UTC, truncated to whole seconds. |
+
+- **Keys:** `UX_AiSummaries_Key (UserId, PeriodFrom, PeriodTo, Compare, Language)`, unique **clustered** · `PK_AiSummaries (Id)` non-clustered.
+- **Upsert:** one row per key; a concurrent insert of the same key is retried once as an update.
+- **Cap (application-enforced):** users 1 000 rows, guests 20. On insert, the oldest rows by `CreatedAt` are deleted.
+- **Fresh vs stale:** a row is fresh when the whole tuple (`Fingerprint`, the three versions, `ModelDeployment`) equals the current one. The deployment is ignored when `Ai:Provider = None`. Nothing is invalidated on run writes.
+
+## AiGenerations (M6, usage ledger)
+
+[ADR 0028](adr/0028-summary-cache-quotas-and-demo-summaries.md) §4 + amendment. One row per generation request that reached the model. **Content-free:** ids, counts and timings only, never prompt or answer text.
+
+**Documented exception to the `Owner` filter** (the second after `GuestCleanup`, ADR 0010 §6):
+- not `IUserOwned`, no `Owner` filter, and **no FK to `Users`**, so the global budgets survive guest cleanup;
+- only `AiUsageLedger` (through `EfAiGenerationStore`) reads it. It filters per-user reads by the caller's id from claims, or aggregates globally.
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Id` | `uniqueidentifier` | no | PK **non-clustered**, v7. |
+| `UserId` | `uniqueidentifier` | no | The caller; no FK. |
+| `IsGuest` | `bit` | no | For the guest-global budget. |
+| `CreatedAt` | `datetime2(0)` | no | UTC, truncated to whole seconds. |
+| `Outcome` | `tinyint` | no | `Succeeded = 0`, `InvalidOutput = 1`, `ProviderError = 2`, `Timeout = 3`, `Cancelled = 4`, `Throttled = 5`. A `Throttled` row is written only when an earlier attempt of the same generation was billed; it counts toward the global budgets but never toward the caller's quota. |
+| `Attempts` | `tinyint` | no | Model calls that may have been billed (≤ 2). Summed for the global budgets. |
+| `InputTokens` / `OutputTokens` / `DurationMs` | `int` | no | Provider-reported usage (a lower bound when an attempt timed out). |
+| `PromptVersion` | `smallint` | no | |
+| `ModelDeployment` | `varchar(64)` | no | |
+
+- **Indexes:**
+  - `CX_AiGenerations_User_Created (UserId, CreatedAt)` **clustered**: the per-user quota (rows in the last 24 h, or all rows for a guest);
+  - `IX_AiGenerations_Created (CreatedAt) INCLUDE (IsGuest)`: the global and guest-global sums, and the purge.
+- **Retention:** 30 days (`AiUsageLedger.Retention`). The guest cleanup run purges older rows with one set-based delete.
+- Account deletion (post-MVP) must purge this table explicitly, because there is no FK.
+
 ## Deferred (by milestone)
 
 | Item | Milestone |
@@ -175,6 +228,6 @@ Each track has its own prefix, so deleting a track or a run is a prefix delete p
 | Saved places / geocoding cache (if needed) | not needed in M4 (no geocoder yet); revisit with the Azure geocoder in M7 |
 | Orphan-blob reconciliation for users | post-MVP (ADR 0023 §5) |
 | ~~Aggregate views/indexes for insights~~ | not needed in M5 (see *Insights reads*); revisit only if App Insights shows slow reports (M7) |
-| `AiSummaries` (cache per user + period + data hash), guest AI counter | M6 |
+| ~~`AiSummaries` (cache per user + period + data hash), guest AI counter~~ | done in M6 (`AiSummaries`, `AiGenerations` ledger) |
 | `ExternalSource`/`ExternalId` on `Runs` (Strava/Garmin/FIT) | post-MVP |
 | Account deletion / guest → user conversion | post-MVP |

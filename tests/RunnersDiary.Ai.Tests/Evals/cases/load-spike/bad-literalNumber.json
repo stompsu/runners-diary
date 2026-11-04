@@ -1,0 +1,7 @@
+{
+  "headline": "A consistent month with one sharp jump in load in the week of {week.4.start}.",
+  "wentWell": [ { "text": "You logged {totals.runCount} runs over {totals.distance}." } ],
+  "watchOuts": [ { "text": "In the week of {week.4.start} your load rose by 80% to {week.4.load}." } ],
+  "suggestion": null,
+  "dataNotes": []
+}

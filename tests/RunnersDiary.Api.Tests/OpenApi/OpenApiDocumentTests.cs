@@ -47,7 +47,7 @@ public sealed class OpenApiDocumentTests
             .SelectMany(p => p.Value.EnumerateObject().Select(m => (Path: p.Name, Operation: m.Value)))
             .ToDictionary(x => x.Operation.GetProperty("operationId").GetString()!, x => x);
 
-        string[] protectedIds = ["getMe", "updateMe", "listRunTypes", "listRuns", "getRun", "createRun", "updateRun", "deleteRun", "getCalendarMonth", "getInsightsReport"];
+        string[] protectedIds = ["getMe", "updateMe", "listRunTypes", "listRuns", "getRun", "createRun", "updateRun", "deleteRun", "getCalendarMonth", "getInsightsReport", "getInsightsSummary", "generateInsightsSummary"];
         foreach (var id in protectedIds)
         {
             Assert.True(operations.ContainsKey(id), id);
@@ -97,5 +97,26 @@ public sealed class OpenApiDocumentTests
         var form = doc.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("UploadTrackForm").GetProperty("properties");
         Assert.Equal(["kind", "file", "replace"], form.EnumerateObject().Select(p => p.Name).ToArray());
         Assert.True(operations["getTrackGeoJson"].Operation.GetProperty("responses").GetProperty("200").GetProperty("content").TryGetProperty("application/geo+json", out _));
+    }
+
+    [Fact]
+    public void Document_DescribesTheM6SummaryEndpoints_WithTheirProblemResponses()
+    {
+        using var doc = LoadDocument();
+        var summary = doc.RootElement.GetProperty("paths").GetProperty("/api/insights/summary");
+        Assert.Equal("getInsightsSummary", summary.GetProperty("get").GetProperty("operationId").GetString());
+        var post = summary.GetProperty("post");
+        Assert.Equal("generateInsightsSummary", post.GetProperty("operationId").GetString());
+        var codes = post.GetProperty("responses").EnumerateObject().Select(p => p.Name).ToArray();
+        foreach (var code in new[] { "200", "400", "401", "409", "429", "502", "503" })
+        {
+            Assert.Contains(code, codes);
+        }
+
+        var schemas = doc.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.True(schemas.TryGetProperty("InsightsSummaryResponse", out _));
+        Assert.True(schemas.TryGetProperty("GenerateSummaryRequest", out _));
+        var clientConfig = schemas.GetProperty("ClientConfigResponse").GetProperty("properties");
+        Assert.True(clientConfig.TryGetProperty("ai", out _));
     }
 }

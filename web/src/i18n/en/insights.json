@@ -211,5 +211,105 @@
   },
   "error": {
     "invalidPeriod": "This period is not valid."
+  },
+  "summary": {
+    "title": "AI summary",
+    "loading": "Loading the summary",
+    "loadFailed": "Couldn't load the summary.",
+    "retry": "Try again",
+    "badge": {
+      "model": "AI-generated",
+      "demo": "Example summary for the demo data",
+      "template": "Automatic note"
+    },
+    "none": {
+      "title": "Get a short summary of this period",
+      "body": "The model only sees numbers computed from your diary: totals, training load and race results by type and date. It never sees your notes, titles, names or locations."
+    },
+    "notConfigured": "AI summaries aren't enabled in this environment.",
+    "notConfiguredHint": "Generating your own summary isn't available here.",
+    "notNeeded": "There isn't enough training in this period for a summary.",
+    "sections": {
+      "wentWell": "What went well",
+      "watchOuts": "Watch-outs",
+      "suggestion": "Suggestion",
+      "dataNotes": "Data notes"
+    },
+    "stale": {
+      "note": "Newer data is available. This summary is from {{date}}.",
+      "noDate": "Newer data is available. This summary is out of date."
+    },
+    "footer": {
+      "generated": "Generated {{date}}",
+      "model": "Model {{model}}",
+      "prompt": "Prompt version {{version}}",
+      "demo": "An example written for the demo data. Generate your own to summarise your numbers.",
+      "aiDisclosure": "Written by an AI model from your computed training numbers. It can make mistakes.",
+      "notMedical": "This is not medical advice."
+    },
+    "actions": {
+      "generate": "Generate summary",
+      "generateOwn": "Generate my own summary",
+      "regenerate": "Regenerate",
+      "cancel": "Cancel",
+      "retry": "Try again"
+    },
+    "remaining": {
+      "guest": "{{left}} of {{limit}} left",
+      "user": "{{left}} of {{limit}} left in 24 hours"
+    },
+    "generating": {
+      "title": "Generating the summary…",
+      "elapsed": "{{seconds}} s so far"
+    },
+    "status": {
+      "generating": "Generating the summary…",
+      "done": "The summary is ready.",
+      "cancelled": "Generation cancelled."
+    },
+    "quota": {
+      "guest": "Demo limit reached: demo accounts can generate {{limit}} summaries.",
+      "user": "Daily limit reached. You can generate again {{time}}.",
+      "userNoTime": "Daily limit reached."
+    },
+    "errors": {
+      "inProgress": "Another summary is being generated. Try again in a moment.",
+      "quotaAccount": "You have reached your generation limit.",
+      "quotaAccountReset": "You have reached your generation limit. It resets {{time}}.",
+      "quotaGlobal": "The daily AI capacity is used up. Please try again later.",
+      "quotaGlobalReset": "The daily AI capacity is used up. It resets {{time}}.",
+      "rateLimited": "Too many requests. Please wait a moment and try again.",
+      "rateLimitedWait": "Too many requests. Please try again in {{seconds}} s.",
+      "failedInvalidOutput": "The model's answer didn't pass the checks, so nothing was saved. The attempt counts toward your limit.",
+      "failedTimeout": "The model took too long to answer. The attempt counts toward your limit.",
+      "failedProvider": "The AI service had a problem. Try again in a moment.",
+      "failed": "The summary could not be generated.",
+      "unavailable": "AI summaries aren't available right now.",
+      "busy": "The AI service is busy. Please try again in a few seconds.",
+      "network": "The server is not reachable right now. Please try again.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "unit": {
+      "paceSlope": "{{value}} s/km per week",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "daysDelta": "{{amount}} days",
+      "stars": "{{count}} of 5"
+    },
+    "raceCategory": {
+      "fiveK": "5K",
+      "tenK": "10K",
+      "halfMarathon": "half marathon",
+      "marathon": "marathon",
+      "other": "race"
+    },
+    "raceStatus": {
+      "planned": "planned",
+      "completed": "completed"
+    },
+    "flag": {
+      "yes": "yes",
+      "no": "no"
+    }
   }
 }

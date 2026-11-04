@@ -1,0 +1,11 @@
+{
+  "headline": "So far this period: {totals.runCount} runs and {totals.distance} up to {period.asOf}.",
+  "wentWell": [
+    { "text": "Your load ratio is {acwr.asOf.value}, in the {acwr.asOf.band} band, so your training is close to your recent norm." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Keep the same rhythm for the rest of the period." },
+  "dataNotes": [
+    { "text": "The period is still running: {period.elapsedDays} of {period.days} have passed." }
+  ]
+}

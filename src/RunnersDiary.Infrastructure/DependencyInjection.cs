@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using RunnersDiary.Infrastructure.Ai;
 using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Guests;
 using RunnersDiary.Infrastructure.Identity;
@@ -82,6 +83,9 @@ public static class DependencyInjection
         builder.Services.AddSingleton<GuestCleanup>();
         builder.Services.AddSingleton<GuestAccountService>();
         builder.Services.AddScoped<IInsightsReportService, InsightsReportService>();
+        builder.Services.AddScoped<IAiGenerationStore, EfAiGenerationStore>();
+        builder.Services.AddScoped<IAiSummaryStore, EfAiSummaryStore>();
+        builder.AddTrainingInsights();
         if (builder.Configuration.GetValue("Guests:Cleanup:Enabled", true))
         {
             builder.Services.AddHostedService<GuestCleanupService>();

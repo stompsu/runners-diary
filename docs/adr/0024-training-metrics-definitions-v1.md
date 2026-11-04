@@ -160,7 +160,7 @@ After the easy-pace tune (M5 plan §9 Q5) the golden report gives:
 - spike week −11: load **1 441 AU** (1 440.7; was 1 445), ACWR **1.48 (high)**, unchanged;
 - taper week −8: load **632 AU** (632.2; was 636), ACWR **0.55 (low)**, unchanged;
 - easy pace improves from about **5:56 to about 5:40 per km** over 26 weeks (slope **−0.58 s/km per week**).
-- The trail-race week (week −3) peaks at **ACWR 1.59**, higher than the story spike. The default 12-week view's `load.peak` is therefore the race week, not week −11. This is correct behaviour; M6 must narrate it as a race week, not as a training spike.
+- ~~The trail-race week (week −3) peaks at **ACWR 1.59** … the default 12-week view's `load.peak` is therefore the race week.~~ **Corrected 2026-11-04 (M6 review finding M1):** the trail race is on the Sunday of week −3, and that week's `acwrAtEnd` is **1.59**. But the default 12-week view's daily `load.peak` is **1.79 on the Friday of week −2** (2026-10-23 in the golden report, race on 2026-10-18), 5 days after the race, while the race is still in the 7-day acute window. The peak is therefore race-driven but **not inside the race's ISO week**. This is correct behaviour (uncoupled 7/28 ACWR, §3). M6 narrates it as race-driven, not as a training spike; the fact sheet decides this by the race being inside the peak's acute window, not by the bucket (ADR 0026 §1, amendment).
 
 ### Accepted edge cases (review findings)
 

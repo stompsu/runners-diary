@@ -1,0 +1,361 @@
+{
+  "factSheetVersion": 1,
+  "metricsVersion": 1,
+  "language": "en",
+  "facts": [
+    {
+      "key": "period.from",
+      "value": "2026-06-01",
+      "unit": "date",
+      "display": "1 Jun 2026"
+    },
+    {
+      "key": "period.to",
+      "value": "2026-06-30",
+      "unit": "date",
+      "display": "30 Jun 2026"
+    },
+    {
+      "key": "period.isPartial",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "period.days",
+      "value": 30,
+      "unit": "days",
+      "display": "30 days"
+    },
+    {
+      "key": "period.elapsedDays",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "totals.runCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "totals.distance",
+      "value": 0,
+      "unit": "meters",
+      "display": "0.0 km"
+    },
+    {
+      "key": "totals.duration",
+      "value": 0,
+      "unit": "seconds",
+      "display": "0:00:00"
+    },
+    {
+      "key": "totals.elevationGain",
+      "value": 0,
+      "unit": "meters",
+      "display": "0 m"
+    },
+    {
+      "key": "totals.load",
+      "value": 0,
+      "unit": "load",
+      "display": "0.0 AU"
+    },
+    {
+      "key": "totals.loadSessionCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "totals.activeDays",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "totals.restDays",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "planned.runCount",
+      "value": 10,
+      "unit": "count",
+      "display": "10"
+    },
+    {
+      "key": "planned.distance",
+      "value": 80000,
+      "unit": "meters",
+      "display": "80.0 km"
+    },
+    {
+      "key": "planned.duration",
+      "value": 28800,
+      "unit": "seconds",
+      "display": "8:00:00"
+    },
+    {
+      "key": "planned.upcomingCount",
+      "value": 10,
+      "unit": "count",
+      "display": "10"
+    },
+    {
+      "key": "planned.missedCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "load.historyStart",
+      "value": "2026-01-05",
+      "unit": "date",
+      "display": "5 Jan 2026"
+    },
+    {
+      "key": "acwr.days.low",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "acwr.days.optimal",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "acwr.days.high",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "acwr.days.unavailable",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "weeks.count",
+      "value": 5,
+      "unit": "count",
+      "display": "5"
+    },
+    {
+      "key": "week.1.start",
+      "value": "2026-06-01",
+      "unit": "date",
+      "display": "1 Jun 2026"
+    },
+    {
+      "key": "week.1.future",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "week.1.planned.runCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "week.1.planned.distance",
+      "value": 16000,
+      "unit": "meters",
+      "display": "16.0 km"
+    },
+    {
+      "key": "week.2.start",
+      "value": "2026-06-08",
+      "unit": "date",
+      "display": "8 Jun 2026"
+    },
+    {
+      "key": "week.2.future",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "week.2.planned.runCount",
+      "value": 3,
+      "unit": "count",
+      "display": "3"
+    },
+    {
+      "key": "week.2.planned.distance",
+      "value": 24000,
+      "unit": "meters",
+      "display": "24.0 km"
+    },
+    {
+      "key": "week.3.start",
+      "value": "2026-06-15",
+      "unit": "date",
+      "display": "15 Jun 2026"
+    },
+    {
+      "key": "week.3.future",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "week.3.planned.runCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "week.3.planned.distance",
+      "value": 16000,
+      "unit": "meters",
+      "display": "16.0 km"
+    },
+    {
+      "key": "week.4.start",
+      "value": "2026-06-22",
+      "unit": "date",
+      "display": "22 Jun 2026"
+    },
+    {
+      "key": "week.4.future",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "week.4.planned.runCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "week.4.planned.distance",
+      "value": 16000,
+      "unit": "meters",
+      "display": "16.0 km"
+    },
+    {
+      "key": "week.5.start",
+      "value": "2026-06-29",
+      "unit": "date",
+      "display": "29 Jun 2026"
+    },
+    {
+      "key": "week.5.future",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "week.5.planned.runCount",
+      "value": 1,
+      "unit": "count",
+      "display": "1"
+    },
+    {
+      "key": "week.5.planned.distance",
+      "value": 8000,
+      "unit": "meters",
+      "display": "8.0 km"
+    },
+    {
+      "key": "types.count",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "pace.pointCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "pace.excludedRunCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "races.count",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "races.completedCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "races.plannedCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "dq.completedSessions",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "dq.sessionsWithEstimatedRpe",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "dq.estimatedLoadShare",
+      "value": 0,
+      "unit": "share",
+      "display": "0 %"
+    },
+    {
+      "key": "dq.sessionsWithoutDuration",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "dq.runningSessionsWithoutDistance",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "thresholds.acwrLow",
+      "value": 0.8,
+      "unit": "ratio",
+      "display": "0.80"
+    },
+    {
+      "key": "thresholds.acwrHigh",
+      "value": 1.3,
+      "unit": "ratio",
+      "display": "1.30"
+    },
+    {
+      "key": "thresholds.monotonyHigh",
+      "value": 2,
+      "unit": "ratio",
+      "display": "2.00"
+    },
+    {
+      "key": "thresholds.acwrMinHistoryDays",
+      "value": 35,
+      "unit": "days",
+      "display": "35 days"
+    }
+  ]
+}

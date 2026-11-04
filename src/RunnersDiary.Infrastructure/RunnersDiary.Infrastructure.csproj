@@ -8,10 +8,23 @@
     <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="Aspire.Azure.Storage.Blobs" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite" />
+    <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
+    <PackageReference Include="OpenAI" />
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Training Insights prompts, templates and demo fixtures (ADR 0026 §6): copied next to the binaries of every host as prompts/training-insights/. README stays out. -->
+    <Content Include="..\..\prompts\training-insights\manifest.json;..\..\prompts\training-insights\v*.md" Link="prompts\training-insights\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\prompts\training-insights\templates\*.json" Link="prompts\training-insights\templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\prompts\training-insights\demo\**\*.json" Link="prompts\training-insights\demo\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="RunnersDiary.Api.Tests" />
+    <InternalsVisibleTo Include="RunnersDiary.Ai.Tests" />
   </ItemGroup>
 
 </Project>

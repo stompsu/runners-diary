@@ -1,0 +1,13 @@
+{
+  "headline": "A consistent month with one sharp jump in load in the week of {week.4.start}.",
+  "wentWell": [
+    { "text": "You logged {totals.runCount} runs over {totals.distance}, active on {totals.activeDays}." }
+  ],
+  "watchOuts": [
+    { "text": "In the week of {week.4.start} your load rose to {week.4.load}, an ACWR of {week.4.acwrAtEnd} in the {week.4.acwrBand} band, well above your recent norm." }
+  ],
+  "suggestion": { "text": "Raise weekly load in smaller steps and follow a big week with an easier one." },
+  "dataNotes": [
+    { "text": "By {acwr.asOf.date} the ratio was back to {acwr.asOf.value}, in the {acwr.asOf.band} band." }
+  ]
+}

@@ -64,6 +64,26 @@ else
     api.WithEnvironment("Auth__Entra__Enabled", "false");
 }
 
+// AI summaries (ADR 0027 §4). Non-secret user-secrets, never committed; there is no key: a real deployment is reached with `az login`.
+// Ai:Endpoint + Ai:Deployment -> Foundry; Ai:UseFake=true -> the deterministic fake (Development only); otherwise no model
+// (generation answers feature-unavailable, example and automatic summaries still work). Not wired through Aspire.Hosting.Foundry on purpose.
+var aiEndpoint = builder.Configuration["Ai:Endpoint"];
+var aiDeployment = builder.Configuration["Ai:Deployment"];
+if (!string.IsNullOrWhiteSpace(aiEndpoint) && !string.IsNullOrWhiteSpace(aiDeployment))
+{
+    api.WithEnvironment("Ai__Provider", "Foundry")
+        .WithEnvironment("Ai__Foundry__Endpoint", aiEndpoint)
+        .WithEnvironment("Ai__Foundry__Deployment", aiDeployment);
+}
+else if (string.Equals(builder.Configuration["Ai:UseFake"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    api.WithEnvironment("Ai__Provider", "Fake");
+}
+else
+{
+    api.WithEnvironment("Ai__Provider", "None");
+}
+
 builder.AddViteApp("web", "../../web")
     .WithReference(api)
     // Stable browser origin so the Entra SPA redirect URI (http://localhost:5173/) is the same standalone and under Aspire.

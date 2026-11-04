@@ -1,0 +1,7 @@
+{
+  "headline": "A strong block with a {race.1.category} personal best.",
+  "wentWell": [ { "text": "You ran {totals.distance} in {totals.runCount} runs." } ],
+  "watchOuts": [],
+  "suggestion": { "text": "Avoid another jump like the one to {acwr.peak.value} on {acwr.peak.date}." },
+  "dataNotes": []
+}

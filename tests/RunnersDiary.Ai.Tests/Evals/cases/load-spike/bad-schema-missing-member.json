@@ -1,0 +1,6 @@
+{
+  "headline": "A consistent month.",
+  "wentWell": [ { "text": "You logged {totals.runCount} runs over {totals.distance}." } ],
+  "watchOuts": [],
+  "suggestion": null
+}

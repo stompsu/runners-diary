@@ -1,7 +1,15 @@
 import { join } from 'node:path'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, type Page } from '@playwright/test'
-import { createFakeApi, type FakeApi, type FakeApiOptions, type RunWriteRequest } from '../src/test/fakeApi/index.ts'
+import {
+  createFakeApi,
+  DEMO_REPORT_TODAY,
+  type FakeApi,
+  type FakeApiOptions,
+  type RunWriteRequest,
+  type SummaryPostOutcome,
+  type SummaryScenario,
+} from '../src/test/fakeApi/index.ts'
 
 /** The fixed "today" of every mocked journey (also `me.today`). */
 export const TODAY = '2026-11-03'
@@ -103,4 +111,19 @@ export async function stubMapNetwork(page: Page, options: { styleStatus?: number
     if (protocol.startsWith('http') && hostname !== 'localhost') foreign.push(request.url())
   })
   return foreign
+}
+
+/** Opens `/insights` on the demo report with the summary endpoints in `scenario`; returns the summary card. */
+export async function openSummary(
+  page: Page,
+  scenario: SummaryScenario,
+  options: { post?: SummaryPostOutcome; slowMs?: number } = {},
+) {
+  const fake = await mockApi(page, { today: DEMO_REPORT_TODAY, summary: { scenario, ...options } })
+  await restoreGuest(page, fake)
+  await page.goto('/insights')
+  await expect(page.getByRole('heading', { level: 1, name: 'Insights' })).toBeVisible()
+  const card = page.getByTestId('summary-card')
+  await expect(card).toBeVisible()
+  return { fake, card }
 }

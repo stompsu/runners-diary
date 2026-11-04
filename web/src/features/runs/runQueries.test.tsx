@@ -23,8 +23,9 @@ describe('useInvalidateRuns', () => {
 
     await result.current('run-1')
 
-    expect(invalidate).toHaveBeenCalledTimes(4)
+    expect(invalidate).toHaveBeenCalledTimes(5)
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/insights/report'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/insights/summary'] })
   })
 
   it('does nothing when the session ended or changed while the mutation was in flight', async () => {

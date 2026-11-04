@@ -1028,6 +1028,212 @@
         ]
       }
     },
+    "/api/insights/summary": {
+      "get": {
+        "tags": [
+          "Insights"
+        ],
+        "summary": "The stored, example or automatic narrative of a period, if any, and whether a new one can be generated. Never calls the model.",
+        "description": "Same from/to/compare rules as the report, plus lang (en). State is none, fresh or stale (a run, the prompt or the model changed since it was written). generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.",
+        "operationId": "getInsightsSummary",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "compare",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Insights"
+        ],
+        "summary": "Generates (or returns the fresh stored) AI summary of a period from its computed metrics.",
+        "description": "Template periods (no sessions, planned only, very few sessions) get an automatic note without a model call or quota. A fresh stored summary is returned as is unless regenerate is true. Otherwise the account and global quotas are checked and the model is called (at most two attempts); failed attempts count. 409 summary-in-progress: a generation of this account is already running. 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model configured, switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After): every generation slot is taken or the model provider is throttling; it costs no quota. 502 summary-failed carries reason (invalidOutput, timeout, provider).",
+        "operationId": "generateInsightsSummary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/runs/{runId}/tracks": {
       "post": {
         "tags": [
@@ -1562,6 +1768,18 @@
           null
         ]
       },
+      "AiClientConfig": {
+        "required": [
+          "summaryGeneration"
+        ],
+        "type": "object",
+        "properties": {
+          "summaryGeneration": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ApiHealthResponse": {
         "required": [
           "status",
@@ -1703,7 +1921,8 @@
         "required": [
           "entra",
           "maps",
-          "gpx"
+          "gpx",
+          "ai"
         ],
         "type": "object",
         "properties": {
@@ -1722,6 +1941,9 @@
           },
           "gpx": {
             "$ref": "#/components/schemas/GpxClientConfig"
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiClientConfig"
           }
         },
         "additionalProperties": false
@@ -1887,6 +2109,49 @@
           }
         },
         "additionalProperties": false
+      },
+      "GenerateSummaryRequest": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "compare": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lang": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "regenerate": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenerationAvailabilityDto": {
+        "enum": [
+          "available",
+          "notConfigured",
+          "quotaExhausted",
+          "notNeeded"
+        ]
       },
       "GpxClientConfig": {
         "required": [
@@ -2226,6 +2491,125 @@
           },
           "dataQuality": {
             "$ref": "#/components/schemas/DataQualityDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsSummaryDto": {
+        "required": [
+          "source",
+          "createdAt",
+          "metricsVersion",
+          "factSheetVersion",
+          "promptVersion",
+          "model",
+          "headline",
+          "wentWell",
+          "watchOuts",
+          "suggestion",
+          "dataNotes",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SummarySourceDto"
+          },
+          "createdAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "metricsVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "factSheetVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "promptVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "headline": {
+            "$ref": "#/components/schemas/SummaryTextDto"
+          },
+          "wentWell": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryTextDto"
+            }
+          },
+          "watchOuts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryTextDto"
+            }
+          },
+          "suggestion": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SummaryTextDto"
+              }
+            ]
+          },
+          "dataNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryTextDto"
+            }
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SummaryValueDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsSummaryResponse": {
+        "required": [
+          "period",
+          "state",
+          "summary",
+          "generation"
+        ],
+        "type": "object",
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/SummaryPeriodDto"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SummaryStateDto"
+          },
+          "summary": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InsightsSummaryDto"
+              }
+            ]
+          },
+          "generation": {
+            "$ref": "#/components/schemas/SummaryGenerationDto"
           }
         },
         "additionalProperties": false
@@ -2689,6 +3073,13 @@
           }
         },
         "additionalProperties": false
+      },
+      "QuotaScopeDto": {
+        "enum": [
+          "rolling24h",
+          "account",
+          null
+        ]
       },
       "RaceDistanceCategory": {
         "enum": [
@@ -3370,6 +3761,160 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SummaryGenerationDto": {
+        "required": [
+          "availability",
+          "used",
+          "limit",
+          "resetsAt",
+          "scope"
+        ],
+        "type": "object",
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/GenerationAvailabilityDto"
+          },
+          "used": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "resetsAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuotaScopeDto"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SummaryPeriodDto": {
+        "required": [
+          "from",
+          "to",
+          "compare",
+          "lang"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "compare": {
+            "type": "string"
+          },
+          "lang": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SummarySourceDto": {
+        "enum": [
+          "model",
+          "demo",
+          "template"
+        ]
+      },
+      "SummaryStateDto": {
+        "enum": [
+          "none",
+          "fresh",
+          "stale"
+        ]
+      },
+      "SummaryTextDto": {
+        "required": [
+          "text",
+          "keys"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SummaryUnitDto": {
+        "enum": [
+          "meters",
+          "seconds",
+          "load",
+          "ratio",
+          "percent",
+          "share",
+          "secondsPerKm",
+          "secondsPerKmPerWeek",
+          "count",
+          "days",
+          "date",
+          "band",
+          "runType",
+          "raceCategory",
+          "raceStatus",
+          "flag",
+          "stars"
+        ]
+      },
+      "SummaryValueDto": {
+        "required": [
+          "number",
+          "text",
+          "unit"
+        ],
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unit": {
+            "$ref": "#/components/schemas/SummaryUnitDto"
           }
         },
         "additionalProperties": false

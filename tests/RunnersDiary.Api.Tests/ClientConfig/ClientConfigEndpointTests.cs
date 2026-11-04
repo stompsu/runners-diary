@@ -135,6 +135,44 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
         Assert.Contains("\"gpx\":{\"maxFileBytesUser\":20971520,\"maxFileBytesGuest\":5242880}", raw, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Ai_summary_generation_is_off_by_default_and_on_only_with_a_provider_and_the_kill_switch_on()
+    {
+        static void Foundry(Microsoft.AspNetCore.Hosting.IWebHostBuilder b)
+        {
+            b.UseSetting("Ai:Provider", "Foundry");
+            b.UseSetting("Ai:Foundry:Endpoint", "https://example.invalid/");
+            b.UseSetting("Ai:Foundry:Deployment", "gpt-test");
+        }
+
+        using var foundry = factory.WithWebHostBuilder(Foundry);
+        using var switchedOff = factory.WithWebHostBuilder(b =>
+        {
+            Foundry(b);
+            b.UseSetting("Ai:Enabled", "false");
+        });
+
+        var none = await factory.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
+        var on = await foundry.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
+        var off = await switchedOff.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
+
+        Assert.Contains("\"ai\":{\"summaryGeneration\":false}", none, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":true}", on, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":false}", off, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.invalid", on, StringComparison.Ordinal); // no endpoint or deployment ever reaches the browser
+        Assert.DoesNotContain("gpt-test", on, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_fake_ai_provider_is_refused_outside_development_and_testing_and_a_bad_foundry_setup_fails_at_startup()
+    {
+        using var fake = factory.WithWebHostBuilder(b => b.UseSetting("Ai:Provider", "Fake"));
+        using var noEndpoint = factory.WithWebHostBuilder(b => b.UseSetting("Ai:Provider", "Foundry"));
+
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() => fake.CreateClient());
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() => noEndpoint.CreateClient());
+    }
+
     [Theory]
     [InlineData("http://tiles.example.test/style.json")]
     [InlineData("/styles/local.json")]

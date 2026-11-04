@@ -1,0 +1,11 @@
+{
+  "headline": "A promising start to your diary with {totals.runCount} runs since {period.from}.",
+  "wentWell": [
+    { "text": "You trained consistently, covering {totals.distance} in {totals.duration}." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Keep logging effort ratings so the load ratio can be calculated soon." },
+  "dataNotes": [
+    { "text": "The load ratio needs {thresholds.acwrMinHistoryDays} of history; your diary starts on {load.historyStart}." }
+  ]
+}
