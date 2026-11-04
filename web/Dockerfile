@@ -10,7 +10,7 @@ RUN test "$(node -p 'process.versions.node.split(".")[0]')" = "$(cat .nvmrc)" &&
 COPY . .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS final
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS final
 USER root
 # Our server block replaces the image's default one (same file name), and snippets/ holds the header include.
 RUN rm -f /etc/nginx/conf.d/default.conf /usr/share/nginx/html/*.html /usr/share/nginx/html/*.ico \
