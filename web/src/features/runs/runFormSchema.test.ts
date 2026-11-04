@@ -157,3 +157,30 @@ describe('validation messages', () => {
     expect(missing).toEqual([])
   })
 })
+
+describe('location', () => {
+  it('accepts no location, a pin, and the extremes', () => {
+    expect(issues(base({ location: null }))).toEqual({})
+    expect(issues(base({ location: { latitude: 50.2945, longitude: 18.6714, name: 'Gliwice' } }))).toEqual({})
+    expect(issues(base({ location: { latitude: -90, longitude: 180, name: '' } }))).toEqual({})
+  })
+
+  it('rejects coordinates out of range or not finite', () => {
+    expect(issues(base({ location: { latitude: 90.1, longitude: 0, name: '' } }))).toEqual({
+      'location.latitude': 'validation.latitude',
+    })
+    expect(issues(base({ location: { latitude: 0, longitude: -180.5, name: '' } }))).toEqual({
+      'location.longitude': 'validation.longitude',
+    })
+    expect(Object.keys(issues(base({ location: { latitude: Number.NaN, longitude: 0, name: '' } })))).toEqual([
+      'location.latitude',
+    ])
+  })
+
+  it('limits the place name to 200 characters', () => {
+    expect(issues(base({ location: { latitude: 1, longitude: 1, name: 'x'.repeat(200) } }))).toEqual({})
+    expect(issues(base({ location: { latitude: 1, longitude: 1, name: 'x'.repeat(201) } }))).toEqual({
+      'location.name': 'validation.locationNameLength',
+    })
+  })
+})

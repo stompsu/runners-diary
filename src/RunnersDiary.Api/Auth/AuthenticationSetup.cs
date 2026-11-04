@@ -73,7 +73,9 @@ public static class AuthenticationSetup
             .SetDefaultPolicy(authenticated)
             .SetFallbackPolicy(authenticated);
 
-        builder.Services.AddSingleton(Features.ClientConfig.GetClientConfig.Build(entra, entraEnabled));
+        builder.Services.AddSingleton(Features.ClientConfig.GetClientConfig.Build(
+            entra, entraEnabled, config.GetSection(Infrastructure.Maps.MapsOptions.SectionName).Get<Infrastructure.Maps.MapsOptions>() ?? new(),
+            config.GetSection(Infrastructure.Gpx.GpxLimitsOptions.SectionName).Get<Infrastructure.Gpx.GpxLimitsOptions>() ?? new()));
 
         // A missing SPA client id is not a startup failure (ADR 0015): sign-in is optional, guests keep working; Program logs a warning.
         return new AuthSetupResult(entraEnabled, entraReason, ephemeral, entraEnabled && string.IsNullOrWhiteSpace(entra.SpaClientId));

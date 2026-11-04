@@ -66,10 +66,36 @@ internal sealed class FaultyBlobStore(IBlobStore inner) : IBlobStore
 
     public bool FailDeletes { get; set; }
 
+    /// <summary>Uploads after this many successful ones throw <see cref="OperationCanceledException"/> (an aborted request).</summary>
+    public int? CancelUploadsAfter { get; set; }
+
+    /// <summary>Runs once, before the first upload, in the middle of the request under test (to simulate a racing request).</summary>
+    public Func<Task>? BeforeFirstUpload { get; set; }
+
+    /// <summary>Runs once, before the first delete.</summary>
+    public Func<Task>? BeforeFirstDelete { get; set; }
+
     public List<string> Uploaded { get; } = [];
 
     public async Task UploadAsync(string blobName, ReadOnlyMemory<byte> content, string contentType, CancellationToken cancellationToken)
     {
+        if (BeforeFirstUpload is { } hook)
+        {
+            BeforeFirstUpload = null;
+            await hook();
+        }
+
+        if (CancelUploadsAfter is { } cancelAfter)
+        {
+            lock (Uploaded)
+            {
+                if (Uploaded.Count >= cancelAfter)
+                {
+                    throw new OperationCanceledException("Injected cancellation.");
+                }
+            }
+        }
+
         if (FailUploadsAfter is { } limit && Interlocked.Increment(ref _uploads) > limit)
         {
             throw new IOException("Injected upload failure.");
@@ -82,8 +108,18 @@ internal sealed class FaultyBlobStore(IBlobStore inner) : IBlobStore
         }
     }
 
-    public Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken) =>
-        FailDeletes ? throw new IOException("Injected delete failure.") : inner.DeleteByPrefixAsync(prefix, cancellationToken);
+    public async Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken)
+    {
+        if (BeforeFirstDelete is { } hook)
+        {
+            BeforeFirstDelete = null;
+            await hook();
+        }
+
+        return FailDeletes ? throw new IOException("Injected delete failure.") : await inner.DeleteByPrefixAsync(prefix, cancellationToken);
+    }
 
     public Task<bool> AnyAsync(string prefix, CancellationToken cancellationToken) => inner.AnyAsync(prefix, cancellationToken);
+
+    public Task<Stream?> OpenReadAsync(string blobName, CancellationToken cancellationToken) => inner.OpenReadAsync(blobName, cancellationToken);
 }

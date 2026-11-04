@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyPrefill,
   applyRunType,
   applyStatus,
   defaultFormValues,
@@ -8,9 +9,9 @@ import {
   toWriteRequest,
   withAllWriteMembers,
 } from './runFormMapping'
-import type { RunDto } from './runFormTypes'
+import type { RunDto, RunFormValues } from './runFormTypes'
 
-/** A complete DTO: every member the API returns, including read-only ones and the `location` the form never shows. */
+/** A complete DTO: every member the API returns, including the read-only ones. */
 const fullRun: RunDto = {
   id: '00000000-0000-4000-8000-000000000001',
   date: '2026-11-14',
@@ -46,7 +47,15 @@ const fullRun: RunDto = {
   },
   rating: { stars: 5, comment: 'PB' },
   version: 'AAAAAAAAB9E=',
-  tracks: [{ id: 't1', kind: 'RecordedTrack', status: 'Processed' }],
+  tracks: [
+    {
+      id: 't1',
+      kind: 'RecordedTrack',
+      status: 'Processed',
+      originalFileName: 'run.gpx',
+      createdAt: '2026-11-14T12:00:00Z',
+    },
+  ],
   createdAt: '2026-11-01T10:00:00Z',
   updatedAt: '2026-11-14T12:00:00Z',
 }
@@ -102,10 +111,86 @@ describe('toWriteRequest', () => {
     expect(toWriteRequest(toFormValues(fullRun), fullRun)).toEqual(writableSubset(fullRun))
   })
 
-  it('preserves location on edit even though the form never shows it', () => {
-    const request = toWriteRequest({ ...toFormValues(fullRun), title: 'Renamed' }, fullRun)
-    expect(request.location).toEqual({ latitude: 50.2945, longitude: 18.6714, name: 'Gliwice' })
+  it('an untouched location equals the loaded one, coordinates included, exactly', () => {
+    const precise = { ...fullRun, location: { latitude: 50.294862123, longitude: 18.676642987, name: 'Gliwice' } }
+    const request = toWriteRequest({ ...toFormValues(precise), title: 'Renamed' }, precise)
+    expect(request.location).toEqual({ latitude: 50.294862123, longitude: 18.676642987, name: 'Gliwice' })
     expect(request.title).toBe('Renamed')
+  })
+
+  it('sends the edited location: a new pin, a new name, a blank name as null, and a cleared location as null', () => {
+    const values = toFormValues(fullRun)
+    expect(
+      toWriteRequest({ ...values, location: { latitude: 50.1, longitude: 18.2, name: ' Park ' } }, fullRun).location,
+    ).toEqual({ latitude: 50.1, longitude: 18.2, name: 'Park' })
+    expect(
+      toWriteRequest({ ...values, location: { latitude: 50.1, longitude: 18.2, name: '  ' } }, fullRun).location,
+    ).toEqual({ latitude: 50.1, longitude: 18.2, name: null })
+    expect(toWriteRequest({ ...values, location: null }, fullRun).location).toBeNull()
+  })
+
+  it('maps a location without a name to an empty name in the form', () => {
+    const values = toFormValues({ ...fullRun, location: { latitude: 1, longitude: 2, name: null } })
+    expect(values.location).toEqual({ latitude: 1, longitude: 2, name: '' })
+    expect(toFormValues({ ...fullRun, location: null }).location).toBeNull()
+  })
+
+  it('every form field feeds a member of the write request (a new field must be wired here)', () => {
+    // Exhaustive by type: adding a RunFormValues key without an entry fails to compile. Each entry names the write
+    // member(s) it feeds, and the loop proves the request really changes when the field does.
+    const feeds: Record<keyof RunFormValues, string> = {
+      date: 'date',
+      startTime: 'startTime',
+      timeZoneId: 'timeZoneId',
+      status: 'status',
+      runTypeId: 'runTypeId',
+      title: 'title',
+      notes: 'notes',
+      distanceKm: 'distanceMeters',
+      duration: 'durationSeconds',
+      elevationGain: 'elevationGainMeters',
+      elevationLoss: 'elevationLossMeters',
+      avgHeartRate: 'avgHeartRate',
+      maxHeartRate: 'maxHeartRate',
+      rpe: 'rpe',
+      gear: 'gear',
+      weather: 'weather',
+      surface: 'surface',
+      location: 'location',
+      race: 'race',
+      rating: 'rating',
+    }
+    const base = toFormValues(fullRun)
+    const changed: Partial<RunFormValues> = {
+      date: '2026-12-01',
+      startTime: '09:00',
+      timeZoneId: 'Europe/London',
+      status: 'Planned',
+      runTypeId: 22,
+      title: 'x',
+      notes: 'x',
+      distanceKm: '1',
+      duration: '10:00',
+      elevationGain: '1',
+      elevationLoss: '1',
+      avgHeartRate: '100',
+      maxHeartRate: '190',
+      rpe: '3',
+      gear: 'x',
+      weather: 'x',
+      surface: 'Trail',
+      location: { latitude: 1, longitude: 2, name: 'x' },
+      race: null,
+      rating: { stars: 1, comment: '' },
+    }
+    const before = toWriteRequest(base, fullRun) as Record<string, unknown>
+    for (const [field, member] of Object.entries(feeds)) {
+      const after = toWriteRequest({ ...base, [field]: changed[field as keyof RunFormValues] }, fullRun) as Record<
+        string,
+        unknown
+      >
+      expect([field, after[member]]).not.toEqual([field, before[member]])
+    }
   })
 
   it('never sends read-only members', () => {
@@ -216,5 +301,41 @@ describe('withAllWriteMembers (PUT must not silently drop API fields)', () => {
   it('accepts what toWriteRequest builds, including the conditionally spread members', () => {
     const request = toWriteRequest(defaultFormValues({ date: '2026-11-03', runTypeId: 1 }))
     expect(withAllWriteMembers(request as Required<typeof request>)).toBe(request)
+  })
+})
+
+describe('applyPrefill', () => {
+  const values = defaultFormValues({ date: '2026-11-14', runTypeId: 20 })
+
+  it('puts the proposed values into the form values and leaves the rest alone', () => {
+    const next = applyPrefill(values, {
+      distanceKm: '10.005',
+      duration: '0:49:30',
+      location: { latitude: 50.1, longitude: 18.2, name: '' },
+    })
+    expect(next).toMatchObject({ distanceKm: '10.005', duration: '0:49:30', date: '2026-11-14', title: '' })
+    expect(next.location).toEqual({ latitude: 50.1, longitude: 18.2, name: '' })
+    expect(values.distanceKm).toBe('')
+  })
+
+  it('changes date and start time together, and completes through applyStatus', () => {
+    const next = applyPrefill(
+      { ...values, rating: { stars: 0, comment: '' } },
+      {
+        date: '2026-11-15',
+        startTime: '08:30',
+        status: 'Completed',
+      },
+    )
+    expect(next).toMatchObject({ date: '2026-11-15', startTime: '08:30', status: 'Completed' })
+  })
+
+  it('prefilled numbers reach the request in SI at display precision (1 m, 1 s, 0.1 m)', () => {
+    const next = applyPrefill(values, { distanceKm: '10.005', duration: '0:49:30', elevationGain: '14.6' })
+    expect(toWriteRequest(next)).toMatchObject({
+      distanceMeters: 10005,
+      durationSeconds: 2970,
+      elevationGainMeters: 14.6,
+    })
   })
 })

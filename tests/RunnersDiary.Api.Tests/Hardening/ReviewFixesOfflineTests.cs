@@ -116,6 +116,8 @@ public sealed class ReviewFixesOfflineTests(OfflineApiFactory factory) : IClassF
         public Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken) => Task.FromResult(0);
 
         public Task<bool> AnyAsync(string prefix, CancellationToken cancellationToken) => Task.FromResult(false);
+
+        public Task<Stream?> OpenReadAsync(string blobName, CancellationToken cancellationToken) => Task.FromResult<Stream?>(null);
     }
 
     // ---- L5/L6: client errors ---------------------------------------------------------------------------------------
@@ -232,7 +234,7 @@ public sealed class ReviewFixesOfflineTests(OfflineApiFactory factory) : IClassF
     public void Failed_dataset_load_is_not_cached_forever()
     {
         var directory = Path.Combine(Path.GetTempPath(), "rd-demo-" + Guid.NewGuid().ToString("N"));
-        var loader = new DemoDatasetLoader(Options.Create(new GuestOptions { DemoDataPath = directory }));
+        var loader = new DemoDatasetLoader(Options.Create(new GuestOptions { DemoDataPath = directory }), TimeProvider.System);
         try
         {
             Assert.ThrowsAny<IOException>(() => loader.Get());

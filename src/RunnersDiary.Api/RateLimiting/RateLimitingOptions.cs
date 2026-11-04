@@ -9,6 +9,22 @@ public sealed class RateLimitingOptions
 
     public GeneralLimit General { get; set; } = new();
 
+    /// <summary>GPX uploads per caller, sliding window (ADR 0020 §7).</summary>
+    public PerCallerLimit GpxUpload { get; set; } = new() { UserPermitLimit = 30, GuestPermitLimit = 10, Window = TimeSpan.FromHours(1) };
+
+    /// <summary>Place searches per caller, sliding window (ADR 0022 §4).</summary>
+    public PerCallerLimit Geocode { get; set; } = new() { UserPermitLimit = 20, GuestPermitLimit = 10, Window = TimeSpan.FromMinutes(1) };
+
+    /// <summary>Sliding window per caller (user id); guests get their own, lower, permit count.</summary>
+    public sealed class PerCallerLimit
+    {
+        public int UserPermitLimit { get; set; }
+
+        public int GuestPermitLimit { get; set; }
+
+        public TimeSpan Window { get; set; }
+    }
+
     /// <summary>
     /// Sliding window per client for <c>POST /api/guest-sessions</c> (IPv4 address or IPv6 /64), plus one global window over all
     /// clients as a backstop against rotating addresses.

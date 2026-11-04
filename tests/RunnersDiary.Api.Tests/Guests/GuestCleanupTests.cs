@@ -79,6 +79,22 @@ public sealed class GuestCleanupTests(ContainersApiFactory factory)
     }
 
     [Fact]
+    public async Task Cleanup_removes_both_blobs_of_every_demo_track()
+    {
+        factory.SkipIfDockerUnavailable();
+        var guest = await factory.GuestSessionAsync("two-blobs");
+        var id = guest.UserId!.Value;
+        Assert.Equal(12, (await factory.BlobNamesAsync(BlobPaths.UserPrefix(id))).Count);
+        var clock = ClockNow();
+        await factory.SetGuestExpiryAsync(id, clock.GetUtcNow().UtcDateTime.AddHours(-2));
+
+        await CleanupWith(clock).RunOnceAsync(Ct);
+
+        Assert.Empty(await factory.BlobNamesAsync(BlobPaths.UserPrefix(id)));
+        Assert.Empty(await factory.TracksAsync(id));
+    }
+
+    [Fact]
     public async Task When_blob_deletion_fails_the_user_row_is_kept_and_the_next_run_finishes_the_job()
     {
         factory.SkipIfDockerUnavailable();

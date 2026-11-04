@@ -1,11 +1,19 @@
 import { formatDuration, parseDuration } from '@/lib/format/duration'
 import { formatKmInput, kmToMeters, parseKm } from '@/lib/format/units'
-import type { RaceFormValues, RunDto, RunFormValues, RunTypeRules, RunWriteRequest, SurfaceValue } from './runFormTypes'
+import type {
+  FormPatch,
+  RaceFormValues,
+  RunDto,
+  RunFormValues,
+  RunTypeRules,
+  RunWriteRequest,
+  SurfaceValue,
+} from './runFormTypes'
 
 /**
  * Form model <-> wire model (ADR 0018 §1, plan §3.5). Both directions are pure and unit-tested.
  * The form shows km, h:mm:ss and metres; the wire carries SI. `toWriteRequest` is a full replace for PUT, so every
- * member the form does not render (today only `location`) is copied from the loaded run.
+ * member of the write request is named there (see `withAllWriteMembers`); the form renders all of them since M4.
  */
 
 export const emptyRace = (): RaceFormValues => ({
@@ -40,6 +48,7 @@ export function defaultFormValues(options: { date: string; runTypeId: number }):
     gear: '',
     weather: '',
     surface: '',
+    location: null,
     race: null,
     rating: { stars: 0, comment: '' },
   }
@@ -89,6 +98,9 @@ export function toFormValues(dto: RunDto): RunFormValues {
     gear: text(dto.gear),
     weather: text(dto.weather),
     surface: dto.surface ?? '',
+    location: dto.location
+      ? { latitude: dto.location.latitude, longitude: dto.location.longitude, name: text(dto.location.name) }
+      : null,
     race: dto.race
       ? {
           name: dto.race.name,
@@ -130,7 +142,7 @@ const kmToMetersOrNull = (shown: string): number | null => {
 }
 
 /**
- * `base` is the loaded run (PUT) and supplies `version`, `location` and the untouched numbers; without it the
+ * `base` is the loaded run (PUT) and supplies `version` and the untouched numbers; without it the
  * request is a POST body. Read-only members (`id`, `startUtc`, `tracks`, `createdAt`, `updatedAt`) are never sent.
  */
 export function toWriteRequest(values: RunFormValues, base?: RunDto): RunWriteRequest {
@@ -144,7 +156,10 @@ export function toWriteRequest(values: RunFormValues, base?: RunDto): RunWriteRe
     runTypeId: values.runTypeId,
     title: orNull(values.title),
     notes: orNull(values.notes),
-    location: base?.location ?? null,
+    // Coordinates are numbers from the map or a search and are never formatted and re-parsed (ADR 0023 §4).
+    location: values.location
+      ? { latitude: values.location.latitude, longitude: values.location.longitude, name: orNull(values.location.name) }
+      : null,
     distanceMeters: numberOrBase(values.distanceKm, base?.distanceMeters, formatKmInput, kmToMetersOrNull),
     durationSeconds: numberOrBase(values.duration, base?.durationSeconds, formatDuration, parseDuration),
     elevationGainMeters: numberOrBase(values.elevationGain, base?.elevationGainMeters, formatMetres, parseNonNegative),
@@ -230,4 +245,15 @@ export function applyRunType(values: RunFormValues, runTypeId: number, rules: Ru
     for (const field of METRIC_FIELDS) next = { ...next, [field]: '' }
   }
   return next
+}
+
+/**
+ * Puts the values a GPX track proposed into the form values (ADR 0023 §3). The caller resets the form with the result
+ * and `keepDefaultValues`, so every changed field is dirty. A status change goes through `applyStatus` like the
+ * radio buttons do.
+ */
+export function applyPrefill(values: RunFormValues, patch: FormPatch): RunFormValues {
+  const { status, ...rest } = patch
+  const next = { ...values, ...rest }
+  return status ? applyStatus(next, status) : next
 }

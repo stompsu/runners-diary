@@ -29,6 +29,7 @@ export const RUN_FORM_FIELDS: ReadonlySet<string> = new Set([
   'gear',
   'weather',
   'surface',
+  'location.name',
   'race.name',
   'race.distanceCategory',
   'race.officialDistanceKm',

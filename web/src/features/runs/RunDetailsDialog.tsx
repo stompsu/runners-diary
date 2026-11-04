@@ -1,7 +1,8 @@
 import { ExternalLink, Star } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { TrackSection } from '@/features/tracks/TrackSection'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,10 +16,11 @@ import { dayLabel } from '@/lib/dates/plainDate'
 import { formatDuration } from '@/lib/format/duration'
 import { formatDistance, formatElevation, formatPace } from '@/lib/format/units'
 import { DeleteRunDialog } from './DeleteRunDialog'
+import { LocationSummary } from './LocationSummary'
 import { RateRunDialog } from './RateRunDialog'
 import { StatusLabel } from './RunList'
 import { RunGone } from './RunGone'
-import type { RunDto } from './runFormTypes'
+import { rulesOf, type RunDto, type RunTypeRules } from './runFormTypes'
 import { useRun } from './runQueries'
 import { safeHttpUrl } from './safeUrl'
 import { returnFocusState } from './returnFocus'
@@ -46,7 +48,23 @@ function RunDetailsView({ run: query, close }: { run: ReturnType<typeof useRun>;
   const { query: types, codes } = useRunTypeCodes()
   const [deleting, setDeleting] = useState(false)
   const [origin, setOrigin] = useState<HTMLElement | null>(null)
+  const [search, setSearch] = useSearchParams()
   const run = query.data
+  const rules = rulesOf(types.data?.find((type) => type.id === run?.runTypeId))
+  // "Save & add GPX" lands here with ?gpx=1: open the upload dialog once and drop the parameter.
+  const wantsUpload = search.get('gpx') === '1'
+  const uploadOpened = useCallback(
+    () =>
+      setSearch(
+        (current) => {
+          const next = new URLSearchParams(current)
+          next.delete('gpx')
+          return next
+        },
+        { replace: true },
+      ),
+    [setSearch],
+  )
   const code = run ? codes.get(run.runTypeId) : undefined
   const typeLabel = tType(runTypeLabelKey(code))
   const base = diaryPath(month)
@@ -120,6 +138,11 @@ function RunDetailsView({ run: query, close }: { run: ReturnType<typeof useRun>;
             profileZone={me.data.timeZoneId}
             language={i18n.language}
             typeLabel={typeLabel}
+            rules={rules}
+            base={base}
+            isGuest={me.data.kind === 'Guest'}
+            openUpload={wantsUpload}
+            onUploadOpened={uploadOpened}
           />
           <DeleteRunDialog
             target={
@@ -146,12 +169,22 @@ function RunDetailsBody({
   profileZone,
   language,
   typeLabel,
+  rules,
+  base,
+  isGuest,
+  openUpload,
+  onUploadOpened,
 }: {
   run: RunDto
   code: string | undefined
   profileZone: string
   language: string
   typeLabel: string
+  rules: RunTypeRules
+  base: string
+  isGuest: boolean
+  openUpload: boolean
+  onUploadOpened: () => void
 }) {
   const { t } = useTranslation('runs')
   const Icon = FAMILY_ICON[familyOf(code)]
@@ -178,6 +211,8 @@ function RunDetailsBody({
         ) : null}
       </p>
 
+      {run.location ? <LocationSummary location={run.location} /> : null}
+
       <Facts
         items={[
           [t('fields.distance'), run.distanceMeters ? formatDistance(run.distanceMeters, language) : null],
@@ -198,6 +233,15 @@ function RunDetailsBody({
           [t('fields.gear'), run.gear],
           [t('fields.weather'), run.weather],
         ]}
+      />
+
+      <TrackSection
+        run={run}
+        rules={rules}
+        base={base}
+        isGuest={isGuest}
+        openUpload={openUpload}
+        onUploadOpened={onUploadOpened}
       />
 
       {run.notes ? (

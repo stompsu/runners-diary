@@ -63,3 +63,14 @@ export function formatPace(
   const total = Math.round(pace)
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')} /km`
 }
+
+/** "+3 m" / "-2 m" / "0 m": a signed elevation change (splits table). */
+export function formatElevationDelta(meters: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: 'meter',
+    unitDisplay: 'short',
+    maximumFractionDigits: 0,
+    signDisplay: 'exceptZero',
+  }).format(meters)
+}

@@ -6,7 +6,7 @@ using RunnersDiary.Infrastructure.Runs;
 namespace RunnersDiary.Infrastructure.Guests;
 
 /// <summary>
-/// Fails host startup when the demo dataset is missing, malformed, references missing GPX files or exceeds the guest run caps,
+/// Fails host startup when the demo dataset is missing, malformed, references missing GPX files, contains a GPX file the pipeline rejects (files are processed once while loading) or exceeds the guest run caps,
 /// instead of failing every guest creation later. Not registered during build-time OpenAPI generation.
 /// </summary>
 internal sealed class DemoDatasetStartupCheck(

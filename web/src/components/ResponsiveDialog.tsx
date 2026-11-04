@@ -23,6 +23,11 @@ export interface ResponsiveDialogProps {
   initialFocus?: RefObject<HTMLElement | null>
   /** Marks the dialog for tests and E2E (`data-panel`). */
   panel?: string
+  /**
+   * Nested dialogs that are opened by a control (not by a route) hand the focus back to it when they close.
+   * Called on close; a missing or detached element falls through to the default behaviour.
+   */
+  returnFocusTo?: () => HTMLElement | null | undefined
 }
 
 /**
@@ -40,6 +45,7 @@ export function ResponsiveDialog({
   restoreFocusDate,
   initialFocus,
   panel,
+  returnFocusTo,
 }: ResponsiveDialogProps) {
   const { t } = useTranslation()
   const phone = useIsPhone()
@@ -64,6 +70,11 @@ export function ResponsiveDialog({
             // The grid stays mounted behind the route outlet; return to the day that opened this (AC13).
             // When another dialog took over (day -> details), that one owns the focus.
             event.preventDefault()
+            const target = returnFocusTo?.()
+            if (target?.isConnected) {
+              target.focus()
+              return
+            }
             if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
             focusDayCell(restoreFocusDate)
           }}

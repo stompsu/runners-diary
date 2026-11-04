@@ -19,10 +19,36 @@ import {
 } from './handlers.ts'
 import { matches, type Fault } from './faults.ts'
 import { demoRuns, RUN_TYPES } from './seed.ts'
+import {
+  inspectGpx,
+  processFakeGpx,
+  readUpload,
+  REJECTION_MESSAGES,
+  sampleGpx,
+  searchFakePlaces,
+  toRunTrack,
+  utcToLocal,
+  type GpxTrackKind,
+  type TrackDto,
+  type TrackSummaryDto,
+  type TrackWarningDto,
+} from './tracks.ts'
 
 export { faults, type Fault } from './faults.ts'
 export { RUN_TYPES, demoRuns, typeId } from './seed.ts'
 export type { ClientConfigResponse, RunDto, RunWriteRequest } from './handlers.ts'
+export { sampleGpx, type TrackDto } from './tracks.ts'
+
+/** A track to put straight into an account (test setup; the upload path is `POST /api/runs/{id}/tracks`). */
+export interface TrackSeed {
+  kind: GpxTrackKind
+  /** Default `Processed`. `Pending` = a legacy row without summary or GeoJSON (404 on both). */
+  status?: TrackDto['status']
+  fileName?: string
+  summary?: Partial<TrackSummaryDto>
+  warnings?: TrackWarningDto[]
+  gpx?: string
+}
 
 export interface FakeApiOptions {
   /** The user's "today" (`me.today`), YYYY-MM-DD. Default 2026-11-03. */
@@ -33,6 +59,10 @@ export interface FakeApiOptions {
   entra?: ClientConfigResponse['entra']
   /** Runs created for each new guest. Default `demoRuns(today)`; pass `[]` for an empty account. */
   guestSeed?: RunWriteRequest[]
+  /** Give each new guest a processed recorded track on the demo race, like the real demo seed. Default false. */
+  demoTracks?: boolean
+  /** `client-config.maps.geocodingEnabled` and the availability of `/api/geocoding/search`. Default false. */
+  geocodingEnabled?: boolean
   limits?: Partial<Limits>
   /** Clock in ms, for token expiry and timestamps. Default `Date.now`. */
   now?: () => number
@@ -70,11 +100,22 @@ export interface FakeApi {
   setToday(today: string): void
   /** Test inspection: the runs held by the account behind a token. */
   runsOf(token: string): RunDto[]
+  /** Puts a track straight into the account behind `token`; returns its DTO. */
+  addTrack(token: string, runId: string, seed: TrackSeed): TrackDto
+  /** Test inspection: the tracks of a run (stored DTOs), newest first. */
+  tracksOf(token: string, runId: string): TrackDto[]
+  setGeocodingEnabled(enabled: boolean): void
   /** Requests seen so far, `"METHOD /path"`. */
   readonly requests: string[]
 }
 
-const DEFAULT_LIMITS: Limits = { maxRunsPerAccount: 500, maxRunsPerDate: 20 }
+const DEFAULT_LIMITS: Limits = {
+  maxRunsPerAccount: 500,
+  maxRunsPerDate: 20,
+  maxTracksPerAccount: 16,
+  maxGuestFileBytes: 5 * 1024 * 1024,
+  maxUserFileBytes: 20 * 1024 * 1024,
+}
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
@@ -84,6 +125,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const limits: Limits = { ...DEFAULT_LIMITS, ...options.limits }
   const now = options.now ?? Date.now
   const guestTtlMs = options.guestTtlMs ?? DAY_MS
+  let geocodingEnabled = options.geocodingEnabled ?? false
 
   const accounts = new Map<string, Account>() // token -> account
   const faultList: Fault[] = []
@@ -108,6 +150,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       unitSystem: 'Metric',
       expiresAtMs: kind === 'Guest' ? now() + guestTtlMs : null,
       runs: new Map(),
+      tracks: new Map(),
     }
     accounts.set(token, account)
     const seed = overrides.seed ?? (kind === 'Guest' ? (options.guestSeed ?? demoRuns(today)) : [])
@@ -115,7 +158,60 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       const runId = nextId()
       account.runs.set(runId, buildRun(runId, write, account, new Date(now()).toISOString(), ++versionCounter))
     }
+    if (kind === 'Guest' && options.demoTracks) {
+      const race = [...account.runs.values()].find((run) => run.race)
+      if (race) {
+        addTrack(account, race.id, {
+          kind: 'RecordedTrack',
+          fileName: 'gliwice-10k.gpx',
+          summary: { startUtc: '2025-09-14T07:00:00Z', endUtc: '2025-09-14T07:49:30Z' },
+        })
+      }
+    }
     return token
+  }
+
+  function addTrack(account: Account, runId: string, seed: TrackSeed): TrackDto {
+    const run = account.runs.get(runId)
+    if (!run) throw new Error(`No run ${runId}`)
+    const processed = (seed.status ?? 'Processed') === 'Processed'
+    const gpx = seed.gpx ?? sampleGpx({ times: ['2025-09-14T07:00:00Z', '2025-09-14T07:49:30Z'] })
+    const inspected = inspectGpx(seed.fileName ?? 'track.gpx', gpx)
+    const base = processFakeGpx(
+      typeof inspected === 'string' ? { points: 2, hasElevation: true, times: [], routeOnly: false } : inspected,
+      run.timeZoneId,
+    )
+    const summary: TrackSummaryDto = { ...base.summary, ...seed.summary }
+    // A start instant given by the seed implies the local start unless that is given as well.
+    if (seed.summary?.startUtc && !seed.summary.startLocal) {
+      const local = utcToLocal(seed.summary.startUtc, run.timeZoneId)
+      summary.startLocal = { ...local, timeZoneId: run.timeZoneId }
+    }
+    const dto: TrackDto = {
+      id: nextId(),
+      runId,
+      kind: seed.kind,
+      status: seed.status ?? 'Processed',
+      originalFileName: seed.fileName ?? 'track.gpx',
+      sizeBytes: new TextEncoder().encode(gpx).length,
+      createdAt: new Date(now()).toISOString(),
+      summary: processed ? summary : null,
+      warnings: processed ? (seed.warnings ?? base.warnings) : [],
+    }
+    account.tracks.set(dto.id, { dto, geoJson: processed ? base.geoJson : null, gpx })
+    syncRunTracks(account, runId)
+    return dto
+  }
+
+  /** Tracks are a sub-resource: they change `RunDto.tracks[]` but never the run's `version` (ADR 0023 §2). */
+  function syncRunTracks(account: Account, runId: string) {
+    const run = account.runs.get(runId)
+    if (!run) return
+    const tracks = [...account.tracks.values()]
+      .filter((track) => track.dto.runId === runId)
+      .sort((a, b) => a.dto.kind.localeCompare(b.dto.kind))
+      .map((track) => toRunTrack(track.dto))
+    account.runs.set(runId, { ...run, tracks })
   }
 
   const me = (a: Account): MeResponse => ({
@@ -166,6 +262,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       } else {
         return problem(a.status, 'Fault', {
           type: a.problemType,
+          members: a.members,
           headers: a.retryAfterSeconds === undefined ? {} : { 'Retry-After': String(a.retryAfterSeconds) },
         })
       }
@@ -179,7 +276,19 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     // ---- anonymous ----
     if (method === 'GET' && path === '/api/health') return json({ status: 'Healthy', version: 'fake' })
     if (method === 'GET' && path === '/api/client-config') {
-      return json({ entra } satisfies ClientConfigResponse, 200, { 'Cache-Control': 'public, max-age=300' })
+      return json(
+        {
+          entra,
+          maps: {
+            provider: 'MapLibre',
+            mapLibreStyleUrl: 'https://tiles.openfreemap.org/styles/liberty',
+            geocodingEnabled,
+          },
+          gpx: { maxFileBytesUser: 20 * 1024 * 1024, maxFileBytesGuest: 5 * 1024 * 1024 },
+        } satisfies ClientConfigResponse,
+        200,
+        { 'Cache-Control': 'public, max-age=300' },
+      )
     }
     if (method === 'POST' && path === '/api/guest-sessions') {
       const token = issueToken('Guest')
@@ -271,6 +380,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       if (method === 'DELETE') {
         if (!existing) return notFound()
         account.runs.delete(id)
+        for (const [trackId, track] of account.tracks) if (track.dto.runId === id) account.tracks.delete(trackId)
         return new Response(null, { status: 204 })
       }
       if (method === 'PUT') {
@@ -294,7 +404,115 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       }
     }
 
+    const trackResponse = await routeTracks(request, account, path)
+    if (trackResponse) return trackResponse
+
+    if (method === 'GET' && path === '/api/geocoding/search') {
+      if (!geocodingEnabled) {
+        return problem(503, 'Place search is not available.', {
+          type: 'urn:runnersdiary:problem:feature-unavailable',
+        })
+      }
+      const url = new URL(request.url)
+      const q = (url.searchParams.get('q') ?? '').trim()
+      if (q.length < 2 || q.length > 100) return validation({ q: ['Must be 2 to 100 characters.'] })
+      return json({ results: searchFakePlaces(q) })
+    }
+
     return notFound()
+  }
+
+  const INVALID_GPX = 'urn:runnersdiary:problem:invalid-gpx'
+
+  async function routeTracks(request: Request, account: Account, path: string): Promise<Response | null> {
+    const method = request.method.toUpperCase()
+    const collection = /^\/api\/runs\/([^/]+)\/tracks$/.exec(path)
+    const item = /^\/api\/runs\/([^/]+)\/tracks\/([^/]+)(?:\/(geojson|gpx))?$/.exec(path)
+
+    if (collection && method === 'POST') {
+      const run = account.runs.get(collection[1]!)
+      if (!run) return notFound()
+      const form = await readUpload(request)
+      if (!form) return problem(415, 'Unsupported Media Type')
+      if (form.fields.kind !== 'PlannedCourse' && form.fields.kind !== 'RecordedTrack') {
+        return validation({ kind: ['Kind must be PlannedCourse or RecordedTrack.'] })
+      }
+      const kind: GpxTrackKind = form.fields.kind
+      if (RUN_TYPES.find((type) => type.id === run.runTypeId)?.isRestDay) {
+        return validation({ runId: ['Rest days have no tracks.'] })
+      }
+      if (!form.file) return validation({ file: ['A file is required.'] })
+      const maxBytes = account.kind === 'Guest' ? limits.maxGuestFileBytes : limits.maxUserFileBytes
+      if (form.file.size > maxBytes) return problem(413, 'Payload Too Large')
+      const inspected = inspectGpx(form.file.name, form.file.text)
+      if (typeof inspected === 'string') {
+        return problem(400, 'Invalid GPX file', {
+          type: INVALID_GPX,
+          errors: { file: [REJECTION_MESSAGES[inspected]] },
+          members: { code: inspected },
+        })
+      }
+      const existing = [...account.tracks.values()].find((t) => t.dto.runId === run.id && t.dto.kind === kind)
+      if (existing && form.fields.replace !== 'true') {
+        return problem(409, 'A track of this kind already exists.', {
+          type: 'urn:runnersdiary:problem:track-exists',
+        })
+      }
+      if (!existing && account.tracks.size >= limits.maxTracksPerAccount) {
+        return problem(409, 'Track limit reached', { type: 'urn:runnersdiary:problem:track-limit' })
+      }
+      if (existing) account.tracks.delete(existing.dto.id)
+      const processed = processFakeGpx(inspected, run.timeZoneId)
+      const dto: TrackDto = {
+        id: nextId(),
+        runId: run.id,
+        kind,
+        status: 'Processed',
+        originalFileName: form.file.name,
+        sizeBytes: form.file.size,
+        createdAt: new Date(now()).toISOString(),
+        summary: processed.summary,
+        warnings: processed.warnings,
+      }
+      account.tracks.set(dto.id, { dto, geoJson: processed.geoJson, gpx: form.file.text })
+      syncRunTracks(account, run.id)
+      return json(dto, 201, { Location: `/api/runs/${run.id}/tracks/${dto.id}` })
+    }
+
+    if (item) {
+      const [, runId, trackId, view] = item
+      const track = account.tracks.get(trackId!)
+      // 404 for a missing run, a missing track and a track of another run alike.
+      if (!account.runs.has(runId!) || !track || track.dto.runId !== runId) return notFound()
+      if (method === 'GET' && !view) return json(track.dto)
+      if (method === 'GET' && view === 'geojson') {
+        if (track.dto.status !== 'Processed' || !track.geoJson) return notFound()
+        return new Response(JSON.stringify(track.geoJson), {
+          headers: {
+            'Content-Type': 'application/geo+json',
+            'Cache-Control': 'private, max-age=86400, immutable',
+            ETag: `"${track.dto.id}"`,
+          },
+        })
+      }
+      if (method === 'GET' && view === 'gpx') {
+        if (track.dto.status !== 'Processed') return notFound()
+        return new Response(track.gpx, {
+          headers: {
+            'Content-Type': 'application/gpx+xml',
+            'Content-Disposition': `attachment; filename="${track.dto.originalFileName}"`,
+            'X-Content-Type-Options': 'nosniff',
+            'Cache-Control': 'private, no-store',
+          },
+        })
+      }
+      if (method === 'DELETE' && !view) {
+        account.tracks.delete(track.dto.id)
+        syncRunTracks(account, runId!)
+        return new Response(null, { status: 204 })
+      }
+    }
+    return null
   }
 
   function limitProblem(account: Account, date: string, moving = false): Response | null {
@@ -349,6 +567,14 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     setEntra: (value) => void (entra = value),
     setToday: (value) => void (today = value),
     runsOf: (token) => sortRuns([...(accounts.get(token)?.runs.values() ?? [])]),
+    addTrack: (token, runId, seed) => {
+      const account = accounts.get(token)
+      if (!account) throw new Error('Unknown token')
+      return addTrack(account, runId, seed)
+    },
+    tracksOf: (token, runId) =>
+      [...(accounts.get(token)?.tracks.values() ?? [])].filter((t) => t.dto.runId === runId).map((t) => t.dto),
+    setGeocodingEnabled: (enabled) => void (geocodingEnabled = enabled),
     requests,
   }
 }

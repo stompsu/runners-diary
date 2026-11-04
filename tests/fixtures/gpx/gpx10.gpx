@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.0" creator="Runners Diary test fixtures" xmlns="http://www.topografix.com/GPX/1/0">
+<trk><trkseg><trkpt lat="50.000" lon="18.0"><ele>100</ele><time>2025-06-01T07:00:00Z</time></trkpt><trkpt lat="50.001" lon="18.0"><ele>100</ele><time>2025-06-01T07:00:10Z</time></trkpt><trkpt lat="50.002" lon="18.0"><ele>100</ele><time>2025-06-01T07:00:20Z</time></trkpt></trkseg></trk>
+</gpx>

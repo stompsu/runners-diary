@@ -156,6 +156,10 @@ public sealed record RunTrackDto
     public required Domain.Tracks.GpxTrackKind Kind { get; init; }
 
     public required Domain.Tracks.GpxTrackStatus Status { get; init; }
+
+    public required string OriginalFileName { get; init; }
+
+    public required DateTime CreatedAt { get; init; }
 }
 
 /// <summary>A run as returned by every read and write endpoint (list and detail share the shape).</summary>

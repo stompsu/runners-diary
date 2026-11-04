@@ -50,7 +50,7 @@ test('try as guest -> populated calendar -> add -> complete -> rate -> delete, d
   const form = page.getByRole('dialog', { name: 'Add run' })
   await expect(form.getByLabel('Date')).toHaveValue(TODAY)
   await form.getByLabel('Distance (km)').fill('12')
-  await form.getByRole('button', { name: 'Save' }).click()
+  await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(cell(page, TODAY).locator('[data-status="Planned"]').first()).toBeAttached()
   await expect(weekRow(page, 45)).toContainText('Planned 12 km')
@@ -63,7 +63,7 @@ test('try as guest -> populated calendar -> add -> complete -> rate -> delete, d
   const complete = page.getByRole('dialog', { name: 'Complete run' })
   await complete.getByLabel('Duration (h:mm:ss)').fill('1:00:00')
   await expect(complete.getByTestId('pace')).toHaveText('5:00 /km')
-  await complete.getByRole('button', { name: 'Save' }).click()
+  await complete.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(list).toBeVisible()
   const done = list.locator('li[data-status="Completed"]', { hasText: '12 km' })
   await expect(done).toBeVisible()
@@ -72,7 +72,7 @@ test('try as guest -> populated calendar -> add -> complete -> rate -> delete, d
   await done.getByRole('link', { name: 'Rate' }).click()
   const rate = page.getByRole('dialog', { name: 'Rate this run' })
   await rate.locator('label', { hasText: '5 stars' }).click()
-  await rate.getByRole('button', { name: 'Save' }).click()
+  await rate.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(list).toBeVisible()
   await expect(done.getByRole('link', { name: 'Rate' })).toHaveCount(0)
 
@@ -103,7 +103,7 @@ test.describe('editing and concurrency (409)', () => {
     const title = form.getByLabel('Title')
 
     await title.fill('Mine')
-    await form.getByRole('button', { name: 'Save' }).click()
+    await form.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(form.getByText('This run was changed elsewhere since you opened it.')).toBeVisible()
     await expect(title).toHaveValue('Mine')
     await form.getByRole('button', { name: 'Reload latest' }).click()
@@ -120,7 +120,7 @@ test.describe('editing and concurrency (409)', () => {
     const writes = recordWrites(page)
 
     await form.getByLabel('Title').fill('Mine')
-    await form.getByRole('button', { name: 'Save' }).click()
+    await form.getByRole('button', { name: 'Save', exact: true }).click()
     await form.getByRole('button', { name: 'Save mine anyway' }).click()
 
     await expect(page.getByRole('dialog', { name: 'Edit run' })).toHaveCount(0)
@@ -155,7 +155,7 @@ test.describe('editing and concurrency (409)', () => {
     await page.getByRole('link', { name: 'Edit' }).click()
     const form = page.getByRole('dialog', { name: 'Edit run' })
     await form.getByLabel('Title').fill('Park loop 2')
-    await form.getByRole('button', { name: 'Save' }).click()
+    await form.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Edit run' })).toHaveCount(0)
 
     expect(writes.at(-1)?.body?.location).toEqual({ latitude: 50.2945, longitude: 18.6714, name: 'Gliwice' })
@@ -175,11 +175,11 @@ test('other write errors show localized messages (409 run limit, 413) and keep t
     action: { type: 'status', status: 409, problemType: 'urn:runnersdiary:problem:run-limit' },
     times: 1,
   })
-  await form.getByRole('button', { name: 'Save' }).click()
+  await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(form.getByText('You have reached the maximum number of runs.')).toBeVisible()
 
   fake.addFault(faults.status({ method: 'POST', path: '/api/runs' }, 413, 1))
-  await form.getByRole('button', { name: 'Save' }).click()
+  await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(form.getByText('The request is too large.')).toBeVisible()
   await expect(form).toBeVisible()
 })
@@ -192,7 +192,7 @@ test('a bare server 400 shows the form-level summary and keeps the form open', a
   // Field-level mapping of 400s is covered by the Vitest serverErrorMapping tests; here the error list is empty.
   fake.addFault({ match: { method: 'POST', path: '/api/runs' }, action: { type: 'status', status: 400 }, times: 1 })
   await form.getByLabel('Distance (km)').fill('5')
-  await form.getByRole('button', { name: 'Save' }).click()
+  await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(form.getByRole('alert')).toContainText('Some values are not valid')
 })
 

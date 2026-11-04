@@ -1,0 +1,56 @@
+{
+  "loading": "Loading map…",
+  "unavailable": {
+    "title": "Map unavailable",
+    "noWebGl": "Your browser cannot draw the map (WebGL 2 is not available). The route details are shown as text instead.",
+    "error": "The map could not be loaded. The route details are shown as text instead."
+  },
+  "controls": {
+    "map": "Map",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetBearing": "Reset bearing to north",
+    "toggleAttribution": "Toggle attribution",
+    "mapFeedback": "Map feedback",
+    "markerTitle": "Map marker",
+    "gesturesWindows": "Use Ctrl + scroll to zoom the map",
+    "gesturesMac": "Use ⌘ + scroll to zoom the map",
+    "gesturesMobile": "Use two fingers to move the map"
+  },
+  "markers": {
+    "start": "Start",
+    "finish": "Finish",
+    "position": "Selected position",
+    "highlight": "Position on the route"
+  },
+  "location": {
+    "mapLabel": "Map of the run's location"
+  },
+  "picker": {
+    "title": "Choose a location",
+    "description": "Click or tap the map, or type the coordinates.",
+    "cancel": "Cancel",
+    "confirm": "Use this location",
+    "mapLabel": "Map for choosing a location",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "latitudeError": "Latitude must be a number from -90 to 90.",
+    "longitudeError": "Longitude must be a number from -180 to 180.",
+    "instructions": "Click or tap the map to place the pin. If you cannot use the map, type the latitude and longitude in degrees, for example 50.2945 and 18.6714.",
+    "selected": "Selected position: {{latitude}}, {{longitude}}",
+    "none": "No position selected yet."
+  },
+  "search": {
+    "label": "Search for a place",
+    "button": "Search",
+    "hint": "Type a place name and press Enter or Search.",
+    "tooShort": "Type at least 2 characters.",
+    "searching": "Searching…",
+    "none": "No places found.",
+    "found_one": "{{count}} place found.",
+    "found_other": "{{count}} places found.",
+    "unavailable": "Place search is not available right now.",
+    "failed": "The search failed. Please try again.",
+    "results": "Search results"
+  }
+}

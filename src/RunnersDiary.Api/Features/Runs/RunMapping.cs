@@ -43,7 +43,7 @@ internal static class RunMapping
             : null,
         Rating = run.Rating is { } g ? new RatingDto { Stars = g.Stars, Comment = g.Comment } : null,
         Version = Convert.ToBase64String(run.RowVersion),
-        Tracks = [.. run.Tracks.OrderBy(t => t.Kind).Select(t => new RunTrackDto { Id = t.Id, Kind = t.Kind, Status = t.Status })],
+        Tracks = [.. run.Tracks.OrderBy(t => t.Kind).Select(t => new RunTrackDto { Id = t.Id, Kind = t.Kind, Status = t.Status, OriginalFileName = t.OriginalFileName, CreatedAt = t.CreatedAt })],
         CreatedAt = run.CreatedAt,
         UpdatedAt = run.UpdatedAt,
     };

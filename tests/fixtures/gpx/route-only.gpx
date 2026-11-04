@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Runners Diary test fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+<rte><rtept lat="50.000" lon="18.0"><ele>100</ele></rtept><rtept lat="50.001" lon="18.0"><ele>101</ele></rtept><rtept lat="50.002" lon="18.0"><ele>102</ele></rtept><rtept lat="50.003" lon="18.0"><ele>103</ele></rtept></rte>
+</gpx>

@@ -1,12 +1,14 @@
-import { ChevronLeft, ChevronRight, List, Plus } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, List, Plus } from 'lucide-react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { diaryPath, type DiaryMonth } from '@/features/diary/diaryMonth'
 import type { PlainDate } from '@/lib/dates/plainDate'
 import { monthLabel } from '@/lib/dates/plainDate'
-import { MonthYearPicker } from './MonthYearPicker'
+
+// The picker's popover (Radix Popper + floating-ui) is ~12 kB gzip that nothing else in the initial load needs.
+const MonthYearPicker = lazy(() => import('./MonthYearPicker').then((m) => ({ default: m.MonthYearPicker })))
 
 interface MonthHeaderProps {
   month: DiaryMonth
@@ -56,7 +58,21 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
         <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={onToday}>
           {t('today')}
         </Button>
-        <MonthYearPicker month={month} onSelect={onSelectMonth} />
+        <Suspense
+          fallback={
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 sm:h-9"
+              aria-label={t('picker.trigger', { month: monthLabel(month.year, month.month, i18n.language) })}
+            >
+              {monthLabel(month.year, month.month, i18n.language)}
+              <ChevronDown aria-hidden="true" />
+            </Button>
+          }
+        >
+          <MonthYearPicker month={month} onSelect={onSelectMonth} />
+        </Suspense>
         <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="outline" className="h-11 sm:h-9">
             <Link to={`${base}/list`}>

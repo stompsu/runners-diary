@@ -99,7 +99,9 @@ public sealed class GuestSessionTests(ContainersApiFactory factory)
         var blobs = await factory.BlobNamesAsync(BlobPaths.UserPrefix(userId));
 
         Assert.True(tracks.Count >= 4);
-        Assert.Equal(tracks.Select(t => t.RawBlobName).Order(StringComparer.Ordinal), blobs.Order(StringComparer.Ordinal));
+        Assert.Equal(
+            tracks.SelectMany(t => new[] { t.RawBlobName, t.ProcessedBlobName! }).Order(StringComparer.Ordinal),
+            blobs.Order(StringComparer.Ordinal));
         Assert.All(tracks, t =>
         {
             Assert.StartsWith($"users/{userId:N}/tracks/{t.Id:N}/", t.RawBlobName, StringComparison.Ordinal);

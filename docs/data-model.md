@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`; awaiting approval)**.
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`, merged); M4 adds migration `GpxTrackProcessing` (implemented, awaiting CI + approval)**.
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -10,7 +10,7 @@ Conventions: SI units (metres, seconds, metres of elevation); enums stored as `t
 ```
 Users 1 ──< Runs >── 1 RunTypes (catalog, seeded)
               │  └─ (complex, same row) Location?, Race?, Rating?
-              └──< GpxTracks  (0..1 per Kind; blob = original GPX)
+              └──< GpxTracks  (0..1 per Kind; blobs = original GPX + processed GeoJSON)
 ```
 
 ## Users
@@ -116,7 +116,9 @@ Location: the domain `GeoPoint` is mapped to an NTS `Point` (X = longitude, Y = 
 Volume caps (application-enforced, `RunLimits`): ≤ 500 runs per guest, ≤ 20 000 per user, ≤ 20 per date.
 Domain rules (in `RunRules`, see api-contract.md): rating and race result fields only when `Completed`; `Race` only for Race-category types; rest days carry no metrics; `MaxHeartRate ≥ AvgHeartRate`; `TimeZoneId` must be a valid IANA id (Windows ids rejected).
 
-## GpxTracks (M2: metadata + blob reference only)
+## GpxTracks
+
+M2 created the table (metadata + raw blob reference); M4 migration `GpxTrackProcessing` added the processed summary ([ADR 0021 §7](adr/0021-track-metrics-simplification-and-geojson.md)).
 
 | Column | SQL type | Null | Notes |
 |---|---|---|---|
@@ -125,26 +127,47 @@ Domain rules (in `RunRules`, see api-contract.md): rating and race result fields
 | `UserId` | `uniqueidentifier` | no | Denormalized owner (filter + blob path). Part of the composite FK to `Runs`; **no FK to `Users`** (avoids multiple cascade paths). |
 | `Kind` | `tinyint` | no | `PlannedCourse = 0`, `RecordedTrack = 1`. |
 | `OriginalFileName` | `nvarchar(255)` | no | Sanitized; display only. |
-| `SizeBytes` | `bigint` | no | ≤ 20 MB (enforced by M4 upload). |
-| `Sha256` | `binary(32)` | no | Dedup / integrity. |
+| `SizeBytes` | `bigint` | no | 1 B … 20 MB (Domain constant `GpxTrack.MaxSizeBytes`; upload limits users 20 MB, guests 5 MB). |
+| `Sha256` | `binary(32)` | no | Integrity; its first 8 bytes form the GeoJSON `ETag`. |
 | `RawBlobName` | `varchar(400)` | no | `users/{userId:N}/tracks/{trackId:N}/original.gpx` in container `gpx`. |
-| `Status` | `tinyint` | no | `Pending = 0`, `Processed = 1`, `Failed = 2`. M2 seeds `Pending`. |
-| `CreatedAt` | `datetime2(0)` | no | |
+| `Status` | `tinyint` | no | `Pending = 0`, `Processed = 1`, `Failed = 2`. Uploads and demo seeding (M4) create `Processed` rows only; `Pending` remains for pre-M4 rows and future async importers; `Failed` is unused. |
+| `CreatedAt` | `datetime2(0)` | no | UTC, truncated to whole seconds. |
+| `ProcessedBlobName` | `varchar(400)` | yes | M4. `users/{userId:N}/tracks/{trackId:N}/track.json`. |
+| `ProcessorVersion` | `tinyint` | yes | M4. `1`. Bumped when metric/simplification rules change. |
+| `ProcessedAt` | `datetime2(0)` | yes | M4. UTC (= `CreatedAt` for synchronous uploads). |
+| `PointCount` | `int` | yes | M4. Raw points used (from `trk`, else `rte`). |
+| `DistanceMeters` | `float` | yes | M4. Haversine sum within segments, 0.1 m. |
+| `ElevationGainMeters` / `ElevationLossMeters` | `float` | yes | M4. 3 m hysteresis, 0.1 m; NULL when the file has no elevation. |
+| `MinElevationMeters` / `MaxElevationMeters` | `float` | yes | M4. NULL without elevation. |
+| `ElapsedSeconds` / `MovingSeconds` | `int` | yes | M4. NULL when untimed. |
+| `StartUtc` / `EndUtc` | `datetime2(0)` | yes | M4. First/last point time, **rounded to whole seconds** (half up) in the Domain so the upload response equals later reads; NULL when untimed. |
+| `StartPoint` / `FinishPoint` | `geography` | yes | M4. SRID 4326 via the existing `GeoPointConverter`. |
+| `WarningFlags` | `tinyint` | **no** | M4. Bit flags `TimestampsIgnored`, `NoElevation`, `MultipleSegments`, `RouteConverted`; `0` = none (also for `Pending` rows). |
 
-Keys/indexes: `FK_GpxTracks_Runs_RunId_UserId (RunId, UserId)` → `AK_Runs_Id_UserId` ON DELETE CASCADE (replaces a simple `RunId` FK) · `UX_GpxTracks_Run_Kind (RunId, Kind)` unique · `IX_GpxTracks_RunId_UserId` (FK index) · `IX_GpxTracks_UserId`.
+Keys/indexes: `FK_GpxTracks_Runs_RunId_UserId (RunId, UserId)` → `AK_Runs_Id_UserId` ON DELETE CASCADE (replaces a simple `RunId` FK) · `UX_GpxTracks_Run_Kind (RunId, Kind)` unique · `IX_GpxTracks_RunId_UserId` (FK index) · `IX_GpxTracks_UserId`. M4 adds no index (the cap count uses `IX_GpxTracks_UserId` through the owner filter; M5 queries go through `Runs`).
+Check **`CK_GpxTracks_Processed`** (M4): `[Status] <> 1 OR ([ProcessedBlobName] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [PointCount] IS NOT NULL AND [StartPoint] IS NOT NULL)`. `FinishPoint` and the other summary columns are always set by the processor but not constrained.
+Track cap (application-enforced, `GpxLimits`): ≤ 16 per guest, ≤ 2 000 per user; re-counted inside the insert transaction under a per-user application lock (`sp_getapplock` `user-tracks:{userId:N}`, also taken by run delete; [ADR 0023 amendment](adr/0023-run-tracks-prefill-and-deletion.md)).
 **Ownership rationale:** a track's denormalized `UserId` drives the `Owner` filter and the blob path, so it must never disagree with its run's owner. The composite FK makes the database enforce "a track belongs to the same user as its run" (a track pointing at another user's run cannot be inserted), on top of the application-level ownership guard (ADR 0010). The cascade path stays single: `Users → Runs → GpxTracks`.
-**Deferred to M4 (maps-gpx):** processed GeoJSON blob name, track metrics (distance, moving/elapsed time, gain/loss, start/end UTC, start point, bbox), point count, processing error, schema of the GeoJSON.
+Not stored in SQL: bbox, the simplified line, the elevation profile and splits — they live only in the `track.json` blob ([ADR 0021 §5](adr/0021-track-metrics-simplification-and-geojson.md)). No processing-error column: rejected files are never stored.
 
 ## Blob storage
 
-Container `gpx` (private). The API creates it only when `Storage:CreateContainerOnStartup=true` (AppHost, tests); in Azure it is provisioned by Bicep (M7). Rule: **every blob a user owns is under `users/{userId:N}/`** — prefix delete removes all of a user's files (guest cleanup, future account deletion). M4 adds `…/tracks/{trackId:N}/track.geojson`.
+Container `gpx` (private). The API creates it only when `Storage:CreateContainerOnStartup=true` (AppHost, tests); in Azure it is provisioned by Bicep (M7). Rule: **every blob a user owns is under `users/{userId:N}/`** — prefix delete removes all of a user's files (guest cleanup, future account deletion).
+
+```
+gpx/users/{userId:N}/tracks/{trackId:N}/original.gpx   Content-Type application/gpx+xml   (exact uploaded bytes)
+gpx/users/{userId:N}/tracks/{trackId:N}/track.json     Content-Type application/geo+json  (processed FeatureCollection, ADR 0021 §5)
+```
+
+Each track has its own prefix, so deleting a track or a run is a prefix delete per track (blobs first, then rows; ADR 0023). A replace writes the new track id's prefix first and deletes the old prefix after commit (best effort; failures logged `TrackBlobOrphaned`). Upload failures and cancellations roll back the new prefix. A fresh guest gets 6 demo tracks = 12 blobs. The API never serves blob URLs; it streams the blobs itself.
 
 ## Deferred (by milestone)
 
 | Item | Milestone |
 |---|---|
-| GPX metrics columns, GeoJSON blob, upload validation | M4 |
-| Saved places / geocoding cache (if needed) | M4 |
+| ~~GPX metrics columns, GeoJSON blob, upload validation~~ | done in M4 |
+| Saved places / geocoding cache (if needed) | not needed in M4 (no geocoder yet); revisit with the Azure geocoder in M7 |
+| Orphan-blob reconciliation for users | post-MVP (ADR 0023 §5) |
 | Aggregate views/indexes for insights (only if query plans need them) | M5 |
 | `AiSummaries` (cache per user + period + data hash), guest AI counter | M6 |
 | `ExternalSource`/`ExternalId` on `Runs` (Strava/Garmin/FIT) | post-MVP |
