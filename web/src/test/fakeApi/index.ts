@@ -20,6 +20,7 @@ import {
 import { matches, type Fault } from './faults.ts'
 import { buildInsightsReport, validateInsightsQuery, type InsightsScenario } from './insights.ts'
 import { demoRuns, RUN_TYPES } from './seed.ts'
+import { createSummaryService, type SummaryOptions, type SummaryPostOutcome, type SummaryScenario } from './summary.ts'
 import {
   inspectGpx,
   processFakeGpx,
@@ -39,6 +40,8 @@ export { faults, type Fault } from './faults.ts'
 export { RUN_TYPES, demoRuns, typeId } from './seed.ts'
 export type { ClientConfigResponse, RunDto, RunWriteRequest } from './handlers.ts'
 export { sampleGpx, type TrackDto } from './tracks.ts'
+export { GUEST_LIMIT, USER_LIMIT, sampleSummaryContent } from './summary.ts'
+export type { InsightsSummaryDto, SummaryOptions, SummaryPostOutcome, SummaryScenario } from './summary.ts'
 export { DEMO_REPORT_TODAY, demoReport, type InsightsReportDto, type InsightsScenario } from './insights.ts'
 
 /** A track to put straight into an account (test setup; the upload path is `POST /api/runs/{id}/tracks`). */
@@ -67,6 +70,8 @@ export interface FakeApiOptions {
   geocodingEnabled?: boolean
   /** What `GET /api/insights/report` answers with (see `InsightsScenario`). Default `demo`. */
   insights?: InsightsScenario
+  /** `GET/POST /api/insights/summary` behaviour (see `SummaryScenario`, `SummaryPostOutcome`). Default `none` / `ok`. */
+  summary?: SummaryOptions
   limits?: Partial<Limits>
   /** Clock in ms, for token expiry and timestamps. Default `Date.now`. */
   now?: () => number
@@ -110,6 +115,10 @@ export interface FakeApi {
   tracksOf(token: string, runId: string): TrackDto[]
   setGeocodingEnabled(enabled: boolean): void
   setInsightsScenario(scenario: InsightsScenario): void
+  /** Changes what the summary endpoints answer with; `outcome` also sets how the next POSTs end. */
+  setSummaryScenario(scenario: SummaryScenario, outcome?: SummaryPostOutcome, options?: { slowMs?: number }): void
+  /** Changes only how POST /api/insights/summary ends. */
+  setSummaryOutcome(outcome: SummaryPostOutcome, options?: { slowMs?: number }): void
   /** Requests seen so far, `"METHOD /path"`. */
   readonly requests: string[]
 }
@@ -132,6 +141,16 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const guestTtlMs = options.guestTtlMs ?? DAY_MS
   let geocodingEnabled = options.geocodingEnabled ?? false
   let insightsScenario: InsightsScenario = options.insights ?? 'demo'
+
+  const summaryService = createSummaryService({
+    now,
+    initial: options.summary,
+    runsStamp: (account) =>
+      [...account.runs.values()]
+        .map((run) => `${run.id}:${run.version}`)
+        .sort()
+        .join(','),
+  })
 
   const accounts = new Map<string, Account>() // token -> account
   const faultList: Fault[] = []
@@ -291,6 +310,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
             geocodingEnabled,
           },
           gpx: { maxFileBytesUser: 20 * 1024 * 1024, maxFileBytesGuest: 5 * 1024 * 1024 },
+          ai: { summaryGeneration: summaryService.generationEnabled() },
         } satisfies ClientConfigResponse,
         200,
         { 'Cache-Control': 'public, max-age=300' },
@@ -428,6 +448,15 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         200,
         { 'Cache-Control': 'private, no-store' },
       )
+    }
+
+    if (path === '/api/insights/summary') {
+      if (method === 'GET') return summaryService.get(account, new URL(request.url))
+      if (method === 'POST') {
+        const body = await readJson(request)
+        if ('response' in body) return body.response
+        return summaryService.generate(account, request, body.value)
+      }
     }
 
     const trackResponse = await routeTracks(request, account, path)
@@ -602,6 +631,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       [...(accounts.get(token)?.tracks.values() ?? [])].filter((t) => t.dto.runId === runId).map((t) => t.dto),
     setGeocodingEnabled: (enabled) => void (geocodingEnabled = enabled),
     setInsightsScenario: (scenario) => void (insightsScenario = scenario),
+    setSummaryScenario: (scenario, outcome, opts) => summaryService.set(scenario, outcome, opts),
+    setSummaryOutcome: (outcome, opts) => summaryService.setPost(outcome, opts),
     requests,
   }
 }

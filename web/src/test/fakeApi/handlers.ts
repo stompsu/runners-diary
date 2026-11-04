@@ -43,6 +43,8 @@ export type HandledOperations = Pick<
   | 'deleteTrack'
   | 'searchPlaces'
   | 'getInsightsReport'
+  | 'getInsightsSummary'
+  | 'generateInsightsSummary'
 >
 
 export interface Account {

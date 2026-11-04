@@ -72,6 +72,7 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
     {
         ["POST /api/runs/{runId:guid}/tracks"] = "gpx-upload",
         ["GET /api/geocoding/search"] = "geocode",
+        ["POST /api/insights/summary"] = "ai-summary",
     };
 
     private static string Key(RouteEndpoint e) =>
@@ -140,6 +141,23 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
         Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
         Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
         Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+    }
+
+    [Fact]
+    public void The_summary_routes_exist_require_authorization_and_only_the_generation_has_its_own_limiter()
+    {
+        var endpoints = Endpoints();
+        var get = Assert.Single(endpoints, e => Key(e) == "GET /api/insights/summary");
+        var post = Assert.Single(endpoints, e => Key(e) == "POST /api/insights/summary");
+
+        foreach (var endpoint in new[] { get, post })
+        {
+            Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+            Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+        }
+
+        Assert.Equal("api", get.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+        Assert.Equal("ai-summary", post.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
     }
 
     [Fact]

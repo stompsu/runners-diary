@@ -24,6 +24,134 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("RunnersDiary.Domain.Ai.AiGeneration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Attempts")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsGuest")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModelDeployment")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<byte>("Outcome")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("int");
+
+                    b.Property<short>("PromptVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_AiGenerations_Created");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("CreatedAt"), new[] { "IsGuest" });
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("CX_AiGenerations_User_Created");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("UserId", "CreatedAt"));
+
+                    b.ToTable("AiGenerations", (string)null);
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Ai.AiSummary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Compare")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("ContentJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short>("FactSheetVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte[]>("Fingerprint")
+                        .IsRequired()
+                        .HasColumnType("binary(32)");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(8)");
+
+                    b.Property<short>("MetricsVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("ModelDeployment")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("ModelId")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("PeriodFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodTo")
+                        .HasColumnType("date");
+
+                    b.Property<short>("PromptVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("UserId", "PeriodFrom", "PeriodTo", "Compare", "Language")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AiSummaries_Key");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("UserId", "PeriodFrom", "PeriodTo", "Compare", "Language"));
+
+                    b.ToTable("AiSummaries", (string)null);
+                });
+
             modelBuilder.Entity("RunnersDiary.Domain.RunTypes.RunType", b =>
                 {
                     b.Property<short>("Id")
@@ -576,6 +704,15 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Users_Kind", "([Kind] = 1 AND [ExpiresAt] IS NOT NULL AND [ExternalTenantId] IS NULL AND [ExternalObjectId] IS NULL) OR ([Kind] = 0 AND [ExpiresAt] IS NULL AND [ExternalTenantId] IS NOT NULL AND [ExternalObjectId] IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Ai.AiSummary", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RunnersDiary.Domain.Runs.Run", b =>

@@ -7,6 +7,7 @@
     <Project Path="src/RunnersDiary.ServiceDefaults/RunnersDiary.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/RunnersDiary.Ai.Tests/RunnersDiary.Ai.Tests.csproj" />
     <Project Path="tests/RunnersDiary.Api.Tests/RunnersDiary.Api.Tests.csproj" />
     <Project Path="tests/RunnersDiary.Domain.Tests/RunnersDiary.Domain.Tests.csproj" />
   </Folder>

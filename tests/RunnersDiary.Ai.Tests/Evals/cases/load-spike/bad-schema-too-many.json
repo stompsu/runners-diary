@@ -1,0 +1,12 @@
+{
+  "headline": "A consistent month.",
+  "wentWell": [
+    { "text": "You logged {totals.runCount} runs." },
+    { "text": "You covered {totals.distance}." },
+    { "text": "You trained for {totals.duration}." },
+    { "text": "You were active on {totals.activeDays}." }
+  ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

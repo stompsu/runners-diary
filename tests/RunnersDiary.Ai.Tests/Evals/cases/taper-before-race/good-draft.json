@@ -1,0 +1,10 @@
+{
+  "headline": "A well-structured build ending in a {race.1.category} personal best on {race.1.date}.",
+  "wentWell": [
+    { "text": "You finished the {race.1.category} in {race.1.resultTime}, ahead of your target of {race.1.targetTime}." },
+    { "text": "The lighter week of {week.5.start} was a taper before your {week.6.raceType}, and the race-week ratio of {acwr.peak.value} came from the {acwr.peak.raceType}." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Ease back in with a few easy weeks before building again." },
+  "dataNotes": []
+}

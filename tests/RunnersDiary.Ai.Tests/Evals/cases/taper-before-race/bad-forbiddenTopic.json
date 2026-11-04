@@ -1,0 +1,7 @@
+{
+  "headline": "A build ending in a {race.1.category} on {race.1.date}.",
+  "wentWell": [ { "text": "You finished the {race.1.category} in {race.1.resultTime}." } ],
+  "watchOuts": [ { "text": "The race week at {acwr.peak.value} after your {acwr.peak.raceType} could raise your injury risk; see a physiotherapist." } ],
+  "suggestion": null,
+  "dataNotes": []
+}

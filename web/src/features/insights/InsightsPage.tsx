@@ -14,6 +14,7 @@ import { MonotonyCard } from './MonotonyCard'
 import { PeriodPicker } from './PeriodPicker'
 import { PlannedSummary } from './PlannedSummary'
 import { RaceHistoryTable } from './RaceHistoryTable'
+import { SummaryCard } from './summary/SummaryCard'
 import { parseInsightsParams, serializeInsightsRange, type InsightsRange } from './insightsRange'
 import { useInsightsReport } from './insightsQueries'
 import type { InsightsReport } from './insightsTypes'
@@ -95,7 +96,7 @@ function InsightsDashboard({ today }: { today: string }) {
           data-updating={updating}
           aria-busy={updating}
         >
-          <ReportView report={data} />
+          <ReportView report={data} range={range} />
         </div>
       )}
     </>
@@ -133,7 +134,7 @@ function PeriodSummary({ report, locale }: { report: InsightsReport; locale: str
   )
 }
 
-function ReportView({ report }: { report: InsightsReport }) {
+function ReportView({ report, range }: { report: InsightsReport; range: InsightsRange }) {
   const { t } = useInsightsT()
   const empty = report.totals.runCount === 0 && report.totals.activeDays === 0
 
@@ -144,6 +145,7 @@ function ReportView({ report }: { report: InsightsReport }) {
           diaryDate={report.period.asOf >= report.period.from ? report.period.asOf : report.period.from}
         />
         <PlannedSummary planned={report.planned} />
+        <SummaryCard key={`${range.from}|${range.to}|${range.compare}`} range={range} />
         {report.races.length > 0 ? <RaceHistoryTable races={report.races} /> : null}
       </>
     )
@@ -158,6 +160,8 @@ function ReportView({ report }: { report: InsightsReport }) {
         <KpiGrid report={report} />
         <PlannedSummary planned={report.planned} />
       </section>
+
+      <SummaryCard key={`${range.from}|${range.to}|${range.compare}`} range={range} />
 
       <section aria-labelledby="load-title" className="flex flex-col gap-3">
         <h2 id="load-title" className="text-lg font-semibold">

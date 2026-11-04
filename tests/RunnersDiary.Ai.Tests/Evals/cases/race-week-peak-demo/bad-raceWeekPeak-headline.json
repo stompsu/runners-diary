@@ -1,0 +1,7 @@
+{
+  "headline": "A block that spiked to a ratio of {acwr.peak.value} on {acwr.peak.date}.",
+  "wentWell": [ { "text": "You ran {totals.distance} in {totals.runCount} runs." } ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

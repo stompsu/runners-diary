@@ -357,7 +357,7 @@ ADRs 0024 and 0025 carry an "Amended 2026-11-04 (implementation)" section for ev
 
 Accepted without change (ADR 0024 amendment): **L4** `previousYear` for a whole February after a leap year compares Feb 1–28 (2028-02-29 is never counted); **N1** deltas are computed from rounded totals (error ≤ 0.1 AU / 0.1 %).
 
-Demo (step 2 done, §9 Q5): spike week −11 load 1 441 AU, ACWR 1.48 (high); taper week −8 632 AU, ACWR 0.55 (low); easy pace about 5:56 → 5:40 per km (slope −0.58 s/km per week). The week −3 trail-race week peaks at ACWR **1.59**, so the default 12-week view's `peak` is the race week. Golden snapshot regenerated.
+Demo (step 2 done, §9 Q5): spike week −11 load 1 441 AU, ACWR 1.48 (high); taper week −8 632 AU, ACWR 0.55 (low); easy pace about 5:56 → 5:40 per km (slope −0.58 s/km per week). The week −3 trail-race week ends at ACWR **1.59** (`acwrAtEnd`). **Corrected 2026-11-04 (M6 review M1):** the default 12-week view's daily `peak` is **1.79 on Fri 2026-10-23 (week −2)**, 5 days after the Sunday trail race (2026-10-18), still race-driven (the race is in its 7-day acute window) but not in the race's ISO week; see the ADR 0024 amendment. Golden snapshot regenerated.
 
 ### Frontend
 

@@ -1,0 +1,7 @@
+{
+  "headline": "A build ending in a {race.1.category} on {race.1.date}.",
+  "wentWell": [ { "text": "You finished the {race.1.category} in {race.1.resultTime}." } ],
+  "watchOuts": [],
+  "suggestion": { "text": "If anything hurts after the race, rest until the pain is gone." },
+  "dataNotes": []
+}

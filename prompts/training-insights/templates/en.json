@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "language": "en",
+  "templates": {
+    "empty": [
+      {
+        "when": [{ "key": "period.isPartial", "op": "eq", "value": true }],
+        "summary": {
+          "headline": "No completed sessions between {period.from} and {period.to} yet.",
+          "wentWell": [],
+          "watchOuts": [],
+          "suggestion": { "text": "Log your runs as completed to get a summary of this period." },
+          "dataNotes": []
+        }
+      },
+      {
+        "summary": {
+          "headline": "No completed sessions between {period.from} and {period.to}.",
+          "wentWell": [],
+          "watchOuts": [],
+          "suggestion": { "text": "Log your runs as completed to get a summary of this period." },
+          "dataNotes": []
+        }
+      }
+    ],
+    "plannedOnly": {
+      "headline": "This period starts on {period.from}, so there is nothing to summarise yet.",
+      "wentWell": [],
+      "watchOuts": [],
+      "suggestion": null,
+      "dataNotes": [
+        { "text": "Planned sessions in this period: {planned.runCount}, covering {planned.distance}." }
+      ]
+    },
+    "fewSessions": [
+      {
+        "when": [
+          { "key": "period.isPartial", "op": "eq", "value": true },
+          { "key": "dq.completedSessions", "op": "eq", "value": 1 }
+        ],
+        "summary": {
+          "headline": "Only one session so far between {period.from} and {period.to}.",
+          "wentWell": [{ "text": "You completed {dq.completedSessions} session covering {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "A summary becomes useful once a few more sessions are logged." },
+          "dataNotes": []
+        }
+      },
+      {
+        "when": [{ "key": "period.isPartial", "op": "eq", "value": true }],
+        "summary": {
+          "headline": "Only a few sessions so far between {period.from} and {period.to}.",
+          "wentWell": [{ "text": "You completed {dq.completedSessions} sessions covering {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "A summary becomes useful once a few more sessions are logged." },
+          "dataNotes": []
+        }
+      },
+      {
+        "when": [{ "key": "dq.completedSessions", "op": "eq", "value": 1 }],
+        "summary": {
+          "headline": "Only one session between {period.from} and {period.to}.",
+          "wentWell": [{ "text": "You completed {dq.completedSessions} session covering {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "A summary becomes useful with a few more sessions in a period." },
+          "dataNotes": []
+        }
+      },
+      {
+        "summary": {
+          "headline": "Only a few sessions between {period.from} and {period.to}.",
+          "wentWell": [{ "text": "You completed {dq.completedSessions} sessions covering {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "A summary becomes useful with a few more sessions in a period." },
+          "dataNotes": []
+        }
+      }
+    ]
+  }
+}

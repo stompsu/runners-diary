@@ -15,6 +15,7 @@ public static class RateLimitingSetup
     public const string GeneralPolicy = "api";
     public const string GpxUploadPolicy = "gpx-upload";
     public const string GeocodePolicy = "geocode";
+    public const string AiSummaryPolicy = "ai-summary";
 
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
@@ -48,6 +49,7 @@ public static class RateLimitingSetup
             // Endpoint-level policies replace the group's general policy for their route (the most specific metadata wins).
             options.AddPolicy(GpxUploadPolicy, context => PerCaller(context, limits.Value.GpxUpload));
             options.AddPolicy(GeocodePolicy, context => PerCaller(context, limits.Value.Geocode));
+            options.AddPolicy(AiSummaryPolicy, context => PerCaller(context, limits.Value.AiSummary));
 
             options.AddPolicy(GeneralPolicy, context => RateLimitPartition.GetTokenBucketLimiter(
                 context.User.FindFirst(AppClaims.UserId)?.Value ?? "ip:" + ClientIp(context),

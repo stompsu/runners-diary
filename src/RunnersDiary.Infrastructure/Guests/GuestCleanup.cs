@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RunnersDiary.Domain.Users;
+using RunnersDiary.Infrastructure.Ai;
 using RunnersDiary.Infrastructure.Identity;
 using RunnersDiary.Infrastructure.Persistence;
 using RunnersDiary.Infrastructure.Storage;
@@ -72,7 +73,31 @@ public sealed partial class GuestCleanup(
             LogRun(removed, expired.Count);
         }
 
+        await PurgeAiLedgerAsync(db, cancellationToken);
+
         return removed;
+    }
+
+    /// <summary>
+    /// Drops AI usage-ledger rows older than the 30-day retention (ADR 0028 §4) in the same run, through the ledger's own store (the
+    /// only code that touches <c>AiGenerations</c>) over this run's anonymous context. A failure is logged and never blocks guest
+    /// removal: the next run purges again.
+    /// </summary>
+    private async Task PurgeAiLedgerAsync(RunnersDiaryDbContext db, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var ledger = new EfAiGenerationStore(db);
+            var purged = await ledger.PurgeOlderThanAsync(clock.GetUtcNow() - AiUsageLedger.Retention, cancellationToken);
+            if (purged > 0)
+            {
+                LogLedgerPurged(purged);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogLedgerPurgeFailed(ex);
+        }
     }
 
     /// <summary>
@@ -118,6 +143,12 @@ public sealed partial class GuestCleanup(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Guest cleanup removed {Removed} of {Expired} expired guests.")]
     private partial void LogRun(int removed, int expired);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Purged {Purged} AI usage ledger rows older than the retention.")]
+    private partial void LogLedgerPurged(int purged);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not purge the AI usage ledger; it will be retried.")]
+    private partial void LogLedgerPurgeFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not delete the blobs of expired guest {UserId}; the user row is kept and cleanup will retry.")]
     private partial void LogBlobDeleteFailed(Exception exception, Guid userId);

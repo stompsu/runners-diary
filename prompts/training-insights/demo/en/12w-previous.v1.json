@@ -1,0 +1,37 @@
+{
+  "preset": "12w-previous",
+  "language": "en",
+  "version": 1,
+  "factSheetVersion": 1,
+  "requires": [
+    { "key": "comparison.delta.distance.percent", "op": "gt", "value": 0 },
+    { "key": "races.completedCount", "op": "gte", "value": 2 },
+    { "key": "race.1.status", "op": "eq", "value": "completed" },
+    { "key": "race.1.type", "op": "eq", "value": "roadRace" },
+    { "key": "race.1.category", "op": "eq", "value": "halfMarathon" },
+    { "key": "race.1.isPersonalBest", "op": "eq", "value": true },
+    { "key": "race.1.resultTime", "op": "exists" },
+    { "key": "pace.slope", "op": "lt", "value": 0 },
+    { "key": "week.1.acwrBand", "op": "eq", "value": "high" },
+    { "key": "week.4.acwrBand", "op": "eq", "value": "low" },
+    { "key": "week.5.raceType", "op": "eq", "value": "roadRace" },
+    { "key": "acwr.peak.isRaceWeek", "op": "eq", "value": true },
+    { "key": "acwr.peak.raceType", "op": "eq", "value": "trailRace" }
+  ],
+  "summary": {
+    "headline": "A steady block with more distance than before and a personal best at the {race.1.category} on {race.1.date}.",
+    "wentWell": [
+      { "text": "You covered {totals.distance} in {totals.runCount} runs, {comparison.delta.distance.percent} more distance than the previous period." },
+      { "text": "Your {race.1.category} on {race.1.date} was a personal best in {race.1.resultTime}." },
+      { "text": "Your easy pace trended faster ({pace.slope}), with {pace.last.pace} in the week of {pace.last.week}." }
+    ],
+    "watchOuts": [
+      { "text": "In the week of {week.1.start} your load rose to {week.1.load}, an ACWR of {week.1.acwrAtEnd} in the {week.1.acwrBand} band, above your recent norm." }
+    ],
+    "suggestion": { "text": "Keep easy days easy and raise weekly load gradually, so that it stays close to your recent norm." },
+    "dataNotes": [
+      { "text": "The low ratio in the week of {week.4.start} was the lighter week before your {race.1.category}: a taper, not a dip." },
+      { "text": "Your highest ratio, {acwr.peak.value} on {acwr.peak.date}, reflects your {acwr.peak.raceType} rather than a training spike." }
+    ]
+  }
+}

@@ -15,6 +15,9 @@ namespace Microsoft.Extensions.Hosting;
 // To learn more about using this project, see https://aka.ms/aspire/service-defaults
 public static class Extensions
 {
+    /// <summary>The ActivitySource and Meter of the AI chat client pipeline (Infrastructure <c>ChatClientFactory.TelemetrySourceName</c>).</summary>
+    private const string AiTelemetrySourceName = "RunnersDiary.Ai";
+
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
 
@@ -57,11 +60,14 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    // M6 Training Insights: gen_ai.client.token.usage and operation duration from the chat client pipeline (ADR 0027).
+                    .AddMeter(AiTelemetrySourceName);
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
+                    .AddSource(AiTelemetrySourceName)
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
                         tracing.Filter = context =>

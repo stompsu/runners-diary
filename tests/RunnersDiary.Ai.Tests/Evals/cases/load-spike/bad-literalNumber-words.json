@@ -1,0 +1,7 @@
+{
+  "headline": "Two weeks of steady work, then a jump in the week of {week.4.start}.",
+  "wentWell": [ { "text": "You logged {totals.runCount} runs over {totals.distance}." } ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

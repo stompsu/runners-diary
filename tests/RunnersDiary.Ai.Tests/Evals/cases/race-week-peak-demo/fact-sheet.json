@@ -1,0 +1,1273 @@
+{
+  "factSheetVersion": 1,
+  "metricsVersion": 1,
+  "language": "en",
+  "facts": [
+    {
+      "key": "period.from",
+      "value": "2026-08-17",
+      "unit": "date",
+      "display": "17 Aug 2026"
+    },
+    {
+      "key": "period.to",
+      "value": "2026-11-08",
+      "unit": "date",
+      "display": "8 Nov 2026"
+    },
+    {
+      "key": "period.asOf",
+      "value": "2026-11-04",
+      "unit": "date",
+      "display": "4 Nov 2026"
+    },
+    {
+      "key": "period.isPartial",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "period.days",
+      "value": 84,
+      "unit": "days",
+      "display": "84 days"
+    },
+    {
+      "key": "period.elapsedDays",
+      "value": 80,
+      "unit": "days",
+      "display": "80 days"
+    },
+    {
+      "key": "totals.runCount",
+      "value": 39,
+      "unit": "count",
+      "display": "39"
+    },
+    {
+      "key": "totals.distance",
+      "value": 382593,
+      "unit": "meters",
+      "display": "382.6 km"
+    },
+    {
+      "key": "totals.duration",
+      "value": 134412,
+      "unit": "seconds",
+      "display": "37:20:12"
+    },
+    {
+      "key": "totals.elevationGain",
+      "value": 2594,
+      "unit": "meters",
+      "display": "2594 m"
+    },
+    {
+      "key": "totals.averagePace",
+      "value": 351.3,
+      "unit": "secondsPerKm",
+      "display": "5:51 /km"
+    },
+    {
+      "key": "totals.longestRun",
+      "value": 21800,
+      "unit": "meters",
+      "display": "21.8 km"
+    },
+    {
+      "key": "totals.load",
+      "value": 11676.6,
+      "unit": "load",
+      "display": "11676.6 AU"
+    },
+    {
+      "key": "totals.loadSessionCount",
+      "value": 41,
+      "unit": "count",
+      "display": "41"
+    },
+    {
+      "key": "totals.activeDays",
+      "value": 41,
+      "unit": "days",
+      "display": "41 days"
+    },
+    {
+      "key": "totals.restDays",
+      "value": 3,
+      "unit": "days",
+      "display": "3 days"
+    },
+    {
+      "key": "comparison.from",
+      "value": "2026-05-25",
+      "unit": "date",
+      "display": "25 May 2026"
+    },
+    {
+      "key": "comparison.to",
+      "value": "2026-08-12",
+      "unit": "date",
+      "display": "12 Aug 2026"
+    },
+    {
+      "key": "comparison.delta.runCount.absolute",
+      "value": 2,
+      "unit": "count",
+      "display": "+2"
+    },
+    {
+      "key": "comparison.delta.runCount.percent",
+      "value": 5.4,
+      "unit": "percent",
+      "display": "+5.4 %"
+    },
+    {
+      "key": "comparison.delta.distance.absolute",
+      "value": 47686,
+      "unit": "meters",
+      "display": "+47.7 km"
+    },
+    {
+      "key": "comparison.delta.distance.percent",
+      "value": 14.2,
+      "unit": "percent",
+      "display": "+14.2 %"
+    },
+    {
+      "key": "comparison.delta.duration.absolute",
+      "value": 18943,
+      "unit": "seconds",
+      "display": "+5:15:43"
+    },
+    {
+      "key": "comparison.delta.duration.percent",
+      "value": 16.4,
+      "unit": "percent",
+      "display": "+16.4 %"
+    },
+    {
+      "key": "comparison.delta.elevationGain.absolute",
+      "value": 904,
+      "unit": "meters",
+      "display": "+904 m"
+    },
+    {
+      "key": "comparison.delta.elevationGain.percent",
+      "value": 53.5,
+      "unit": "percent",
+      "display": "+53.5 %"
+    },
+    {
+      "key": "comparison.delta.load.absolute",
+      "value": 1715.5,
+      "unit": "load",
+      "display": "+1715.5 AU"
+    },
+    {
+      "key": "comparison.delta.load.percent",
+      "value": 17.2,
+      "unit": "percent",
+      "display": "+17.2 %"
+    },
+    {
+      "key": "comparison.delta.activeDays.absolute",
+      "value": 2,
+      "unit": "days",
+      "display": "+2 days"
+    },
+    {
+      "key": "comparison.delta.activeDays.percent",
+      "value": 5.1,
+      "unit": "percent",
+      "display": "+5.1 %"
+    },
+    {
+      "key": "planned.runCount",
+      "value": 3,
+      "unit": "count",
+      "display": "3"
+    },
+    {
+      "key": "planned.distance",
+      "value": 30300,
+      "unit": "meters",
+      "display": "30.3 km"
+    },
+    {
+      "key": "planned.duration",
+      "value": 10314,
+      "unit": "seconds",
+      "display": "2:51:54"
+    },
+    {
+      "key": "planned.upcomingCount",
+      "value": 3,
+      "unit": "count",
+      "display": "3"
+    },
+    {
+      "key": "planned.missedCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "load.historyStart",
+      "value": "2026-05-05",
+      "unit": "date",
+      "display": "5 May 2026"
+    },
+    {
+      "key": "acwr.asOf.date",
+      "value": "2026-11-04",
+      "unit": "date",
+      "display": "4 Nov 2026"
+    },
+    {
+      "key": "acwr.asOf.acute",
+      "value": 926.1,
+      "unit": "load",
+      "display": "926.1 AU"
+    },
+    {
+      "key": "acwr.asOf.value",
+      "value": 0.8,
+      "unit": "ratio",
+      "display": "0.80"
+    },
+    {
+      "key": "acwr.asOf.band",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "acwr.asOf.chronic",
+      "value": 1155.4,
+      "unit": "load",
+      "display": "1155.4 AU"
+    },
+    {
+      "key": "acwr.peak.date",
+      "value": "2026-10-23",
+      "unit": "date",
+      "display": "23 Oct 2026"
+    },
+    {
+      "key": "acwr.peak.value",
+      "value": 1.79,
+      "unit": "ratio",
+      "display": "1.79"
+    },
+    {
+      "key": "acwr.peak.band",
+      "value": "high",
+      "unit": "band",
+      "display": "high"
+    },
+    {
+      "key": "acwr.peak.acute",
+      "value": 1822.6,
+      "unit": "load",
+      "display": "1822.6 AU"
+    },
+    {
+      "key": "acwr.peak.chronic",
+      "value": 1019.1,
+      "unit": "load",
+      "display": "1019.1 AU"
+    },
+    {
+      "key": "acwr.peak.week",
+      "value": 10,
+      "unit": "count",
+      "display": "10"
+    },
+    {
+      "key": "acwr.peak.isRaceWeek",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "acwr.peak.raceType",
+      "value": "trailRace",
+      "unit": "runType",
+      "display": "trail race"
+    },
+    {
+      "key": "acwr.days.low",
+      "value": 13,
+      "unit": "days",
+      "display": "13 days"
+    },
+    {
+      "key": "acwr.days.optimal",
+      "value": 48,
+      "unit": "days",
+      "display": "48 days"
+    },
+    {
+      "key": "acwr.days.high",
+      "value": 19,
+      "unit": "days",
+      "display": "19 days"
+    },
+    {
+      "key": "acwr.days.unavailable",
+      "value": 0,
+      "unit": "days",
+      "display": "0 days"
+    },
+    {
+      "key": "weeks.count",
+      "value": 12,
+      "unit": "count",
+      "display": "12"
+    },
+    {
+      "key": "week.1.start",
+      "value": "2026-08-17",
+      "unit": "date",
+      "display": "17 Aug 2026"
+    },
+    {
+      "key": "week.1.distance",
+      "value": 51900,
+      "unit": "meters",
+      "display": "51.9 km"
+    },
+    {
+      "key": "week.1.duration",
+      "value": 18129,
+      "unit": "seconds",
+      "display": "5:02:09"
+    },
+    {
+      "key": "week.1.load",
+      "value": 1440.7,
+      "unit": "load",
+      "display": "1440.7 AU"
+    },
+    {
+      "key": "week.1.acwrAtEnd",
+      "value": 1.48,
+      "unit": "ratio",
+      "display": "1.48"
+    },
+    {
+      "key": "week.1.acwrBand",
+      "value": "high",
+      "unit": "band",
+      "display": "high"
+    },
+    {
+      "key": "week.1.monotony",
+      "value": 0.78,
+      "unit": "ratio",
+      "display": "0.78"
+    },
+    {
+      "key": "week.2.start",
+      "value": "2026-08-24",
+      "unit": "date",
+      "display": "24 Aug 2026"
+    },
+    {
+      "key": "week.2.distance",
+      "value": 30000,
+      "unit": "meters",
+      "display": "30.0 km"
+    },
+    {
+      "key": "week.2.duration",
+      "value": 10407,
+      "unit": "seconds",
+      "display": "2:53:27"
+    },
+    {
+      "key": "week.2.load",
+      "value": 777.3,
+      "unit": "load",
+      "display": "777.3 AU"
+    },
+    {
+      "key": "week.2.acwrAtEnd",
+      "value": 0.7,
+      "unit": "ratio",
+      "display": "0.70"
+    },
+    {
+      "key": "week.2.acwrBand",
+      "value": "low",
+      "unit": "band",
+      "display": "low"
+    },
+    {
+      "key": "week.2.monotony",
+      "value": 0.8,
+      "unit": "ratio",
+      "display": "0.80"
+    },
+    {
+      "key": "week.3.start",
+      "value": "2026-08-31",
+      "unit": "date",
+      "display": "31 Aug 2026"
+    },
+    {
+      "key": "week.3.distance",
+      "value": 44000,
+      "unit": "meters",
+      "display": "44.0 km"
+    },
+    {
+      "key": "week.3.duration",
+      "value": 15462,
+      "unit": "seconds",
+      "display": "4:17:42"
+    },
+    {
+      "key": "week.3.load",
+      "value": 1206.6,
+      "unit": "load",
+      "display": "1206.6 AU"
+    },
+    {
+      "key": "week.3.acwrAtEnd",
+      "value": 1.15,
+      "unit": "ratio",
+      "display": "1.15"
+    },
+    {
+      "key": "week.3.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.3.monotony",
+      "value": 0.91,
+      "unit": "ratio",
+      "display": "0.91"
+    },
+    {
+      "key": "week.4.start",
+      "value": "2026-09-07",
+      "unit": "date",
+      "display": "7 Sep 2026"
+    },
+    {
+      "key": "week.4.distance",
+      "value": 26000,
+      "unit": "meters",
+      "display": "26.0 km"
+    },
+    {
+      "key": "week.4.duration",
+      "value": 8826,
+      "unit": "seconds",
+      "display": "2:27:06"
+    },
+    {
+      "key": "week.4.load",
+      "value": 632.2,
+      "unit": "load",
+      "display": "632.2 AU"
+    },
+    {
+      "key": "week.4.acwrAtEnd",
+      "value": 0.55,
+      "unit": "ratio",
+      "display": "0.55"
+    },
+    {
+      "key": "week.4.acwrBand",
+      "value": "low",
+      "unit": "band",
+      "display": "low"
+    },
+    {
+      "key": "week.4.monotony",
+      "value": 0.94,
+      "unit": "ratio",
+      "display": "0.94"
+    },
+    {
+      "key": "week.5.start",
+      "value": "2026-09-14",
+      "unit": "date",
+      "display": "14 Sep 2026"
+    },
+    {
+      "key": "week.5.distance",
+      "value": 32098,
+      "unit": "meters",
+      "display": "32.1 km"
+    },
+    {
+      "key": "week.5.duration",
+      "value": 10645,
+      "unit": "seconds",
+      "display": "2:57:25"
+    },
+    {
+      "key": "week.5.load",
+      "value": 1214.3,
+      "unit": "load",
+      "display": "1214.3 AU"
+    },
+    {
+      "key": "week.5.acwrAtEnd",
+      "value": 1.2,
+      "unit": "ratio",
+      "display": "1.20"
+    },
+    {
+      "key": "week.5.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.5.monotony",
+      "value": 0.5,
+      "unit": "ratio",
+      "display": "0.50"
+    },
+    {
+      "key": "week.5.raceType",
+      "value": "roadRace",
+      "unit": "runType",
+      "display": "road race"
+    },
+    {
+      "key": "week.6.start",
+      "value": "2026-09-21",
+      "unit": "date",
+      "display": "21 Sep 2026"
+    },
+    {
+      "key": "week.6.distance",
+      "value": 24000,
+      "unit": "meters",
+      "display": "24.0 km"
+    },
+    {
+      "key": "week.6.duration",
+      "value": 8128,
+      "unit": "seconds",
+      "display": "2:15:28"
+    },
+    {
+      "key": "week.6.load",
+      "value": 694.1,
+      "unit": "load",
+      "display": "694.1 AU"
+    },
+    {
+      "key": "week.6.acwrAtEnd",
+      "value": 0.72,
+      "unit": "ratio",
+      "display": "0.72"
+    },
+    {
+      "key": "week.6.acwrBand",
+      "value": "low",
+      "unit": "band",
+      "display": "low"
+    },
+    {
+      "key": "week.6.monotony",
+      "value": 0.71,
+      "unit": "ratio",
+      "display": "0.71"
+    },
+    {
+      "key": "week.7.start",
+      "value": "2026-09-28",
+      "unit": "date",
+      "display": "28 Sep 2026"
+    },
+    {
+      "key": "week.7.distance",
+      "value": 34000,
+      "unit": "meters",
+      "display": "34.0 km"
+    },
+    {
+      "key": "week.7.duration",
+      "value": 11672,
+      "unit": "seconds",
+      "display": "3:14:32"
+    },
+    {
+      "key": "week.7.load",
+      "value": 1045.3,
+      "unit": "load",
+      "display": "1045.3 AU"
+    },
+    {
+      "key": "week.7.acwrAtEnd",
+      "value": 1.12,
+      "unit": "ratio",
+      "display": "1.12"
+    },
+    {
+      "key": "week.7.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.7.monotony",
+      "value": 0.94,
+      "unit": "ratio",
+      "display": "0.94"
+    },
+    {
+      "key": "week.8.start",
+      "value": "2026-10-05",
+      "unit": "date",
+      "display": "5 Oct 2026"
+    },
+    {
+      "key": "week.8.distance",
+      "value": 37100,
+      "unit": "meters",
+      "display": "37.1 km"
+    },
+    {
+      "key": "week.8.duration",
+      "value": 12611,
+      "unit": "seconds",
+      "display": "3:30:11"
+    },
+    {
+      "key": "week.8.load",
+      "value": 1024.4,
+      "unit": "load",
+      "display": "1024.4 AU"
+    },
+    {
+      "key": "week.8.acwrAtEnd",
+      "value": 1.14,
+      "unit": "ratio",
+      "display": "1.14"
+    },
+    {
+      "key": "week.8.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.8.monotony",
+      "value": 0.69,
+      "unit": "ratio",
+      "display": "0.69"
+    },
+    {
+      "key": "week.9.start",
+      "value": "2026-10-12",
+      "unit": "date",
+      "display": "12 Oct 2026"
+    },
+    {
+      "key": "week.9.distance",
+      "value": 26995,
+      "unit": "meters",
+      "display": "27.0 km"
+    },
+    {
+      "key": "week.9.duration",
+      "value": 12296,
+      "unit": "seconds",
+      "display": "3:24:56"
+    },
+    {
+      "key": "week.9.load",
+      "value": 1585.5,
+      "unit": "load",
+      "display": "1585.5 AU"
+    },
+    {
+      "key": "week.9.acwrAtEnd",
+      "value": 1.59,
+      "unit": "ratio",
+      "display": "1.59"
+    },
+    {
+      "key": "week.9.acwrBand",
+      "value": "high",
+      "unit": "band",
+      "display": "high"
+    },
+    {
+      "key": "week.9.monotony",
+      "value": 0.51,
+      "unit": "ratio",
+      "display": "0.51"
+    },
+    {
+      "key": "week.9.raceType",
+      "value": "trailRace",
+      "unit": "runType",
+      "display": "trail race"
+    },
+    {
+      "key": "week.10.start",
+      "value": "2026-10-19",
+      "unit": "date",
+      "display": "19 Oct 2026"
+    },
+    {
+      "key": "week.10.distance",
+      "value": 32900,
+      "unit": "meters",
+      "display": "32.9 km"
+    },
+    {
+      "key": "week.10.duration",
+      "value": 11326,
+      "unit": "seconds",
+      "display": "3:08:46"
+    },
+    {
+      "key": "week.10.load",
+      "value": 958.3,
+      "unit": "load",
+      "display": "958.3 AU"
+    },
+    {
+      "key": "week.10.acwrAtEnd",
+      "value": 0.88,
+      "unit": "ratio",
+      "display": "0.88"
+    },
+    {
+      "key": "week.10.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.10.monotony",
+      "value": 0.87,
+      "unit": "ratio",
+      "display": "0.87"
+    },
+    {
+      "key": "week.11.start",
+      "value": "2026-10-26",
+      "unit": "date",
+      "display": "26 Oct 2026"
+    },
+    {
+      "key": "week.11.distance",
+      "value": 36000,
+      "unit": "meters",
+      "display": "36.0 km"
+    },
+    {
+      "key": "week.11.duration",
+      "value": 12311,
+      "unit": "seconds",
+      "display": "3:25:11"
+    },
+    {
+      "key": "week.11.load",
+      "value": 1011.5,
+      "unit": "load",
+      "display": "1011.5 AU"
+    },
+    {
+      "key": "week.11.acwrAtEnd",
+      "value": 0.88,
+      "unit": "ratio",
+      "display": "0.88"
+    },
+    {
+      "key": "week.11.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.11.monotony",
+      "value": 0.77,
+      "unit": "ratio",
+      "display": "0.77"
+    },
+    {
+      "key": "week.12.start",
+      "value": "2026-11-02",
+      "unit": "date",
+      "display": "2 Nov 2026"
+    },
+    {
+      "key": "week.12.distance",
+      "value": 7600,
+      "unit": "meters",
+      "display": "7.6 km"
+    },
+    {
+      "key": "week.12.duration",
+      "value": 2599,
+      "unit": "seconds",
+      "display": "0:43:19"
+    },
+    {
+      "key": "week.12.load",
+      "value": 86.6,
+      "unit": "load",
+      "display": "86.6 AU"
+    },
+    {
+      "key": "week.12.acwrAtEnd",
+      "value": 0.8,
+      "unit": "ratio",
+      "display": "0.80"
+    },
+    {
+      "key": "week.12.acwrBand",
+      "value": "optimal",
+      "unit": "band",
+      "display": "optimal"
+    },
+    {
+      "key": "week.12.complete",
+      "value": false,
+      "unit": "flag",
+      "display": "no"
+    },
+    {
+      "key": "week.12.planned.runCount",
+      "value": 3,
+      "unit": "count",
+      "display": "3"
+    },
+    {
+      "key": "week.12.planned.distance",
+      "value": 30300,
+      "unit": "meters",
+      "display": "30.3 km"
+    },
+    {
+      "key": "types.count",
+      "value": 13,
+      "unit": "count",
+      "display": "13"
+    },
+    {
+      "key": "type.1.code",
+      "value": "long",
+      "unit": "runType",
+      "display": "long"
+    },
+    {
+      "key": "type.1.runCount",
+      "value": 9,
+      "unit": "count",
+      "display": "9"
+    },
+    {
+      "key": "type.1.duration",
+      "value": 48061,
+      "unit": "seconds",
+      "display": "13:21:01"
+    },
+    {
+      "key": "type.1.load",
+      "value": 4124.8,
+      "unit": "load",
+      "display": "4124.8 AU"
+    },
+    {
+      "key": "type.2.code",
+      "value": "easy",
+      "unit": "runType",
+      "display": "easy"
+    },
+    {
+      "key": "type.2.runCount",
+      "value": 15,
+      "unit": "count",
+      "display": "15"
+    },
+    {
+      "key": "type.2.duration",
+      "value": 38691,
+      "unit": "seconds",
+      "display": "10:44:51"
+    },
+    {
+      "key": "type.2.load",
+      "value": 1705.7,
+      "unit": "load",
+      "display": "1705.7 AU"
+    },
+    {
+      "key": "type.3.code",
+      "value": "trailRace",
+      "unit": "runType",
+      "display": "trail race"
+    },
+    {
+      "key": "type.3.runCount",
+      "value": 1,
+      "unit": "count",
+      "display": "1"
+    },
+    {
+      "key": "type.3.duration",
+      "value": 8640,
+      "unit": "seconds",
+      "display": "2:24:00"
+    },
+    {
+      "key": "type.3.load",
+      "value": 1296,
+      "unit": "load",
+      "display": "1296.0 AU"
+    },
+    {
+      "key": "type.4.code",
+      "value": "roadRace",
+      "unit": "runType",
+      "display": "road race"
+    },
+    {
+      "key": "type.4.runCount",
+      "value": 1,
+      "unit": "count",
+      "display": "1"
+    },
+    {
+      "key": "type.4.duration",
+      "value": 6820,
+      "unit": "seconds",
+      "display": "1:53:40"
+    },
+    {
+      "key": "type.4.load",
+      "value": 1023,
+      "unit": "load",
+      "display": "1023.0 AU"
+    },
+    {
+      "key": "type.5.code",
+      "value": "intervals",
+      "unit": "runType",
+      "display": "intervals"
+    },
+    {
+      "key": "type.5.runCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "type.5.duration",
+      "value": 6458,
+      "unit": "seconds",
+      "display": "1:47:38"
+    },
+    {
+      "key": "type.5.load",
+      "value": 803.9,
+      "unit": "load",
+      "display": "803.9 AU"
+    },
+    {
+      "key": "type.6.code",
+      "value": "fartlek",
+      "unit": "runType",
+      "display": "fartlek"
+    },
+    {
+      "key": "type.6.runCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "type.6.duration",
+      "value": 5782,
+      "unit": "seconds",
+      "display": "1:36:22"
+    },
+    {
+      "key": "type.6.load",
+      "value": 622.1,
+      "unit": "load",
+      "display": "622.1 AU"
+    },
+    {
+      "key": "type.7.code",
+      "value": "tempo",
+      "unit": "runType",
+      "display": "tempo"
+    },
+    {
+      "key": "type.7.runCount",
+      "value": 3,
+      "unit": "count",
+      "display": "3"
+    },
+    {
+      "key": "type.7.duration",
+      "value": 5518,
+      "unit": "seconds",
+      "display": "1:31:58"
+    },
+    {
+      "key": "type.7.load",
+      "value": 643.8,
+      "unit": "load",
+      "display": "643.8 AU"
+    },
+    {
+      "key": "type.8.code",
+      "value": "crossTraining",
+      "unit": "runType",
+      "display": "cross training"
+    },
+    {
+      "key": "type.8.runCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "type.8.duration",
+      "value": 4200,
+      "unit": "seconds",
+      "display": "1:10:00"
+    },
+    {
+      "key": "type.8.load",
+      "value": 240,
+      "unit": "load",
+      "display": "240.0 AU"
+    },
+    {
+      "key": "pace.pointCount",
+      "value": 12,
+      "unit": "count",
+      "display": "12"
+    },
+    {
+      "key": "pace.excludedRunCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "pace.first.week",
+      "value": "2026-08-17",
+      "unit": "date",
+      "display": "17 Aug 2026"
+    },
+    {
+      "key": "pace.first.pace",
+      "value": 346.2,
+      "unit": "secondsPerKm",
+      "display": "5:46 /km"
+    },
+    {
+      "key": "pace.last.week",
+      "value": "2026-11-02",
+      "unit": "date",
+      "display": "2 Nov 2026"
+    },
+    {
+      "key": "pace.last.pace",
+      "value": 342,
+      "unit": "secondsPerKm",
+      "display": "5:42 /km"
+    },
+    {
+      "key": "pace.slope",
+      "value": -0.48,
+      "unit": "secondsPerKmPerWeek",
+      "display": "-0.48 s/km per week"
+    },
+    {
+      "key": "races.count",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "races.completedCount",
+      "value": 2,
+      "unit": "count",
+      "display": "2"
+    },
+    {
+      "key": "races.plannedCount",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "race.1.date",
+      "value": "2026-09-20",
+      "unit": "date",
+      "display": "20 Sep 2026"
+    },
+    {
+      "key": "race.1.status",
+      "value": "completed",
+      "unit": "raceStatus",
+      "display": "completed"
+    },
+    {
+      "key": "race.1.type",
+      "value": "roadRace",
+      "unit": "runType",
+      "display": "road race"
+    },
+    {
+      "key": "race.1.category",
+      "value": "halfMarathon",
+      "unit": "raceCategory",
+      "display": "half marathon"
+    },
+    {
+      "key": "race.1.resultTime",
+      "value": 6820,
+      "unit": "seconds",
+      "display": "1:53:40"
+    },
+    {
+      "key": "race.1.targetTime",
+      "value": 6900,
+      "unit": "seconds",
+      "display": "1:55:00"
+    },
+    {
+      "key": "race.1.pace",
+      "value": 323.3,
+      "unit": "secondsPerKm",
+      "display": "5:23 /km"
+    },
+    {
+      "key": "race.1.isPersonalBest",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
+    },
+    {
+      "key": "race.1.stars",
+      "value": 5,
+      "unit": "stars",
+      "display": "5 of 5"
+    },
+    {
+      "key": "race.2.date",
+      "value": "2026-10-18",
+      "unit": "date",
+      "display": "18 Oct 2026"
+    },
+    {
+      "key": "race.2.status",
+      "value": "completed",
+      "unit": "raceStatus",
+      "display": "completed"
+    },
+    {
+      "key": "race.2.type",
+      "value": "trailRace",
+      "unit": "runType",
+      "display": "trail race"
+    },
+    {
+      "key": "race.2.category",
+      "value": "other",
+      "unit": "raceCategory",
+      "display": "other distance"
+    },
+    {
+      "key": "race.2.resultTime",
+      "value": 8640,
+      "unit": "seconds",
+      "display": "2:24:00"
+    },
+    {
+      "key": "race.2.pace",
+      "value": 540.2,
+      "unit": "secondsPerKm",
+      "display": "9:00 /km"
+    },
+    {
+      "key": "race.2.isPersonalBest",
+      "value": false,
+      "unit": "flag",
+      "display": "no"
+    },
+    {
+      "key": "race.2.stars",
+      "value": 4,
+      "unit": "stars",
+      "display": "4 of 5"
+    },
+    {
+      "key": "dq.completedSessions",
+      "value": 41,
+      "unit": "count",
+      "display": "41"
+    },
+    {
+      "key": "dq.sessionsWithEstimatedRpe",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "dq.estimatedLoadShare",
+      "value": 0,
+      "unit": "share",
+      "display": "0 %"
+    },
+    {
+      "key": "dq.sessionsWithoutDuration",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "dq.runningSessionsWithoutDistance",
+      "value": 0,
+      "unit": "count",
+      "display": "0"
+    },
+    {
+      "key": "thresholds.acwrLow",
+      "value": 0.8,
+      "unit": "ratio",
+      "display": "0.80"
+    },
+    {
+      "key": "thresholds.acwrHigh",
+      "value": 1.3,
+      "unit": "ratio",
+      "display": "1.30"
+    },
+    {
+      "key": "thresholds.monotonyHigh",
+      "value": 2,
+      "unit": "ratio",
+      "display": "2.00"
+    },
+    {
+      "key": "thresholds.acwrMinHistoryDays",
+      "value": 35,
+      "unit": "days",
+      "display": "35 days"
+    }
+  ]
+}

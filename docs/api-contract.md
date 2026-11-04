@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2–M4 implemented (merged); M5 adds `GET /api/insights/report` (implemented, awaiting CI + approval)**.
+Living document, owned by the `architect` agent. Status: **M2–M5 implemented (merged); M6 adds `GET`/`POST /api/insights/summary` and `client-config.ai` (implemented, awaiting CI + approval)**.
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -27,7 +27,11 @@ Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.A
 | 503 | Guest capacity reached / seeding busy / seeding failed; `Retry-After` | `urn:runnersdiary:problem:guest-capacity` |
 | 503 | GPX processing slots full; `Retry-After: 10` (M4) | `urn:runnersdiary:problem:processing-busy` |
 | 503 | Blob storage failed on track upload/delete or run delete; nothing changed; `Retry-After: 5` (M4) | `urn:runnersdiary:problem:storage-unavailable` |
-| 503 | Optional feature not configured or its provider failed (geocoding, M4) | `urn:runnersdiary:problem:feature-unavailable` |
+| 503 | Optional feature not configured or its provider failed (geocoding, M4; AI summary generation not configured, switched off or not authenticated, M6) | `urn:runnersdiary:problem:feature-unavailable` |
+| 409 | An AI summary generation of this account is already running (M6) | `urn:runnersdiary:problem:summary-in-progress` |
+| 429 | AI summary quota reached (M6); extensions `scope`, `limit`, `resetsAt` | `urn:runnersdiary:problem:ai-quota` |
+| 502 | AI summary could not be generated (M6); extension `reason` | `urn:runnersdiary:problem:summary-failed` |
+| 503 | AI generation slots full or the model provider is throttling (M6); `Retry-After` | `urn:runnersdiary:problem:ai-busy` |
 | 500 | Unhandled; no details outside Development | default |
 
 **400 `errors` keys.** DataAnnotations and domain-rule errors: camelCase JSON path of the member (`race.resultTimeSeconds`, `rating.stars`). Malformed, incomplete or unknown-member JSON: the JSON path where reading failed (`body` when there is none) with a fixed generic message. Route/query binding failures: the parameter name (`from`, `id`) with a fixed message. Framework/serializer exception texts are never echoed.
@@ -331,6 +335,97 @@ RaceResultDto = { runId: string; date: string; status: "Planned" | "Completed"; 
 
 **Enum casing is mixed on purpose — do not "fix" it in M6.** Values that exist only in the insights contract are lowerCamel via dedicated DTO enums with `JsonStringEnumMemberName`: `band` (`BandDto`), `unavailableReason` (`AcwrUnavailableReasonDto`), `comparison.kind` (`ComparisonKindDto`). Values that reuse existing domain enums keep the API-wide **PascalCase**: race `status` (`RunStatus`), `distanceCategory` (`RaceDistanceCategory`) and `typeDistribution[].category` (`RunTypeCategory`), identical to `RunDto` and `RunTypeDto`. Changing either side would be a breaking contract change for the SPA and the M6 tool payloads.
 
+## Added in M6 (AI summary)
+
+[Plan](plans/M6-ai-summary.md) (deviations [§12](plans/M6-ai-summary.md#12-implementation-notes--deviations-2026-11-04)), ADRs [0026](adr/0026-training-insights-agent-and-grounding.md) (agent, fact sheet, validation), [0027](adr/0027-ai-model-provider-foundry-and-local-dev.md) (provider, cost) and [0028](adr/0028-summary-cache-quotas-and-demo-summaries.md) (cache, quotas, demo summaries).
+
+| Method & path | operationId | Policy | Success | Errors |
+|---|---|---|---|---|
+| `GET /api/insights/summary?from&to&compare&lang` | `getInsightsSummary` | Auth (users and guests), general rate limiter. **Never calls the model.** | 200 `InsightsSummaryResponse`, `Cache-Control: private, no-store` | 400 (keys `from`, `to`, `compare`, `lang`), 401, 429 `rate-limited` |
+| `POST /api/insights/summary` body `GenerateSummaryRequest` | `generateInsightsSummary` | Auth, rate policy **`ai-summary`** (replaces the general one) | 200 `InsightsSummaryResponse`, `Cache-Control: private, no-store` | 400, 401, 409 `summary-in-progress`, 413, 429 (`ai-quota`, `rate-limited`), 502 `summary-failed`, 503 (`feature-unavailable`, `ai-busy`) |
+| `GET /api/client-config` (changed) | `getClientConfig` | Anon (unchanged) | 200 + `ai` | — |
+
+**Parameters and body**
+- **GET query:** `from`, `to`, `compare` exactly as `getInsightsReport` (dates 1950–2100, `to ≥ from`, span ≤ 366 days; `compare` case-sensitive, default `previous`), plus `lang`: only `en` (the default), matched **case-sensitively** (`EN` → 400 `errors.lang`).
+- **POST body:** `GenerateSummaryRequest = { from: string; to: string; compare?: "none" | "previous" | "previousYear"; lang?: "en"; regenerate?: boolean }`.
+  - `from` and `to` are nullable in the schema and validated by hand: missing → `errors.from` / `errors.to` "Required.".
+  - The other rules are as for GET. Unknown members → 400 (ADR 0012). `regenerate` defaults to `false`; a non-boolean value (e.g. `"yes"`) → 400.
+- No route parameter names a resource: both endpoints read the caller's own data only (`Owner` filter), so there is no 404.
+
+### Shapes
+
+```ts
+InsightsSummaryResponse = {
+  period: { from: string; to: string; compare: string; lang: string };
+  state: "none" | "fresh" | "stale";      // demo and template summaries are always "fresh"
+  summary: InsightsSummaryDto | null;      // null only with state "none"
+  generation: {
+    availability: "available" | "notConfigured" | "quotaExhausted" | "notNeeded";   // notNeeded = template period
+    used: number | null; limit: number | null;     // account quota; null when notConfigured or notNeeded
+    resetsAt: string | null;                       // UTC; users when exhausted; always null for guests
+    scope: "rolling24h" | "account" | null         // users: rolling24h; guests: account (session lifetime)
+  }
+}
+InsightsSummaryDto = {
+  source: "model" | "demo" | "template";
+  createdAt: string | null;                        // UTC, whole seconds; model summaries only
+  metricsVersion: number; factSheetVersion: number;
+  promptVersion: number | null; model: string | null;   // model summaries only (model = provider-reported id, ≤ 100 chars)
+  headline: SummaryText; wentWell: SummaryText[]; watchOuts: SummaryText[];
+  suggestion: SummaryText | null; dataNotes: SummaryText[];
+  values: { [key: string]: SummaryValue }          // every key cited by any text
+}
+SummaryText  = { text: string /* prose with {key} placeholders */; keys: string[] /* in order of appearance */ }
+SummaryValue = { number: number | null; text: string | null; unit: SummaryUnit }   // exactly one of number/text is set
+ClientConfigResponse.ai = { summaryGeneration: boolean }   // provider configured and kill switch on; read per request (no quota info: anonymous)
+```
+
+**Text rendering.** `text` is plain prose with `{key}` placeholders for every number, date and category. The client replaces each with `values[key]`, formatted by its `unit`, and renders plain text only (never HTML). The server has validated that every key exists (ADR 0026 §3). A stale summary carries the values it was written with.
+
+**Units and encodings** (enforced by `ValueEncodingContractTests`):
+
+| `unit` | Field | Encoding |
+|---|---|---|
+| `meters`, `seconds`, `load` (AU), `ratio`, `percent` (e.g. `6.4` = +6.4 %), `share` (0..1), `secondsPerKm`, `secondsPerKmPerWeek`, `count`, `days`, `stars` (1–5) | `number` | SI / report rounding (ADR 0024 §9) |
+| `date` | `text` | `yyyy-MM-dd` |
+| `flag` | `text` | `"true"` / `"false"` |
+| `band` | `text` | `low` \| `optimal` \| `high` |
+| `runType` | `text` | run-type code, camelCase (`trailRace`) — i18n `runTypes.<code>` |
+| `raceCategory` | `text` | `fiveK` \| `tenK` \| `halfMarathon` \| `marathon` \| `other` (camelCase, **not** the PascalCase `RaceDistanceCategory` of the report) |
+| `raceStatus` | `text` | `completed` \| `planned` (camelCase) |
+
+Signed deltas (`comparison.delta.*.absolute`) are signed numbers; the client formats the sign.
+
+### POST outcomes (in order of the checks)
+
+Order: validate → provider/kill switch → report + fact sheet → template period → fresh row (when `!regenerate`) → in-flight guard → quotas → slot → generate (≤ 2 attempts) → ledger row → validate → upsert.
+
+| Status | `type` | When | Extras |
+|---|---|---|---|
+| 200 | — | Template period (no model, no quota); a fresh stored row with `regenerate: false` (no model, no quota); a new generation (`source: model`, `state: fresh`) | — |
+| 400 | default | Validation | `errors` keys `from`, `to`, `compare`, `lang`, or a JSON path |
+| 409 | `summary-in-progress` | A generation of this account is already running (per replica) | — |
+| 429 | `ai-quota` | Account or global quota reached (ADR 0028 amendment) | `scope: "account" \| "global"`, `limit`, `resetsAt` (UTC, user account quota only; otherwise `null`); **`Retry-After` only for a user's account quota** |
+| 429 | `rate-limited` | Burst limiter `ai-summary` | `Retry-After` |
+| 502 | `summary-failed` | Invalid output twice, a timeout or a provider error. Nothing is stored; the attempts count. | `reason: "invalidOutput" \| "timeout" \| "provider"` |
+| 503 | `feature-unavailable` | `Ai:Provider = None`, kill switch `Ai:Enabled = false`, or the credential cannot get a token (no HTTP call, no quota) | — |
+| 503 | `ai-busy` | No free generation slot on this replica (`Retry-After: 10`), or the provider throttled (429): `Retry-After` from the provider's hint, ≤ 5 min, default 10 s. **No quota used.** | `Retry-After` |
+
+A client abort cancels the model call; a ledger row (`Cancelled`) is still written when an attempt was sent.
+
+### Limits (M6)
+
+| Limit | Default | Config key | Response |
+|---|---|---|---|
+| Summary POSTs per caller, sliding window (policy `ai-summary`) | users 6 / 10 min, guests 3 / 10 min (Development: 60 / 30) | `RateLimiting:AiSummary:UserPermitLimit`, `GuestPermitLimit`, `Window` | 429 `rate-limited` + `Retry-After` |
+| User generations, rolling 24 h | 10 | `Ai:Quotas:UserPer24h` | 429 `ai-quota` (`scope: account`) |
+| Guest generations per account | 3 | `Ai:Quotas:GuestPerAccount` | 429 `ai-quota` (`scope: account`, `resetsAt: null`) |
+| Model attempts, all callers, rolling 24 h | 200 | `Ai:Quotas:GlobalPer24h` | 429 `ai-quota` (`scope: global`) |
+| Model attempts, guests, rolling 24 h | 60 | `Ai:Quotas:GuestGlobalPer24h` | 429 `ai-quota` (`scope: global`) |
+| Concurrent generations per replica | 2 | `Ai:MaxConcurrentGenerations` | 503 `ai-busy` |
+| Attempts per generation; timeout per attempt | 2; 30 s | `Ai:MaxAttempts`, `Ai:AttemptTimeout` | 502 `summary-failed` |
+| Stored summaries per account | users 1 000, guests 20 (oldest dropped) | code constants | — |
+
 ## Planned for later milestones
 
-Azure Maps SAS token endpoint and Azure geocoder (M7, ADR 0022). AI summaries (M6).
+Azure Maps SAS token endpoint and Azure geocoder (M7, ADR 0022). A real Foundry deployment for AI summaries (M7, ADR 0027).

@@ -1,0 +1,11 @@
+{
+  "headline": "A steady month with {totals.runCount} runs and {totals.distance}.",
+  "wentWell": [
+    { "text": "Your load ratio stayed in the {acwr.asOf.band} band at {acwr.asOf.value}." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Record an effort rating after each run to make the load figures more accurate." },
+  "dataNotes": [
+    { "text": "{dq.estimatedLoadShare} of the load uses estimated effort for {dq.sessionsWithEstimatedRpe} sessions without a rating." }
+  ]
+}

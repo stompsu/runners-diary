@@ -181,6 +181,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The stored, example or automatic narrative of a period, if any, and whether a new one can be generated. Never calls the model.
+         * @description Same from/to/compare rules as the report, plus lang (en). State is none, fresh or stale (a run, the prompt or the model changed since it was written). generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.
+         */
+        get: operations["getInsightsSummary"];
+        put?: never;
+        /**
+         * Generates (or returns the fresh stored) AI summary of a period from its computed metrics.
+         * @description Template periods (no sessions, planned only, very few sessions) get an automatic note without a model call or quota. A fresh stored summary is returned as is unless regenerate is true. Otherwise the account and global quotas are checked and the model is called (at most two attempts); failed attempts count. 409 summary-in-progress: a generation of this account is already running. 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model configured, switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After): every generation slot is taken or the model provider is throttling; it costs no quota. 502 summary-failed carries reason (invalidOutput, timeout, provider).
+         */
+        post: operations["generateInsightsSummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{runId}/tracks": {
         parameters: {
             query?: never;
@@ -268,6 +292,9 @@ export interface components {
         };
         /** @enum {unknown} */
         AcwrUnavailableReasonDto: "insufficientHistory" | "noChronicLoad" | null;
+        AiClientConfig: {
+            summaryGeneration: boolean;
+        };
         ApiHealthResponse: {
             status: components["schemas"]["ApiHealthStatus"];
             version: string;
@@ -314,6 +341,7 @@ export interface components {
             entra: null | components["schemas"]["EntraClientConfig"];
             maps: components["schemas"]["MapsClientConfig"];
             gpx: components["schemas"]["GpxClientConfig"];
+            ai: components["schemas"]["AiClientConfig"];
         };
         /** @enum {unknown} */
         ComparisonKindDto: "previous" | "previousYear";
@@ -361,6 +389,17 @@ export interface components {
             authority: string;
             apiScope: string;
         };
+        GenerateSummaryRequest: {
+            /** Format: date */
+            from?: null | string;
+            /** Format: date */
+            to?: null | string;
+            compare?: null | string;
+            lang?: null | string;
+            regenerate?: boolean;
+        };
+        /** @enum {unknown} */
+        GenerationAvailabilityDto: "available" | "notConfigured" | "quotaExhausted" | "notNeeded";
         GpxClientConfig: {
             /** Format: int64 */
             maxFileBytesUser: number;
@@ -453,6 +492,32 @@ export interface components {
             paceTrend: components["schemas"]["PaceTrendDto"];
             races: components["schemas"]["RaceResultDto"][];
             dataQuality: components["schemas"]["DataQualityDto"];
+        };
+        InsightsSummaryDto: {
+            source: components["schemas"]["SummarySourceDto"];
+            /** Format: date-time */
+            createdAt: null | string;
+            /** Format: int32 */
+            metricsVersion: number;
+            /** Format: int32 */
+            factSheetVersion: number;
+            /** Format: int32 */
+            promptVersion: null | number;
+            model: null | string;
+            headline: components["schemas"]["SummaryTextDto"];
+            wentWell: components["schemas"]["SummaryTextDto"][];
+            watchOuts: components["schemas"]["SummaryTextDto"][];
+            suggestion: null | components["schemas"]["SummaryTextDto"];
+            dataNotes: components["schemas"]["SummaryTextDto"][];
+            values: {
+                [key: string]: components["schemas"]["SummaryValueDto"];
+            };
+        };
+        InsightsSummaryResponse: {
+            period: components["schemas"]["SummaryPeriodDto"];
+            state: components["schemas"]["SummaryStateDto"];
+            summary: null | components["schemas"]["InsightsSummaryDto"];
+            generation: components["schemas"]["SummaryGenerationDto"];
         };
         InsightsThresholdsDto: {
             /** Format: double */
@@ -588,6 +653,8 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        /** @enum {unknown} */
+        QuotaScopeDto: "rolling24h" | "account" | null;
         /** @enum {unknown} */
         RaceDistanceCategory: "FiveK" | "TenK" | "HalfMarathon" | "Marathon" | "Other";
         RaceDto: {
@@ -745,6 +812,40 @@ export interface components {
             race?: null | components["schemas"]["RaceDto"];
             rating?: null | components["schemas"]["RatingDto"];
             version?: null | string;
+        };
+        SummaryGenerationDto: {
+            availability: components["schemas"]["GenerationAvailabilityDto"];
+            /** Format: int32 */
+            used: null | number;
+            /** Format: int32 */
+            limit: null | number;
+            /** Format: date-time */
+            resetsAt: null | string;
+            scope: null | components["schemas"]["QuotaScopeDto"];
+        };
+        SummaryPeriodDto: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            compare: string;
+            lang: string;
+        };
+        /** @enum {unknown} */
+        SummarySourceDto: "model" | "demo" | "template";
+        /** @enum {unknown} */
+        SummaryStateDto: "none" | "fresh" | "stale";
+        SummaryTextDto: {
+            text: string;
+            keys: string[];
+        };
+        /** @enum {unknown} */
+        SummaryUnitDto: "meters" | "seconds" | "load" | "ratio" | "percent" | "share" | "secondsPerKm" | "secondsPerKmPerWeek" | "count" | "days" | "date" | "band" | "runType" | "raceCategory" | "raceStatus" | "flag" | "stars";
+        SummaryValueDto: {
+            /** Format: double */
+            number: null | number;
+            text: null | string;
+            unit: components["schemas"]["SummaryUnitDto"];
         };
         /** @enum {unknown} */
         Surface: "Road" | "Trail" | "Track" | "Treadmill" | "Mixed" | null;
@@ -1651,6 +1752,154 @@ export interface operations {
             };
             /** @description Too Many Requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getInsightsSummary: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                compare?: string;
+                lang?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsSummaryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    generateInsightsSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateSummaryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsSummaryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

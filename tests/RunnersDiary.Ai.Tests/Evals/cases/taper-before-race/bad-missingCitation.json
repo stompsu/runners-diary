@@ -1,0 +1,7 @@
+{
+  "headline": "A build ending in a {race.1.category} on {race.1.date}.",
+  "wentWell": [ { "text": "Your race went really well." } ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

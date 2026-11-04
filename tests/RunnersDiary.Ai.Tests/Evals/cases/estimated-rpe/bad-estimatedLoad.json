@@ -1,0 +1,7 @@
+{
+  "headline": "A steady month with {totals.runCount} runs and {totals.distance}.",
+  "wentWell": [ { "text": "Your load ratio stayed in the {acwr.asOf.band} band at {acwr.asOf.value}." } ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

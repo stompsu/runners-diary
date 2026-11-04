@@ -12,5 +12,9 @@ public static class ProblemTypes
     public const string TrackLimit = "urn:runnersdiary:problem:track-limit";
     public const string ProcessingBusy = "urn:runnersdiary:problem:processing-busy";
     public const string FeatureUnavailable = "urn:runnersdiary:problem:feature-unavailable";
+    public const string AiQuota = "urn:runnersdiary:problem:ai-quota";
+    public const string AiBusy = "urn:runnersdiary:problem:ai-busy";
+    public const string SummaryInProgress = "urn:runnersdiary:problem:summary-in-progress";
+    public const string SummaryFailed = "urn:runnersdiary:problem:summary-failed";
     public const string StorageUnavailable = "urn:runnersdiary:problem:storage-unavailable";
 }

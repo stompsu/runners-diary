@@ -34,6 +34,8 @@ export function useInvalidateRuns() {
         queryClient.invalidateQueries({ queryKey: ['get', '/api/runs'] }),
         // Insights totals, load and races are computed from the runs (M5 AC14); the report is never cached server-side.
         queryClient.invalidateQueries({ queryKey: ['get', '/api/insights/report'] }),
+        // A stored summary is stale once the runs change (M6 AC7); the card shows it with a note.
+        queryClient.invalidateQueries({ queryKey: ['get', '/api/insights/summary'] }),
       ]
       if (runId) {
         jobs.push(
