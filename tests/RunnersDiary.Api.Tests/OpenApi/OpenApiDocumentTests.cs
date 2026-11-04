@@ -73,4 +73,29 @@ public sealed class OpenApiDocumentTests
         Assert.False(request.GetProperty("startTime").TryGetProperty("format", out _));
         Assert.DoesNotContain("string", request.GetProperty("runTypeId").GetProperty("type").ToString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Document_ContainsTheM4TrackAndGeocodingOperations_WithTheMultipartUpload()
+    {
+        using var doc = LoadDocument();
+        var paths = doc.RootElement.GetProperty("paths");
+        var operations = paths.EnumerateObject()
+            .SelectMany(p => p.Value.EnumerateObject().Select(m => (Path: p.Name, Operation: m.Value)))
+            .ToDictionary(x => x.Operation.GetProperty("operationId").GetString()!, x => x);
+
+        string[] ids = ["uploadTrack", "getTrack", "getTrackGeoJson", "downloadTrackGpx", "deleteTrack", "searchPlaces"];
+        foreach (var id in ids)
+        {
+            Assert.True(operations.ContainsKey(id), id);
+            Assert.True(operations[id].Operation.TryGetProperty("security", out _), id + " has no security requirement");
+        }
+
+        var upload = operations["uploadTrack"].Operation;
+        Assert.Equal("/api/runs/{runId}/tracks", operations["uploadTrack"].Path);
+        var schemaRef = upload.GetProperty("requestBody").GetProperty("content").GetProperty("multipart/form-data").GetProperty("schema").GetProperty("$ref").GetString();
+        Assert.EndsWith("/UploadTrackForm", schemaRef, StringComparison.Ordinal);
+        var form = doc.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("UploadTrackForm").GetProperty("properties");
+        Assert.Equal(["kind", "file", "replace"], form.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.True(operations["getTrackGeoJson"].Operation.GetProperty("responses").GetProperty("200").GetProperty("content").TryGetProperty("application/geo+json", out _));
+    }
 }

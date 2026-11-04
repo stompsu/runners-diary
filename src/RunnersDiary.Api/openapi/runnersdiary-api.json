@@ -41,7 +41,7 @@
         "tags": [
           "ClientConfig"
         ],
-        "summary": "Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable).",
+        "summary": "Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable; map settings).",
         "operationId": "getClientConfig",
         "responses": {
           "200": {
@@ -391,6 +391,107 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/geocoding/search": {
+      "get": {
+        "tags": [
+          "Geocoding"
+        ],
+        "summary": "Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured.",
+        "operationId": "searchPlaces",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -758,7 +859,7 @@
         "tags": [
           "Runs"
         ],
-        "summary": "Deletes one of the caller's runs (and its track records).",
+        "summary": "Deletes one of the caller's runs and its tracks, files first. If the files cannot be deleted nothing is removed (503).",
         "operationId": "deleteRun",
         "parameters": [
           {
@@ -804,6 +905,484 @@
           },
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/runs/{runId}/tracks": {
+      "post": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Uploads a GPX file as the run's planned course or recorded track; it is parsed, measured and stored synchronously.",
+        "operationId": "uploadTrack",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadTrackForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/runs/{runId}/tracks/{trackId}": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "One track of one of the caller's runs, with its summary once processed. Anything else is 404.",
+        "operationId": "getTrack",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Deletes a track and its stored files. If the files cannot be deleted nothing is removed (503).",
+        "operationId": "deleteTrack",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/runs/{runId}/tracks/{trackId}/geojson": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "The processed track (simplified line, start/finish, elevation profile, splits) as GeoJSON. Immutable per track id.",
+        "operationId": "getTrackGeoJson",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackGeoJson"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/runs/{runId}/tracks/{trackId}/gpx": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "The original uploaded GPX file as an attachment.",
+        "operationId": "downloadTrackGpx",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK"
           },
           "404": {
             "description": "Not Found",
@@ -929,7 +1508,9 @@
       },
       "ClientConfigResponse": {
         "required": [
-          "entra"
+          "entra",
+          "maps",
+          "gpx"
         ],
         "type": "object",
         "properties": {
@@ -942,6 +1523,12 @@
                 "$ref": "#/components/schemas/EntraClientConfig"
               }
             ]
+          },
+          "maps": {
+            "$ref": "#/components/schemas/MapsClientConfig"
+          },
+          "gpx": {
+            "$ref": "#/components/schemas/GpxClientConfig"
           }
         },
         "additionalProperties": false
@@ -962,6 +1549,24 @@
           },
           "apiScope": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GpxClientConfig": {
+        "required": [
+          "maxFileBytesUser",
+          "maxFileBytesGuest"
+        ],
+        "type": "object",
+        "properties": {
+          "maxFileBytesUser": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxFileBytesGuest": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "additionalProperties": false
@@ -1051,6 +1656,11 @@
         },
         "additionalProperties": false
       },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "JsonElement": { },
       "LocationDto": {
         "required": [
           "latitude",
@@ -1077,6 +1687,35 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MapProvider": {
+        "enum": [
+          "MapLibre",
+          "AzureMaps"
+        ]
+      },
+      "MapsClientConfig": {
+        "required": [
+          "provider",
+          "mapLibreStyleUrl",
+          "geocodingEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/MapProvider"
+          },
+          "mapLibreStyleUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "geocodingEnabled": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -1126,6 +1765,50 @@
               "string"
             ],
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaceDto": {
+        "required": [
+          "name",
+          "latitude",
+          "longitude",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaceSearchResponse": {
+        "required": [
+          "results"
+        ],
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceDto"
+            }
           }
         },
         "additionalProperties": false
@@ -1508,7 +2191,9 @@
         "required": [
           "id",
           "kind",
-          "status"
+          "status",
+          "originalFileName",
+          "createdAt"
         ],
         "type": "object",
         "properties": {
@@ -1521,6 +2206,13 @@
           },
           "status": {
             "$ref": "#/components/schemas/GpxTrackStatus"
+          },
+          "originalFileName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -1771,6 +2463,353 @@
         },
         "additionalProperties": false
       },
+      "TrackDto": {
+        "required": [
+          "id",
+          "runId",
+          "kind",
+          "status",
+          "originalFileName",
+          "sizeBytes",
+          "createdAt",
+          "summary",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GpxTrackKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GpxTrackStatus"
+          },
+          "originalFileName": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TrackSummaryDto"
+              }
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackWarningDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackGeoJson": {
+        "required": [
+          "type",
+          "formatVersion",
+          "bbox",
+          "features",
+          "profile",
+          "splits"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "formatVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bbox": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackGeoJsonFeature"
+            }
+          },
+          "profile": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              }
+            }
+          },
+          "splits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackGeoJsonSplit"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackGeoJsonFeature": {
+        "required": [
+          "type",
+          "id",
+          "properties",
+          "geometry"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/TrackGeoJsonProperties"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/TrackGeoJsonGeometry"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackGeoJsonGeometry": {
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/JsonElement"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackGeoJsonProperties": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackGeoJsonSplit": {
+        "required": [
+          "index",
+          "distanceMeters",
+          "elapsedSeconds",
+          "elevationDeltaMeters"
+        ],
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "elapsedSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "elevationDeltaMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackPointDto": {
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackStartLocalDto": {
+        "required": [
+          "date",
+          "time",
+          "timeZoneId"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "pattern": "^\\d{2}:\\d{2}$",
+            "type": "string",
+            "description": "Local time of day, HH:mm."
+          },
+          "timeZoneId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackSummaryDto": {
+        "required": [
+          "pointCount",
+          "distanceMeters",
+          "elevationGainMeters",
+          "elevationLossMeters",
+          "minElevationMeters",
+          "maxElevationMeters",
+          "elapsedSeconds",
+          "movingSeconds",
+          "startUtc",
+          "endUtc",
+          "start",
+          "finish",
+          "startLocal"
+        ],
+        "type": "object",
+        "properties": {
+          "pointCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "elevationGainMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "elevationLossMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "minElevationMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "maxElevationMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "elapsedSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "movingSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "startUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "endUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "start": {
+            "$ref": "#/components/schemas/TrackPointDto"
+          },
+          "finish": {
+            "$ref": "#/components/schemas/TrackPointDto"
+          },
+          "startLocal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TrackStartLocalDto"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackWarningDto": {
+        "enum": [
+          "timestampsIgnored",
+          "noElevation",
+          "multipleSegments",
+          "routeConverted"
+        ]
+      },
       "UnitSystem": {
         "enum": [
           "Metric",
@@ -1797,6 +2836,28 @@
           },
           "unitSystem": {
             "$ref": "#/components/schemas/UnitSystem"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UploadTrackForm": {
+        "required": [
+          "kind",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/GpxTrackKind"
+          },
+          "file": {
+            "$ref": "#/components/schemas/IFormFile"
+          },
+          "replace": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         },
         "additionalProperties": false
@@ -1837,7 +2898,13 @@
       "name": "Calendar"
     },
     {
+      "name": "Geocoding"
+    },
+    {
       "name": "Runs"
+    },
+    {
+      "name": "Tracks"
     }
   ]
 }

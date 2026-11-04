@@ -11,6 +11,7 @@ import {
   startOfIsoWeek,
 } from '../../lib/dates/plainDate.ts'
 import { RUN_TYPES } from './seed.ts'
+import type { StoredTrack } from './tracks.ts'
 
 type S = components['schemas']
 export type RunDto = S['RunDto']
@@ -35,6 +36,12 @@ export type HandledOperations = Pick<
   | 'createRun'
   | 'updateRun'
   | 'deleteRun'
+  | 'uploadTrack'
+  | 'getTrack'
+  | 'getTrackGeoJson'
+  | 'downloadTrackGpx'
+  | 'deleteTrack'
+  | 'searchPlaces'
 >
 
 export interface Account {
@@ -46,11 +53,18 @@ export interface Account {
   unitSystem: 'Metric' | 'Imperial'
   expiresAtMs: number | null
   runs: Map<string, RunDto>
+  /** Tracks of all the account's runs by track id (each knows its run). */
+  tracks: Map<string, StoredTrack>
 }
 
 export interface Limits {
   maxRunsPerAccount: number
   maxRunsPerDate: number
+  /** Tracks per account (the real API: guests 16, users 2 000). Default 16 so the limit path is easy to reach. */
+  maxTracksPerAccount: number
+  /** Largest accepted GPX file in bytes: guests / users (the real API: 5 MiB / 20 MiB). */
+  maxGuestFileBytes: number
+  maxUserFileBytes: number
 }
 
 export const MAX_DATE = '2100-12-31'
@@ -72,10 +86,22 @@ export function json(body: unknown, status = 200, headers: Record<string, string
 export function problem(
   status: number,
   title: string,
-  extra: { type?: string; errors?: Record<string, string[]>; headers?: Record<string, string> } = {},
+  extra: {
+    type?: string
+    errors?: Record<string, string[]>
+    headers?: Record<string, string>
+    /** Extra problem members (the `invalid-gpx` problem carries `code`). */
+    members?: Record<string, unknown>
+  } = {},
 ): Response {
   const type = extra.type ?? RFC[status as keyof typeof RFC]
-  const body = { ...(type ? { type } : {}), title, status, ...(extra.errors ? { errors: extra.errors } : {}) }
+  const body = {
+    ...(type ? { type } : {}),
+    title,
+    status,
+    ...(extra.errors ? { errors: extra.errors } : {}),
+    ...extra.members,
+  }
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/problem+json', ...extra.headers },

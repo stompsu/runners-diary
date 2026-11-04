@@ -276,6 +276,77 @@ public sealed class SchemaTests(ContainersApiFactory factory)
     }
 
     [Fact]
+    public async Task Track_processing_columns_exist_with_the_documented_types_and_are_nullable_except_the_flags()
+    {
+        var cs = await NewDatabaseAsync();
+        var columns = new Dictionary<string, (string Type, string Nullable)>
+        {
+            ["ProcessedBlobName"] = ("varchar", "YES"), ["ProcessorVersion"] = ("tinyint", "YES"), ["ProcessedAt"] = ("datetime2", "YES"),
+            ["PointCount"] = ("int", "YES"), ["DistanceMeters"] = ("float", "YES"), ["ElevationGainMeters"] = ("float", "YES"),
+            ["ElevationLossMeters"] = ("float", "YES"), ["MinElevationMeters"] = ("float", "YES"), ["MaxElevationMeters"] = ("float", "YES"),
+            ["ElapsedSeconds"] = ("int", "YES"), ["MovingSeconds"] = ("int", "YES"), ["StartUtc"] = ("datetime2", "YES"), ["EndUtc"] = ("datetime2", "YES"),
+            ["StartPoint"] = ("geography", "YES"), ["FinishPoint"] = ("geography", "YES"), ["WarningFlags"] = ("tinyint", "NO"),
+        };
+
+        foreach (var (name, expected) in columns)
+        {
+            Assert.Equal(
+                $"{expected.Type}/{expected.Nullable}",
+                await ScalarAsync<string>(cs, $"SELECT DATA_TYPE + '/' + IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='GpxTracks' AND COLUMN_NAME='{name}'"));
+        }
+
+        Assert.Equal(1, await ScalarAsync<int>(cs, "SELECT COUNT(*) FROM sys.check_constraints WHERE name = 'CK_GpxTracks_Processed'"));
+    }
+
+    [Fact]
+    public async Task A_processed_track_round_trips_and_the_check_constraint_guards_processed_rows_only()
+    {
+        var cs = await NewDatabaseAsync();
+        var user = User.CreateGuest(Now);
+        var track = Domain.Gpx.TrackProcessor.Process(Domain.Gpx.GpxReader.Read(
+            new MemoryStream(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "seed", "demo", "gpx", "gliwice-10k.gpx"))),
+            Domain.Gpx.GpxReadLimits.Default, Now).Document!, TestContext.Current.CancellationToken);
+        Guid pendingId = Guid.NewGuid(), processedId = Guid.NewGuid();
+
+        await using (var db = CreateContext(cs, new FixedCurrentUser(user.Id, true)))
+        {
+            db.Users.Add(user);
+            var run = Run.Create(user.Id, SampleRun(), Now);
+            var other = Run.Create(user.Id, SampleRun(), Now);
+            db.Runs.AddRange(run, other);
+            db.GpxTracks.Add(GpxTrack.CreatePending(pendingId, other.Id, user.Id, GpxTrackKind.PlannedCourse, "a.gpx", 10, new byte[32], "users/x/a.gpx", Now));
+            db.GpxTracks.Add(GpxTrack.CreateProcessed(
+                processedId, run.Id, user.Id, GpxTrackKind.RecordedTrack, "race.gpx", 1234, new byte[32], "users/x/original.gpx", "users/x/track.json", track, Now));
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using (var db = CreateContext(cs, new FixedCurrentUser(user.Id, true)))
+        {
+            var stored = await db.GpxTracks.AsNoTracking().SingleAsync(t => t.Id == processedId, TestContext.Current.CancellationToken);
+            Assert.Equal(GpxTrackStatus.Processed, stored.Status);
+            Assert.Equal("users/x/track.json", stored.ProcessedBlobName);
+            Assert.Equal((byte)1, stored.ProcessorVersion);
+            Assert.Equal(track.Summary.DistanceMeters, stored.DistanceMeters);
+            Assert.Equal(track.Summary.PointCount, stored.PointCount);
+            Assert.Equal(track.Summary.ElapsedSeconds, stored.ElapsedSeconds);
+            Assert.Equal(DateTimeKind.Utc, stored.StartUtc!.Value.Kind);
+            Assert.Equal(track.Summary.StartLatitude, stored.StartPoint!.Value.Latitude, 6);
+            Assert.Equal(track.Summary.FinishLongitude, stored.FinishPoint!.Value.Longitude, 6);
+            Assert.Equal(Domain.Gpx.TrackWarnings.None, stored.WarningFlags);
+
+            var pending = await db.GpxTracks.AsNoTracking().SingleAsync(t => t.Id == pendingId, TestContext.Current.CancellationToken);
+            Assert.Equal(GpxTrackStatus.Pending, pending.Status);
+            Assert.Null(pending.DistanceMeters);
+        }
+
+        // A Processed row without its summary is rejected by the database; the same row stays valid while Pending.
+        await using var connection = new SqlConnection(cs);
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await using var update = new SqlCommand($"UPDATE GpxTracks SET Status = 1 WHERE Id = '{pendingId}'", connection);
+        await Assert.ThrowsAsync<SqlException>(() => update.ExecuteNonQueryAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Deleting_a_user_cascades_to_runs_and_tracks_and_the_run_type_fk_restricts()
     {
         var cs = await NewDatabaseAsync();

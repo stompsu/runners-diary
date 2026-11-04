@@ -69,7 +69,7 @@ test('a 23:30 run is stored on the chosen date in the profile zone, not the brow
   await expect(form.getByTestId('zone-current')).toHaveText('Europe/Warsaw')
   await form.getByLabel('Start time (optional)').fill('23:30')
   await form.getByLabel('Distance (km)').fill('6')
-  await form.getByRole('button', { name: 'Save' }).click()
+  await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   const post = writes.find((w) => w.method === 'POST')!

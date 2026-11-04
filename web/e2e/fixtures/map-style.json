@@ -1,0 +1,15 @@
+{
+  "version": 8,
+  "name": "Runners Diary test style (no network, no tiles)",
+  "sources": {
+    "stub": {
+      "type": "geojson",
+      "data": { "type": "FeatureCollection", "features": [] },
+      "attribution": "Test map data"
+    }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#e8eef3" } },
+    { "id": "stub-lines", "type": "line", "source": "stub", "paint": { "line-color": "#999999" } }
+  ]
+}

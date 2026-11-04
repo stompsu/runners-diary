@@ -9,7 +9,9 @@ internal sealed class GpxTrackConfiguration : IEntityTypeConfiguration<GpxTrack>
 {
     public void Configure(EntityTypeBuilder<GpxTrack> b)
     {
-        b.ToTable("GpxTracks");
+        b.ToTable("GpxTracks", t => t.HasCheckConstraint(
+            "CK_GpxTracks_Processed",
+            "[Status] <> 1 OR ([ProcessedBlobName] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [PointCount] IS NOT NULL AND [StartPoint] IS NOT NULL)"));
         b.HasKey(t => t.Id);
         b.Property(t => t.Id).ValueGeneratedNever();
         b.Property(t => t.Kind).HasColumnType("tinyint");
@@ -18,6 +20,14 @@ internal sealed class GpxTrackConfiguration : IEntityTypeConfiguration<GpxTrack>
         b.Property(t => t.SizeBytes).HasColumnType("bigint");
         b.Property(t => t.Sha256).HasColumnType("binary(32)").IsRequired();
         b.Property(t => t.RawBlobName).HasMaxLength(400).IsUnicode(false).IsRequired();
+
+        // Processed summary (ADR 0021 §7); all nullable so Pending rows stay valid. Elevation members are null for files without elevation,
+        // time members for untimed files. DateTime members use the global UTC convention (datetime2(0)).
+        b.Property(t => t.ProcessedBlobName).HasMaxLength(400).IsUnicode(false);
+        b.Property(t => t.ProcessorVersion).HasColumnType("tinyint");
+        b.Property(t => t.StartPoint).HasConversion<GeoPointConverter>().HasColumnType("geography");
+        b.Property(t => t.FinishPoint).HasConversion<GeoPointConverter>().HasColumnType("geography");
+        b.Property(t => t.WarningFlags).HasColumnType("tinyint");
 
         // Composite FK to the run's alternate key (Id, UserId): a track can only belong to the same user as its run, enforced by the
         // database. UserId still has no FK to Users (Users -> Runs -> GpxTracks stays the only cascade path).

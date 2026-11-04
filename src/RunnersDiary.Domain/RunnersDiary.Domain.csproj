@@ -1,3 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Pure domain logic: no package or project references allowed (see CLAUDE.md). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="RunnersDiary.Domain.Tests" />
+  </ItemGroup>
 </Project>

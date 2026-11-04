@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useSearchParams } from 'react-router'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMe } from '@/auth/useMe'
@@ -8,16 +8,20 @@ import { useRunTypeCodes } from '@/features/calendar/calendarQueries'
 import { QueryError } from '@/features/errors/QueryError'
 import { isValid, todayFromMe } from '@/lib/dates/plainDate'
 import { parseProblem } from '@/lib/api/problem'
+import { diaryPath } from '@/features/diary/diaryMonth'
 import { RunForm } from './RunForm'
 import { RunGone } from './RunGone'
 import { defaultFormValues } from './runFormMapping'
 import { useRun } from './runQueries'
-import { useClosePanel } from './usePanel'
+import type { PrefillState } from './runFormTypes'
+import { useClosePanel, usePanelMonth } from './usePanel'
 
 /** `/diary/:year/:month/runs/new?date=YYYY-MM-DD` */
 export function RunNewPanel() {
   const { t } = useTranslation('runs')
   const close = useClosePanel()
+  const navigate = useNavigate()
+  const base = diaryPath(usePanelMonth())
   const [search] = useSearchParams()
   const me = useMe()
   const { query: types, codes } = useRunTypeCodes()
@@ -48,6 +52,8 @@ export function RunNewPanel() {
           codes={codes}
           profileZone={me.data.timeZoneId}
           onSaved={close}
+          // Save & add GPX: the new run's details open (replacing this panel) with the upload dialog on top.
+          onSavedAndAddGpx={(saved) => void navigate(`${base}/runs/${saved.id}?gpx=1`, { replace: true })}
           onGone={close}
           onCancel={close}
         />
@@ -67,6 +73,7 @@ export function RunEditPanel() {
   const me = useMe()
   const { query: types, codes } = useRunTypeCodes()
   const run = useRun(runId)
+  const prefill = readPrefill(useLocation().state)
 
   if (run.isError && parseProblem(run.error).kind === 'notFound') return <RunGone onClose={close} />
 
@@ -92,6 +99,7 @@ export function RunEditPanel() {
           key={run.data.id}
           run={run.data}
           completePreset={search.get('complete') === '1'}
+          prefill={prefill}
           types={types.data}
           codes={codes}
           profileZone={me.data.timeZoneId}
@@ -104,4 +112,13 @@ export function RunEditPanel() {
       )}
     </ResponsiveDialog>
   )
+}
+
+/** The values a GPX review put into the router state (ADR 0023 §3); anything else is ignored. */
+function readPrefill(state: unknown): PrefillState['prefill'] | undefined {
+  if (typeof state !== 'object' || state === null || !('prefill' in state)) return undefined
+  const { prefill } = state as { prefill: unknown }
+  if (typeof prefill !== 'object' || prefill === null) return undefined
+  const { patch, source } = prefill as Partial<PrefillState['prefill']>
+  return patch && typeof patch === 'object' && typeof source === 'string' ? { patch, source } : undefined
 }

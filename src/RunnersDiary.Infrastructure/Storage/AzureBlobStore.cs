@@ -16,6 +16,18 @@ public sealed class AzureBlobStore(BlobServiceClient service) : IBlobStore
         await blob.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = contentType } }, cancellationToken);
     }
 
+    public async Task<Stream?> OpenReadAsync(string blobName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Container.GetBlobClient(blobName).OpenReadAsync(cancellationToken: cancellationToken);
+        }
+        catch (RequestFailedException ex) when (ex.ErrorCode == BlobErrorCode.ContainerNotFound || ex.ErrorCode == BlobErrorCode.BlobNotFound)
+        {
+            return null;
+        }
+    }
+
     public async Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken)
     {
         var deleted = 0;

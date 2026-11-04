@@ -38,7 +38,8 @@
     "save": "Save",
     "saving": "Saving…",
     "close": "Close",
-    "changeZone": "Change time zone"
+    "changeZone": "Change time zone",
+    "saveAndAddGpx": "Save & add GPX"
   },
   "status": {
     "planned": "Planned",
@@ -94,7 +95,8 @@
       "Race": "Races",
       "Training": "Training",
       "Other": "Other"
-    }
+    },
+    "prefillNotice": "Values from {{file}}. Review them and press Save."
   },
   "race": {
     "legend": "Race",
@@ -166,6 +168,19 @@
     "restDayNoMetrics": "A rest day has no distance, time or effort.",
     "restDayNoRace": "A rest day cannot be a race.",
     "restDayNoRating": "A rest day cannot be rated.",
-    "maxBelowAvg": "Max heart rate must be at least the average."
+    "maxBelowAvg": "Max heart rate must be at least the average.",
+    "latitude": "Latitude must be from -90 to 90.",
+    "longitude": "Longitude must be from -180 to 180.",
+    "locationNameLength": "Place name must be at most 200 characters."
+  },
+  "location": {
+    "legend": "Location",
+    "coordinates": "Coordinates",
+    "name": "Place name",
+    "nameHint": "For example the start area or the venue.",
+    "none": "No location set.",
+    "pick": "Pick on map",
+    "change": "Change on map",
+    "clear": "Clear location"
   }
 }

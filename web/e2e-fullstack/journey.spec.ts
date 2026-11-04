@@ -28,7 +28,7 @@ test('try as guest -> seeded month -> add -> complete -> rate -> delete', async 
   await expect(form.getByLabel('Date')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/)
   await form.getByLabel('Title').fill(title)
   await form.getByLabel('Distance (km)').fill('9.5')
-  await form.getByRole('button', { name: 'Save' }).click()
+  await form.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // It is listed in the month panel as Planned.
@@ -43,7 +43,7 @@ test('try as guest -> seeded month -> add -> complete -> rate -> delete', async 
   const complete = page.getByRole('dialog', { name: 'Complete run' })
   await complete.getByLabel('Duration (h:mm:ss)').fill('47:30')
   await expect(complete.getByTestId('pace')).toHaveText('5:00 /km')
-  await complete.getByRole('button', { name: 'Save' }).click()
+  await complete.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(list).toBeVisible()
   await expect(item).toHaveAttribute('data-status', 'Completed')
 
@@ -52,7 +52,7 @@ test('try as guest -> seeded month -> add -> complete -> rate -> delete', async 
   const rate = page.getByRole('dialog', { name: 'Rate this run' })
   await rate.locator('label', { hasText: '4 stars' }).click()
   await rate.getByLabel('Comment').fill('Full-stack check')
-  await rate.getByRole('button', { name: 'Save' }).click()
+  await rate.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(list).toBeVisible()
   await expect(item.getByRole('link', { name: 'Rate' })).toHaveCount(0)
   await item.getByRole('link', { name: 'View details' }).click()
@@ -64,7 +64,11 @@ test('try as guest -> seeded month -> add -> complete -> rate -> delete', async 
   // Delete with confirmation; the run is gone after a reload too.
   await expect(list).toBeVisible()
   await item.getByRole('button', { name: 'Delete' }).click()
-  await page.getByRole('alertdialog', { name: 'Delete this run?' }).getByRole('button', { name: 'Delete' }).click()
+  const confirmDelete = page.getByRole('alertdialog', { name: 'Delete this run?' })
+  await confirmDelete.getByRole('button', { name: 'Delete' }).click()
+  // The confirmation closes only after the API answered 204. While it is open the list is aria-hidden, so `item` would
+  // already count 0 and the reload below could abort the DELETE still in flight.
+  await expect(confirmDelete).toBeHidden()
   await expect(item).toHaveCount(0)
   await page.reload()
   await expect(page.getByRole('dialog', { name: /^Runs in / })).toBeVisible()

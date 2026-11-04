@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createFakeApi, faults, typeId, type RunDto, type RunWriteRequest } from '.'
+import { createFakeApi, faults, sampleGpx, typeId, type RunDto, type RunWriteRequest, type TrackDto } from '.'
 
 const BASE = 'http://localhost'
 
@@ -33,7 +33,7 @@ describe('fake API', () => {
     const api = createFakeApi()
     expect((await call(api, 'GET', '/api/health')).status).toBe(200)
     const config = await call(api, 'GET', '/api/client-config')
-    expect(await config.json()).toEqual({ entra: null })
+    expect(await config.json()).toMatchObject({ entra: null, maps: { provider: 'MapLibre', geocodingEnabled: false } })
     for (const path of [
       '/api/me',
       '/api/run-types',
@@ -50,9 +50,12 @@ describe('fake API', () => {
   it('returns the configured Entra block', async () => {
     const entra = { clientId: 'c', authority: 'https://t.ciamlogin.com/', apiScope: 'api://a/access_as_user' }
     const api = createFakeApi({ entra })
-    expect(await (await call(api, 'GET', '/api/client-config')).json()).toEqual({ entra })
+    expect(await (await call(api, 'GET', '/api/client-config')).json()).toMatchObject({ entra })
     api.setEntra(null)
-    expect(await (await call(api, 'GET', '/api/client-config')).json()).toEqual({ entra: null })
+    expect(await (await call(api, 'GET', '/api/client-config')).json()).toMatchObject({
+      entra: null,
+      maps: { provider: 'MapLibre', geocodingEnabled: false },
+    })
   })
 
   it('creates seeded guest sessions with today and expiry', async () => {
@@ -324,7 +327,7 @@ describe('fake API', () => {
     const api = createFakeApi()
     const raw = await api.handleRaw({ method: 'GET', url: `${BASE}/api/client-config`, headers: {} })
     expect(raw.status).toBe(200)
-    expect(JSON.parse(raw.body)).toEqual({ entra: null })
+    expect(JSON.parse(raw.body)).toMatchObject({ entra: null, maps: { provider: 'MapLibre', geocodingEnabled: false } })
 
     const fulfilled: { status: number }[] = []
     await api.fulfillRoute({
@@ -338,5 +341,225 @@ describe('fake API', () => {
       abort: () => Promise.resolve(),
     })
     expect(fulfilled[0]?.status).toBe(200)
+  })
+})
+
+describe('fake API: tracks and geocoding (M4)', () => {
+  /** A multipart upload built by hand, so the test does not depend on the environment's FormData/File classes. */
+  function upload(
+    api: ReturnType<typeof createFakeApi>,
+    token: string,
+    runId: string,
+    parts: { kind?: string; file?: { name: string; text: string }; replace?: string },
+  ) {
+    const boundary = 'xBOUNDARYx'
+    const field = (name: string, value: string) =>
+      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
+    const body =
+      (parts.kind ? field('kind', parts.kind) : '') +
+      (parts.replace ? field('replace', parts.replace) : '') +
+      (parts.file
+        ? `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${parts.file.name}"\r\nContent-Type: application/gpx+xml\r\n\r\n${parts.file.text}\r\n`
+        : '') +
+      `--${boundary}--\r\n`
+    return api.handle(
+      new Request(`${BASE}/api/runs/${runId}/tracks`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+        body,
+      }),
+    )
+  }
+  const file = (text = sampleGpx({ times: ['2026-11-14T07:30:00Z', '2026-11-14T08:19:30Z'] }), name = 'a.gpx') => ({
+    name,
+    text,
+  })
+  const setup = () => {
+    const api = createFakeApi({ guestSeed: [easy('2026-11-14'), { ...easy('2026-11-15'), runTypeId: typeId('rest') }] })
+    const token = api.issueToken('Guest')
+    const [run, restDay] = api.runsOf(token)
+    return { api, token, run: run!, restDay: restDay! }
+  }
+
+  it('stores an upload as a processed track: DTO, run.tracks[], local start time in the run zone, no version change', async () => {
+    const { api, token, run } = setup()
+    const response = await upload(api, token, run.id, { kind: 'RecordedTrack', file: file() })
+    expect(response.status).toBe(201)
+    const track = (await response.json()) as TrackDto
+    expect(response.headers.get('Location')).toBe(`/api/runs/${run.id}/tracks/${track.id}`)
+    expect(track).toMatchObject({
+      runId: run.id,
+      kind: 'RecordedTrack',
+      status: 'Processed',
+      originalFileName: 'a.gpx',
+      warnings: [],
+      summary: {
+        distanceMeters: 10004.8,
+        elapsedSeconds: 2970,
+        startUtc: '2026-11-14T07:30:00.000Z',
+        startLocal: { date: '2026-11-14', time: '08:30', timeZoneId: 'Europe/Warsaw' },
+      },
+    })
+    const updated = (await (await call(api, 'GET', `/api/runs/${run.id}`, { token })).json()) as RunDto
+    expect(updated.tracks).toEqual([
+      expect.objectContaining({ id: track.id, kind: 'RecordedTrack', originalFileName: 'a.gpx' }),
+    ])
+    expect(updated.version).toBe(run.version)
+  })
+
+  it("serves the track, its GeoJSON and the original file; 404 for anything that is not the caller's", async () => {
+    const { api, token, run } = setup()
+    const track = (await (await upload(api, token, run.id, { kind: 'PlannedCourse', file: file() })).json()) as TrackDto
+    const base = `/api/runs/${run.id}/tracks/${track.id}`
+    expect(((await (await call(api, 'GET', base, { token })).json()) as TrackDto).id).toBe(track.id)
+
+    const geo = await call(api, 'GET', `${base}/geojson`, { token })
+    expect(geo.headers.get('Content-Type')).toBe('application/geo+json')
+    expect(geo.headers.get('ETag')).toBeTruthy()
+    expect(await geo.json()).toMatchObject({ type: 'FeatureCollection', formatVersion: 1 })
+
+    const gpx = await call(api, 'GET', `${base}/gpx`, { token })
+    expect(gpx.headers.get('Content-Disposition')).toContain('a.gpx')
+    expect(await gpx.text()).toContain('<gpx')
+
+    const other = api.issueToken('Guest')
+    for (const suffix of ['', '/geojson', '/gpx']) {
+      expect((await call(api, 'GET', base + suffix, { token: other })).status).toBe(404)
+    }
+    expect((await call(api, 'GET', `/api/runs/${run.id}/tracks/nope`, { token })).status).toBe(404)
+  })
+
+  it('a legacy Pending track has no summary and no GeoJSON or file', async () => {
+    const { api, token, run } = setup()
+    const pending = api.addTrack(token, run.id, { kind: 'RecordedTrack', status: 'Pending' })
+    expect(pending.summary).toBeNull()
+    const base = `/api/runs/${run.id}/tracks/${pending.id}`
+    expect((await call(api, 'GET', base, { token })).status).toBe(200)
+    expect((await call(api, 'GET', `${base}/geojson`, { token })).status).toBe(404)
+    expect((await call(api, 'GET', `${base}/gpx`, { token })).status).toBe(404)
+  })
+
+  it('rejects like the real API: every invalid-gpx code, kind, rest days, missing file, size, 415', async () => {
+    const { api, token, run, restDay } = setup()
+    const code = async (text: string, name = 'a.gpx') => {
+      const response = await upload(api, token, run.id, { kind: 'RecordedTrack', file: file(text, name) })
+      expect(response.status).toBe(400)
+      const body = (await response.json()) as { type: string; code: string; errors: { file: string[] } }
+      expect(body.type).toBe('urn:runnersdiary:problem:invalid-gpx')
+      expect(body.errors.file).toHaveLength(1)
+      return body.code
+    }
+    expect(await code(sampleGpx(), 'a.txt')).toBe('wrongExtension')
+    expect(await code('')).toBe('malformedXml')
+    expect(await code('{"not":"xml"}')).toBe('unsupportedFormat')
+    expect(await code('<?xml version="1.0"?><!DOCTYPE gpx [<!ENTITY x "y">]><gpx></gpx>')).toBe('dtdProhibited')
+    expect(await code('<kml></kml>')).toBe('notGpx')
+    expect(await code(sampleGpx().replace('</gpx>', ''))).toBe('malformedXml')
+    expect(await code(sampleGpx().replace('lat="50.2948"', 'lat="95"'))).toBe('invalidCoordinate')
+    expect(await code('<gpx><trk><trkseg><trkpt lat="1" lon="1"/></trkseg></trk></gpx>')).toBe('tooFewPoints')
+
+    const badKind = await upload(api, token, run.id, { kind: 'recordedtrack', file: file() })
+    expect(badKind.status).toBe(400)
+    expect(((await badKind.json()) as { errors: object }).errors).toHaveProperty('kind')
+    expect(
+      (
+        (await (await upload(api, token, restDay.id, { kind: 'RecordedTrack', file: file() })).json()) as {
+          errors: object
+        }
+      ).errors,
+    ).toHaveProperty('runId')
+    expect(
+      ((await (await upload(api, token, run.id, { kind: 'RecordedTrack' })).json()) as { errors: object }).errors,
+    ).toHaveProperty('file')
+    expect((await upload(api, token, 'nope', { kind: 'RecordedTrack', file: file() })).status).toBe(404)
+    expect(
+      (await call(api, 'POST', `/api/runs/${run.id}/tracks`, { token, body: { kind: 'RecordedTrack' } })).status,
+    ).toBe(415)
+
+    const tiny = createFakeApi({ guestSeed: [easy('2026-11-14')], limits: { maxGuestFileBytes: 100 } })
+    const tinyToken = tiny.issueToken('Guest')
+    const tinyRun = tiny.runsOf(tinyToken)[0]!
+    expect((await upload(tiny, tinyToken, tinyRun.id, { kind: 'RecordedTrack', file: file() })).status).toBe(413)
+    expect(api.tracksOf(token, run.id)).toHaveLength(0)
+  })
+
+  it('reports warnings: no elevation, route-only', async () => {
+    const { api, token, run } = setup()
+    const bare = (await (
+      await upload(api, token, run.id, { kind: 'RecordedTrack', file: file(sampleGpx({ ele: false })) })
+    ).json()) as TrackDto
+    expect(bare.warnings).toEqual(['noElevation'])
+    expect(bare.summary).toMatchObject({ elevationGainMeters: null, elapsedSeconds: null, startLocal: null })
+    const route = (await (
+      await upload(api, token, run.id, { kind: 'PlannedCourse', file: file(sampleGpx({ route: true })) })
+    ).json()) as TrackDto
+    expect(route.warnings).toEqual(['routeConverted'])
+  })
+
+  it('409 track-exists until replace=true; replace swaps the track (new id); track limit is 409 track-limit', async () => {
+    const { api, token, run } = setup()
+    const first = (await (await upload(api, token, run.id, { kind: 'RecordedTrack', file: file() })).json()) as TrackDto
+    const again = await upload(api, token, run.id, { kind: 'RecordedTrack', file: file() })
+    expect(again.status).toBe(409)
+    expect(((await again.json()) as { type: string }).type).toBe('urn:runnersdiary:problem:track-exists')
+
+    const replaced = (await (
+      await upload(api, token, run.id, { kind: 'RecordedTrack', file: file(undefined, 'b.gpx'), replace: 'true' })
+    ).json()) as TrackDto
+    expect(replaced.id).not.toBe(first.id)
+    expect(api.tracksOf(token, run.id).map((t) => t.originalFileName)).toEqual(['b.gpx'])
+
+    const limited = createFakeApi({ guestSeed: [easy('2026-11-14')], limits: { maxTracksPerAccount: 1 } })
+    const limitedToken = limited.issueToken('Guest')
+    const limitedRun = limited.runsOf(limitedToken)[0]!
+    await upload(limited, limitedToken, limitedRun.id, { kind: 'RecordedTrack', file: file() })
+    const over = await upload(limited, limitedToken, limitedRun.id, { kind: 'PlannedCourse', file: file() })
+    expect(over.status).toBe(409)
+    expect(((await over.json()) as { type: string }).type).toBe('urn:runnersdiary:problem:track-limit')
+  })
+
+  it('delete removes the track from the run; deleting the run removes its tracks', async () => {
+    const { api, token, run } = setup()
+    const track = api.addTrack(token, run.id, { kind: 'RecordedTrack' })
+    expect((await call(api, 'DELETE', `/api/runs/${run.id}/tracks/${track.id}`, { token })).status).toBe(204)
+    expect(api.runsOf(token)[0]!.tracks).toEqual([])
+    expect((await call(api, 'DELETE', `/api/runs/${run.id}/tracks/${track.id}`, { token })).status).toBe(404)
+
+    api.addTrack(token, run.id, { kind: 'PlannedCourse' })
+    await call(api, 'DELETE', `/api/runs/${run.id}`, { token })
+    expect(api.tracksOf(token, run.id)).toEqual([])
+  })
+
+  it('can seed a demo track on the race of each new guest', async () => {
+    const api = createFakeApi({ demoTracks: true })
+    const token = api.issueToken('Guest')
+    const race = api.runsOf(token).find((r) => r.race)!
+    expect(race.tracks).toEqual([
+      expect.objectContaining({ kind: 'RecordedTrack', originalFileName: 'gliwice-10k.gpx' }),
+    ])
+    expect(
+      createFakeApi()
+        .runsOf(createFakeApi().issueToken('Guest'))
+        .every((r) => r.tracks.length === 0),
+    ).toBe(true)
+  })
+
+  it('place search: 503 feature-unavailable until enabled, then validated and filtered', async () => {
+    const api = createFakeApi()
+    const token = api.issueToken('Guest')
+    const disabled = await call(api, 'GET', '/api/geocoding/search?q=gliwice', { token })
+    expect(disabled.status).toBe(503)
+    expect(((await disabled.json()) as { type: string }).type).toBe('urn:runnersdiary:problem:feature-unavailable')
+
+    api.setGeocodingEnabled(true)
+    expect(await (await call(api, 'GET', '/api/client-config')).json()).toMatchObject({
+      maps: { geocodingEnabled: true },
+    })
+    const found = (await (await call(api, 'GET', '/api/geocoding/search?q=gliwice', { token })).json()) as {
+      results: { name: string; latitude: number; longitude: number; type: string | null }[]
+    }
+    expect(found.results.map((place) => place.name)).toEqual(['Gliwice Rynek', 'Gliwice'])
+    expect((await call(api, 'GET', '/api/geocoding/search?q=g', { token })).status).toBe(400)
+    expect((await call(api, 'GET', '/api/geocoding/search?q=gliwice')).status).toBe(401)
   })
 })

@@ -3,8 +3,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Guests;
 using RunnersDiary.Infrastructure.Identity;
+using RunnersDiary.Infrastructure.Maps;
 using RunnersDiary.Infrastructure.Persistence;
 using RunnersDiary.Infrastructure.Runs;
 using RunnersDiary.Infrastructure.Storage;
@@ -60,6 +62,19 @@ public static class DependencyInjection
 
         builder.Services.Configure<GuestOptions>(builder.Configuration.GetSection(GuestOptions.SectionName));
         builder.Services.Configure<RunLimitsOptions>(builder.Configuration.GetSection(RunLimitsOptions.SectionName));
+        builder.Services.Configure<GpxLimitsOptions>(builder.Configuration.GetSection(GpxLimitsOptions.SectionName));
+        builder.Services.AddSingleton<TrackProcessingSlots>();
+        builder.Services.AddScoped<TrackIngestionService>();
+        builder.Services.AddScoped<TrackDeletionService>();
+
+        // Azure Maps adapters are deferred to M7 (plan section 9 Q1): until then only "None" is accepted, so a wrong setting fails at startup.
+        var maps = builder.Configuration.GetSection(MapsOptions.SectionName).Get<MapsOptions>() ?? new MapsOptions();
+        if (maps.Geocoding.Provider != GeocodingProvider.None)
+        {
+            throw new InvalidOperationException($"Maps:Geocoding:Provider '{maps.Geocoding.Provider}' is not available yet; use None.");
+        }
+
+        builder.Services.TryAddSingleton<IGeocoder, NoGeocoder>();
         builder.Services.AddSingleton<DemoDatasetLoader>();
         builder.Services.AddHostedService<DemoDatasetStartupCheck>();
         builder.Services.AddSingleton<DemoDataSeeder>();

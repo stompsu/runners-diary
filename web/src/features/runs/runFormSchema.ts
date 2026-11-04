@@ -75,6 +75,16 @@ const raceSchema = z.object({
   resultsUrl: optional(httpUrlValid, 'validation.resultsUrl'),
 })
 
+const locationSchema = z.object({
+  latitude: z.number().refine((value) => Number.isFinite(value) && value >= -90 && value <= 90, {
+    message: 'validation.latitude' satisfies ValidationKey,
+  }),
+  longitude: z.number().refine((value) => Number.isFinite(value) && value >= -180 && value <= 180, {
+    message: 'validation.longitude' satisfies ValidationKey,
+  }),
+  name: maxLength(200, 'validation.locationNameLength'),
+})
+
 const baseShape = z.object({
   date: z
     .string()
@@ -101,6 +111,7 @@ const baseShape = z.object({
   gear: maxLength(100, 'validation.gearLength'),
   weather: maxLength(200, 'validation.weatherLength'),
   surface: z.enum(['', ...SURFACES] as [string, ...string[]]),
+  location: locationSchema.nullable(),
   race: raceSchema.nullable(),
   rating: z.object({
     stars: z.number().int().min(0).max(5),

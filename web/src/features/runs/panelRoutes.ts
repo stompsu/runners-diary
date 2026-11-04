@@ -8,6 +8,7 @@ const loaders = {
   day: () => import('./DayPanel').then((m) => m.DayPanel),
   list: () => import('./MonthListPanel').then((m) => m.MonthListPanel),
   details: () => import('./RunDetailsDialog').then((m) => m.RunDetailsDialog),
+  track: () => import('@/features/tracks/TrackViewPanel').then((m) => m.TrackViewPanel),
   runNew: () => import('./RunFormPanels').then((m) => m.RunNewPanel),
   runEdit: () => import('./RunFormPanels').then((m) => m.RunEditPanel),
 }
@@ -23,6 +24,7 @@ export const panelRoutes: RouteObject[] = [
   lazyRoute('runs/new', loaders.runNew),
   lazyRoute('runs/:runId', loaders.details),
   lazyRoute('runs/:runId/edit', loaders.runEdit),
+  lazyRoute('runs/:runId/tracks/:trackId', loaders.track),
 ]
 
 /** Fetches the panel chunks in the background once the grid is on screen, so the first click opens instantly. */

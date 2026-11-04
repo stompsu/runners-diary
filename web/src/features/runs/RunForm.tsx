@@ -16,14 +16,16 @@ import { parseDuration } from '@/lib/format/duration'
 import { formatPace, kmToMeters, parseKm } from '@/lib/format/units'
 import { FormField } from './FormField'
 import { useFieldMessage } from './useFieldMessage'
+import { LocationField } from './LocationField'
 import { RaceFields } from './RaceFields'
 import { RatingField } from './RatingField'
 import { TimeZoneField } from './TimeZoneField'
 import { createRunFormSchema } from './runFormSchema'
-import { applyRunType, applyStatus, METRIC_FIELDS, toFormValues, toWriteRequest } from './runFormMapping'
+import { applyPrefill, applyRunType, applyStatus, METRIC_FIELDS, toFormValues, toWriteRequest } from './runFormMapping'
 import {
   SURFACES,
   rulesOf,
+  type PrefillState,
   type RunDto,
   type RunFormValues,
   type RunTypeDto,
@@ -59,6 +61,10 @@ export interface RunFormProps {
   /** The profile zone, used as the zone of a new run. */
   profileZone: string
   onSaved: () => void
+  /** Create only: "Save & add GPX" saves, then hands the new run over so its upload dialog can open. */
+  onSavedAndAddGpx?: (run: RunDto) => void
+  /** Edit opened from the GPX review (ADR 0023 §3): the values to put into the form, applied once as dirty values. */
+  prefill?: PrefillState['prefill']
   /** The run no longer exists (404 on save): the caller closes the panel. */
   onGone: () => void
   onCancel: () => void
@@ -82,6 +88,8 @@ export function RunForm({
   codes,
   profileZone,
   onSaved,
+  onSavedAndAddGpx,
+  prefill,
   onGone,
   onCancel,
 }: RunFormProps) {
@@ -130,6 +138,14 @@ export function RunForm({
     const first = getValues('distanceKm') === '' ? 'distanceKm' : getValues('duration') === '' ? 'duration' : null
     if (first) setFocus(first)
   }, [completePreset, getValues, setFocus])
+
+  // The GPX values go in as edits (dirty), once; they are never saved until the user presses Save (ADR 0023 §3).
+  const prefillApplied = useRef(false)
+  useEffect(() => {
+    if (!prefill || prefillApplied.current) return
+    prefillApplied.current = true
+    reset(applyPrefill(getValues(), prefill.patch), { keepDefaultValues: true })
+  }, [prefill, reset, getValues])
 
   useEffect(() => {
     if (problem) summaryRef.current?.focus()
@@ -198,7 +214,7 @@ export function RunForm({
     }
   }
 
-  async function submit(values: RunFormValues, target: RunDto | undefined) {
+  async function submit(values: RunFormValues, target: RunDto | undefined, addGpx = false) {
     if (saving.current) return
     saving.current = true
     setProblem(null)
@@ -207,7 +223,8 @@ export function RunForm({
       const saved = await send(values, target)
       await invalidate(saved.id)
       toast.success(t(target ? 'toast.saved' : 'toast.created'))
-      onSaved()
+      if (addGpx && onSavedAndAddGpx) onSavedAndAddGpx(saved)
+      else onSaved()
     } catch (caught) {
       const apiProblem = parseProblem(caught)
       if (apiProblem.kind === 'notFound' && target) {
@@ -288,6 +305,14 @@ export function RunForm({
             </ul>
           ) : null}
         </div>
+      ) : null}
+      {prefill ? (
+        <output
+          className="block rounded-md border border-primary/40 bg-primary/5 p-3 text-sm"
+          data-testid="prefill-notice"
+        >
+          {t('form.prefillNotice', { file: prefill.source })}
+        </output>
       ) : null}
       {conflict ? (
         <div role="alert" className="flex flex-col gap-3 rounded-md border border-destructive/60 p-3 text-sm">
@@ -446,6 +471,18 @@ export function RunForm({
         </FieldSet>
       )}
 
+      <Controller
+        control={control}
+        name="location"
+        render={({ field: place }) => (
+          <LocationField
+            value={place.value}
+            onChange={place.onChange}
+            nameError={message(errors.location?.name?.message)}
+          />
+        )}
+      />
+
       <FieldSet className="gap-4">
         <FieldLegend>{t('form.details')}</FieldLegend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -499,6 +536,17 @@ export function RunForm({
         <Button type="button" variant="outline" className={field} onClick={onCancel}>
           {t('actions.cancel')}
         </Button>
+        {!run && onSavedAndAddGpx && !rules.isRestDay ? (
+          <Button
+            type="button"
+            variant="outline"
+            className={field}
+            disabled={busy}
+            onClick={() => void handleSubmit((values) => submit(values, base, true))()}
+          >
+            {t('actions.saveAndAddGpx')}
+          </Button>
+        ) : null}
         <Button type="submit" className={field} disabled={busy}>
           {busy ? t('actions.saving') : t('actions.save')}
         </Button>

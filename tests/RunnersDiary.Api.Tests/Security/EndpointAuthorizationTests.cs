@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using RunnersDiary.Api.Tests.Infrastructure;
@@ -66,16 +67,69 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
         Assert.Empty(offenders);
     }
 
+    /// <summary>Routes with their own limiter instead of the general one (endpoint metadata beats the group's); everything else must use "api".</summary>
+    private static readonly Dictionary<string, string> SpecificRateLimits = new(StringComparer.Ordinal)
+    {
+        ["POST /api/runs/{runId:guid}/tracks"] = "gpx-upload",
+        ["GET /api/geocoding/search"] = "geocode",
+    };
+
+    private static string Key(RouteEndpoint e) =>
+        e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods[0] + " /" + e.RoutePattern.RawText?.Trim('/');
+
     [Fact]
-    public void ApiEndpoints_ExceptAnonymousOnes_PassTheGeneralRateLimiter()
+    public void ApiEndpoints_ExceptAnonymousOnes_PassTheGeneralRateLimiter_or_a_named_specific_one()
     {
         var offenders = Endpoints()
             .Where(e => Route(e).StartsWith("/api/", StringComparison.Ordinal) && !AnonymousAllowlist.Contains(Route(e)))
-            .Where(e => e.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName != "api")
+            .Where(e => e.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName
+                != SpecificRateLimits.GetValueOrDefault(Key(e), "api"))
             .Select(e => e.DisplayName)
             .ToList();
 
         Assert.Empty(offenders);
+    }
+
+    [Fact]
+    public void The_specific_limiters_and_the_upload_body_limit_are_attached_to_exactly_the_intended_routes()
+    {
+        var endpoints = Endpoints();
+
+        foreach (var key in SpecificRateLimits.Keys)
+        {
+            Assert.Contains(endpoints, e => Key(e) == key);
+        }
+
+        var withCustomBodyLimit = endpoints
+            .Where(e => e.Metadata.GetMetadata<IRequestSizeLimitMetadata>() is not null)
+            .Select(Key)
+            .ToList();
+        Assert.Equal(["POST /api/runs/{runId:guid}/tracks"], withCustomBodyLimit);
+        var upload = endpoints.Single(e => Key(e) == "POST /api/runs/{runId:guid}/tracks");
+        Assert.False(upload.Metadata.GetMetadata<IAntiforgeryMetadata>()?.RequiresValidation ?? true);
+        Assert.True(upload.Metadata.GetMetadata<IRequestSizeLimitMetadata>()!.MaxRequestBodySize > 20 * 1024 * 1024);
+    }
+
+    [Fact]
+    public void All_track_and_geocoding_routes_exist_and_require_authorization()
+    {
+        var endpoints = Endpoints();
+        string[] expected =
+        [
+            "POST /api/runs/{runId:guid}/tracks",
+            "GET /api/runs/{runId:guid}/tracks/{trackId:guid}",
+            "GET /api/runs/{runId:guid}/tracks/{trackId:guid}/geojson",
+            "GET /api/runs/{runId:guid}/tracks/{trackId:guid}/gpx",
+            "DELETE /api/runs/{runId:guid}/tracks/{trackId:guid}",
+            "GET /api/geocoding/search",
+        ];
+
+        foreach (var key in expected)
+        {
+            var endpoint = Assert.Single(endpoints, e => Key(e) == key);
+            Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+            Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+        }
     }
 
     [Fact]

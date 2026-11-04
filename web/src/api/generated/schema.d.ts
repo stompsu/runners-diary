@@ -28,7 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable). */
+        /** Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable; map settings). */
         get: operations["getClientConfig"];
         put?: never;
         post?: never;
@@ -107,6 +107,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/geocoding/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured. */
+        get: operations["searchPlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs": {
         parameters: {
             query?: never;
@@ -137,8 +154,77 @@ export interface paths {
         /** Replaces one of the caller's runs. 'version' must match the current one, otherwise 409. */
         put: operations["updateRun"];
         post?: never;
-        /** Deletes one of the caller's runs (and its track records). */
+        /** Deletes one of the caller's runs and its tracks, files first. If the files cannot be deleted nothing is removed (503). */
         delete: operations["deleteRun"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{runId}/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Uploads a GPX file as the run's planned course or recorded track; it is parsed, measured and stored synchronously. */
+        post: operations["uploadTrack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{runId}/tracks/{trackId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One track of one of the caller's runs, with its summary once processed. Anything else is 404. */
+        get: operations["getTrack"];
+        put?: never;
+        post?: never;
+        /** Deletes a track and its stored files. If the files cannot be deleted nothing is removed (503). */
+        delete: operations["deleteTrack"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{runId}/tracks/{trackId}/geojson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The processed track (simplified line, start/finish, elevation profile, splits) as GeoJSON. Immutable per track id. */
+        get: operations["getTrackGeoJson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{runId}/tracks/{trackId}/gpx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The original uploaded GPX file as an attachment. */
+        get: operations["downloadTrackGpx"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -180,11 +266,19 @@ export interface components {
         };
         ClientConfigResponse: {
             entra: null | components["schemas"]["EntraClientConfig"];
+            maps: components["schemas"]["MapsClientConfig"];
+            gpx: components["schemas"]["GpxClientConfig"];
         };
         EntraClientConfig: {
             clientId: string;
             authority: string;
             apiScope: string;
+        };
+        GpxClientConfig: {
+            /** Format: int64 */
+            maxFileBytesUser: number;
+            /** Format: int64 */
+            maxFileBytesGuest: number;
         };
         /** @enum {unknown} */
         GpxTrackKind: "PlannedCourse" | "RecordedTrack";
@@ -209,12 +303,22 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** Format: binary */
+        IFormFile: string;
+        JsonElement: unknown;
         LocationDto: {
             /** Format: double */
             latitude: number;
             /** Format: double */
             longitude: number;
             name?: null | string;
+        };
+        /** @enum {unknown} */
+        MapProvider: "MapLibre" | "AzureMaps";
+        MapsClientConfig: {
+            provider: components["schemas"]["MapProvider"];
+            mapLibreStyleUrl: null | string;
+            geocodingEnabled: boolean;
         };
         MeResponse: {
             /** Format: uuid */
@@ -228,6 +332,17 @@ export interface components {
             today: string;
             /** Format: date-time */
             guestExpiresAt: null | string;
+        };
+        PlaceDto: {
+            name: string;
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            type: null | string;
+        };
+        PlaceSearchResponse: {
+            results: components["schemas"]["PlaceDto"][];
         };
         ProblemDetails: {
             type?: null | string;
@@ -317,6 +432,9 @@ export interface components {
             id: string;
             kind: components["schemas"]["GpxTrackKind"];
             status: components["schemas"]["GpxTrackStatus"];
+            originalFileName: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         /** @enum {unknown} */
         RunTypeCategory: "Race" | "Training" | "Other";
@@ -376,12 +494,104 @@ export interface components {
             /** Format: double */
             elevationGainMeters: number;
         };
+        TrackDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            runId: string;
+            kind: components["schemas"]["GpxTrackKind"];
+            status: components["schemas"]["GpxTrackStatus"];
+            originalFileName: string;
+            /** Format: int64 */
+            sizeBytes: number;
+            /** Format: date-time */
+            createdAt: string;
+            summary: null | components["schemas"]["TrackSummaryDto"];
+            warnings: components["schemas"]["TrackWarningDto"][];
+        };
+        TrackGeoJson: {
+            type: string;
+            /** Format: int32 */
+            formatVersion: number;
+            bbox: number[];
+            features: components["schemas"]["TrackGeoJsonFeature"][];
+            profile: null | number[][];
+            splits: components["schemas"]["TrackGeoJsonSplit"][];
+        };
+        TrackGeoJsonFeature: {
+            type: string;
+            id: string;
+            properties: components["schemas"]["TrackGeoJsonProperties"];
+            geometry: components["schemas"]["TrackGeoJsonGeometry"];
+        };
+        TrackGeoJsonGeometry: {
+            type: string;
+            coordinates: components["schemas"]["JsonElement"];
+        };
+        TrackGeoJsonProperties: {
+            role: string;
+        };
+        TrackGeoJsonSplit: {
+            /** Format: int32 */
+            index: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int32 */
+            elapsedSeconds: null | number;
+            /** Format: double */
+            elevationDeltaMeters: null | number;
+        };
+        TrackPointDto: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+        };
+        TrackStartLocalDto: {
+            /** Format: date */
+            date: string;
+            /** @description Local time of day, HH:mm. */
+            time: string;
+            timeZoneId: string;
+        };
+        TrackSummaryDto: {
+            /** Format: int32 */
+            pointCount: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: double */
+            elevationGainMeters: null | number;
+            /** Format: double */
+            elevationLossMeters: null | number;
+            /** Format: double */
+            minElevationMeters: null | number;
+            /** Format: double */
+            maxElevationMeters: null | number;
+            /** Format: int32 */
+            elapsedSeconds: null | number;
+            /** Format: int32 */
+            movingSeconds: null | number;
+            /** Format: date-time */
+            startUtc: null | string;
+            /** Format: date-time */
+            endUtc: null | string;
+            start: components["schemas"]["TrackPointDto"];
+            finish: components["schemas"]["TrackPointDto"];
+            startLocal: null | components["schemas"]["TrackStartLocalDto"];
+        };
+        /** @enum {unknown} */
+        TrackWarningDto: "timestampsIgnored" | "noElevation" | "multipleSegments" | "routeConverted";
         /** @enum {unknown} */
         UnitSystem: "Metric" | "Imperial";
         UpdateMeRequest: {
             displayName?: null | string;
             timeZoneId: string;
             unitSystem: components["schemas"]["UnitSystem"];
+        };
+        UploadTrackForm: {
+            kind: components["schemas"]["GpxTrackKind"];
+            file: components["schemas"]["IFormFile"];
+            replace?: null | boolean;
         };
         /** @enum {unknown} */
         UserKind: "User" | "Guest";
@@ -721,6 +931,75 @@ export interface operations {
             };
         };
     };
+    searchPlaces: {
+        parameters: {
+            query?: {
+                q?: string;
+                lat?: number;
+                lon?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceSearchResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     listRuns: {
         parameters: {
             query: {
@@ -1000,6 +1279,361 @@ export interface operations {
         responses: {
             /** @description No Content */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    uploadTrack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadTrackForm"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getTrack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+                trackId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    deleteTrack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+                trackId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getTrackGeoJson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+                trackId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/geo+json": components["schemas"]["TrackGeoJson"];
+                };
+            };
+            /** @description Not Modified */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    downloadTrackGpx: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+                trackId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -26,6 +26,14 @@ export interface RaceFormValues {
   resultsUrl: string
 }
 
+/** The run's place as edited in the form (ADR 0023 §4): exact coordinates from the map or a search, plus a free name. */
+export interface LocationFormValue {
+  latitude: number
+  longitude: number
+  /** '' = no name */
+  name: string
+}
+
 /**
  * The form model (ADR 0018): display units and strings, never the wire shape. Numbers the user types stay strings
  * until `toWriteRequest` converts them to SI; an empty string means "not set".
@@ -51,6 +59,8 @@ export interface RunFormValues {
   gear: string
   weather: string
   surface: '' | SurfaceValue
+  /** `null` = the run has no location */
+  location: LocationFormValue | null
   race: RaceFormValues | null
   /** `stars` 0 = no rating */
   rating: { stars: number; comment: string }
@@ -64,4 +74,20 @@ export interface RunTypeRules {
 
 export function rulesOf(type: RunTypeDto | undefined): RunTypeRules {
   return { isRace: type?.category === 'Race', isRestDay: type?.isRestDay === true }
+}
+
+/**
+ * Values proposed by a GPX track (ADR 0023 §3): the subset of the form a track can fill. Carried in router state to
+ * the edit form, where it is applied as dirty values; nothing is saved before the user presses Save.
+ */
+export type FormPatch = Partial<
+  Pick<
+    RunFormValues,
+    'date' | 'startTime' | 'distanceKm' | 'duration' | 'elevationGain' | 'elevationLoss' | 'location' | 'status'
+  >
+>
+
+/** Router state of `…/runs/:id/edit` when it is opened from the prefill dialog. */
+export interface PrefillState {
+  prefill: { patch: FormPatch; source: string }
 }

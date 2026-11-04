@@ -1,11 +1,22 @@
 import { vi } from 'vitest'
 import { getFakeApi } from './fake'
+import { readUpload } from './fakeApi/tracks'
 
 export interface RecordedRequest {
   method: string
   path: string
   /** Parsed JSON body, if any. */
   body?: Record<string, unknown>
+}
+
+/** The JSON body of a request; undefined for an empty or non-JSON one (a multipart upload). */
+function parseJsonBody(text: string): Record<string, unknown> | undefined {
+  if (!text) return undefined
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return undefined
+  }
 }
 
 /** Wraps the current fetch stub so tests can inspect what the UI sent (method, path, JSON body). */
@@ -18,7 +29,7 @@ export function recordRequests(): RecordedRequest[] {
     recorded.push({
       method: request.method,
       path: new URL(request.url).pathname,
-      body: text ? (JSON.parse(text) as Record<string, unknown>) : undefined,
+      body: parseJsonBody(text),
     })
     return inner ? inner(input, init) : getFakeApi().handle(request)
   })
@@ -87,4 +98,34 @@ export async function deleteElsewhere(id: string): Promise<void> {
     }),
   )
   if (response.status !== 204) throw new Error(`deleteElsewhere failed: ${response.status}`)
+}
+
+export interface RecordedUpload {
+  path: string
+  kind: string | undefined
+  replace: string | undefined
+  fileName: string | undefined
+  fileText: string | undefined
+}
+
+/** Records the multipart track uploads the UI sends (the generic recorder only understands JSON). */
+export function recordUploads(): RecordedUpload[] {
+  const uploads: RecordedUpload[] = []
+  const inner = vi.mocked(fetch).getMockImplementation()
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init)
+    const path = new URL(request.url).pathname
+    if (request.method === 'POST' && /^\/api\/runs\/[^/]+\/tracks$/.test(path)) {
+      const form = await readUpload(request.clone())
+      uploads.push({
+        path,
+        kind: form?.fields.kind,
+        replace: form?.fields.replace,
+        fileName: form?.file?.name,
+        fileText: form?.file?.text,
+      })
+    }
+    return inner ? inner(input, init) : getFakeApi().handle(request)
+  })
+  return uploads
 }

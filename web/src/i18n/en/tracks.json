@@ -1,0 +1,163 @@
+{
+  "viewer": {
+    "mapLabel": "Map of the route",
+    "profileLoading": "Loading elevation profile…",
+    "title": "GPX track",
+    "gone": "This track no longer exists.",
+    "fileMissing": "The file for this track is missing. Go back to the run details and delete or replace it.",
+    "unreadable": "The track data could not be read. The summary is still available in the run details."
+  },
+  "profile": {
+    "title": "Elevation profile",
+    "label": "Elevation profile. Use the arrow keys to move along the route; Home and End jump to the start and the end.",
+    "readout": "{{distance}} · {{elevation}}",
+    "noElevation": "This track has no elevation data.",
+    "xAxis": "Distance (km)",
+    "yAxis": "Elevation (m)"
+  },
+  "summary": {
+    "title": "Track summary",
+    "distance": "Distance",
+    "elapsedTime": "Elapsed time",
+    "movingTime": "Moving time",
+    "pace": "Average pace",
+    "elevationGain": "Elevation gain",
+    "elevationLoss": "Elevation loss",
+    "minElevation": "Lowest point",
+    "maxElevation": "Highest point",
+    "points": "Track points",
+    "none": "Not available"
+  },
+  "warnings": {
+    "title": "Notes about this file",
+    "timestampsIgnored": "The timestamps in the file were not usable, so time and pace are not available.",
+    "noElevation": "The file has no elevation data, so there is no elevation profile, gain or loss.",
+    "multipleSegments": "The file has several segments; gaps between them are not counted in the distance.",
+    "routeConverted": "The file contains a planned route rather than a recorded track."
+  },
+  "splits": {
+    "title": "Splits",
+    "show": "Show splits table",
+    "caption": "Kilometre splits",
+    "distance": "Km",
+    "time": "Time",
+    "pace": "Pace",
+    "elevation": "Elevation change",
+    "none": "No splits for this track."
+  },
+  "kind": {
+    "PlannedCourse": "Planned course",
+    "RecordedTrack": "Recorded track"
+  },
+  "section": {
+    "title": "GPX files",
+    "empty": "No GPX file yet. Add a planned course before the run or a recorded track after it.",
+    "notProcessed": "This file has not been processed, so it cannot be shown on the map. Replace it with a new upload.",
+    "failed": "This file could not be processed. Replace it with a new upload.",
+    "fileMissing": "The file is missing. Delete this entry or replace it with a new upload."
+  },
+  "actions": {
+    "view": "View",
+    "viewNamed": "View {{kind}}",
+    "download": "Download",
+    "downloadNamed": "Download {{kind}}",
+    "useValues": "Use GPX values",
+    "useValuesNamed": "Use GPX values from {{kind}}",
+    "replace": "Replace",
+    "replaceNamed": "Replace {{kind}}",
+    "delete": "Delete",
+    "deleteNamed": "Delete {{kind}}",
+    "deleting": "Deleting…",
+    "add": "Add GPX file",
+    "upload": "Upload",
+    "replaceFile": "Replace file",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "toast": {
+    "uploaded": "GPX file added.",
+    "deleted": "GPX file deleted.",
+    "gone": "This GPX file no longer exists."
+  },
+  "delete": {
+    "title": "Delete this GPX file?",
+    "description": "The {{kind}} \"{{file}}\" will be deleted. The run itself stays. This cannot be undone."
+  },
+  "upload": {
+    "title": "Add a GPX file",
+    "description": "The file is checked and measured on the server. Nothing in the run changes until you review the values and save.",
+    "kind": "What is this file?",
+    "kindHint": {
+      "PlannedCourse": "The route you intend to run. It is drawn dashed on the map.",
+      "RecordedTrack": "What your watch recorded. Its distance, time and elevation can fill in the run."
+    },
+    "replaceNotice": "This run already has a file of this kind (\"{{file}}\"). Uploading replaces it.",
+    "file": "GPX file",
+    "hint": "A .gpx file up to {{size}} MB.",
+    "uploading": "Uploading…",
+    "progress": "Uploading and processing the file. Large files can take a few seconds."
+  },
+  "replace": {
+    "title": "Replace the existing file?",
+    "description": "The {{kind}} \"{{file}}\" will be replaced by the new file and cannot be restored.",
+    "descriptionUnknown": "This run already has a {{kind}}. It will be replaced by the new file and cannot be restored."
+  },
+  "prefill": {
+    "title": "Use values from the GPX file",
+    "description": "Review what \"{{file}}\" proposes for this run.",
+    "notSaved": "Tick what you want to use. The values open in the edit form, and nothing is saved until you press Save there.",
+    "apply": "Apply to the run form",
+    "restDay": "Rest days have no distance, time or elevation, so there is nothing to fill in.",
+    "nothing": "The run already has the values from this file.",
+    "current": "Now",
+    "empty": "empty",
+    "fromTrack": "GPX",
+    "completeHint": "The run has happened: set its status to Completed.",
+    "durationChoice": "Which time to use",
+    "duration": {
+      "elapsed": "Elapsed time {{time}}",
+      "moving": "Moving time {{time}}"
+    },
+    "dateMismatch": "This track was recorded on {{trackDate}}, but the run is on {{runDate}}. Check that it is the right file before using the date and start time.",
+    "rows": {
+      "complete": "Mark as completed",
+      "startTime": "Date and start time",
+      "distance": "Distance",
+      "duration": "Duration",
+      "elevationGain": "Elevation gain",
+      "elevationLoss": "Elevation loss",
+      "location": "Location (start of the track)"
+    }
+  },
+  "problem": {
+    "invalidGpx": {
+      "malformedXml": "The file is not valid XML. It may be damaged or cut off.",
+      "dtdProhibited": "The file contains a document type declaration, which is not allowed for security reasons.",
+      "unsupportedFormat": "This is not a GPX file. Only plain .gpx files are supported, not zipped or compressed ones.",
+      "notGpx": "The file is XML but not a GPX track or route.",
+      "tooLarge": "The file is too large.",
+      "tooManyPoints": "The file has too many track points.",
+      "tooFewPoints": "The file needs at least two track points.",
+      "invalidCoordinate": "The file contains a position that is not valid.",
+      "tooComplex": "The file is too deeply nested to be processed.",
+      "wrongExtension": "Choose a file with the .gpx extension.",
+      "unknown": "The file could not be used as a GPX track."
+    },
+    "exists": "This run already has a file of this kind.",
+    "limit": "You have reached the maximum number of GPX files. Delete one to add another.",
+    "restDay": "Rest days have no GPX files.",
+    "busy": "The server is busy processing other files. Please try again in a moment.",
+    "busyWait": "The server is busy processing other files. Please try again in {{seconds}} s.",
+    "storage": "The file storage is not available right now. Please try again.",
+    "storageWait": "The file storage is not available right now. Please try again in {{seconds}} s.",
+    "featureUnavailable": "This feature is not available right now.",
+    "unsupportedMedia": "The upload was not understood by the server. Please try again.",
+    "tooLarge": "The file is too large. The limit is {{size}} MB.",
+    "tooLargeGeneric": "The file is too large.",
+    "gone": "This run or file no longer exists."
+  },
+  "kindLower": {
+    "PlannedCourse": "planned course",
+    "RecordedTrack": "recorded track"
+  }
+}

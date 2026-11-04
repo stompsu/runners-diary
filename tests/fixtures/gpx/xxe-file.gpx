@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<!DOCTYPE gpx [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+<gpx version="1.1" creator="Runners Diary test fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+<metadata><name>&xxe;</name></metadata><trk><trkseg><trkpt lat="50.000" lon="18.000"><ele>100</ele><time>2025-06-01T07:00:00Z</time></trkpt><trkpt lat="50.009" lon="18.000"><ele>100</ele><time>2025-06-01T07:05:00Z</time></trkpt><trkpt lat="50.018" lon="18.000"><ele>100</ele><time>2025-06-01T07:10:00Z</time></trkpt><trkpt lat="50.027" lon="18.000"><ele>100</ele><time>2025-06-01T07:15:00Z</time></trkpt><trkpt lat="50.036" lon="18.000"><ele>100</ele><time>2025-06-01T07:20:00Z</time></trkpt><trkpt lat="50.045" lon="18.000"><ele>100</ele><time>2025-06-01T07:25:00Z</time></trkpt></trkseg></trk>
+</gpx>

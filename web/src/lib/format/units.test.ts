@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatDistance,
   formatElevation,
+  formatElevationDelta,
   formatKmInput,
   formatPace,
   kmToMeters,
@@ -70,5 +71,13 @@ describe('pace', () => {
     expect(formatPace(0, 1000)).toBeNull()
     expect(formatPace(undefined, undefined)).toBeNull()
     expect(paceSecondsPerKm(300, -5)).toBeNull()
+  })
+})
+
+describe('formatElevationDelta', () => {
+  it('signs gains and losses and leaves zero unsigned', () => {
+    expect(formatElevationDelta(3.2, 'en')).toBe('+3 m')
+    expect(formatElevationDelta(-2.4, 'en')).toBe('-2 m')
+    expect(formatElevationDelta(0, 'en')).toBe('0 m')
   })
 })

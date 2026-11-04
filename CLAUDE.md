@@ -10,8 +10,9 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 - **M1 – Skeleton** — done (merged, stompsu/runners-diary#1). Plan: [`docs/plans/M1-skeleton.md`](docs/plans/M1-skeleton.md).
 - **M2 – Domain & Runs API** — done (merged, stompsu/runners-diary#4). Plan, deviations (§11) and the Entra tenant checklist (§10): [`docs/plans/M2-domain-runs-api.md`](docs/plans/M2-domain-runs-api.md).
   - The user creates the Entra external tenant themself (checklist §10). Until its IDs are in AppHost user-secrets, the API runs with Entra disabled; guests work and tests mint their own tokens.
-- **M3 – Calendar UI** — implemented and verified locally on branch `m3-calendar-ui`; awaiting CI + approval. Plan and deviations (§12): [`docs/plans/M3-calendar-ui.md`](docs/plans/M3-calendar-ui.md).
-- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0019).
+- **M3 – Calendar UI** — done (merged, stompsu/runners-diary#5). Real Entra sign-in/sign-out and zone sync (AC3/AC4) still to check once the tenant exists. Plan and deviations (§12): [`docs/plans/M3-calendar-ui.md`](docs/plans/M3-calendar-ui.md).
+- **M4 – Maps & GPX** — plan approved 2026-11-03 (Azure Maps deferred to M7; no cloud resources), implemented and verified locally on branch `m4-maps-gpx`; awaiting CI + approval: [`docs/plans/M4-maps-gpx.md`](docs/plans/M4-maps-gpx.md).
+- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0023).
 
 ## Prerequisites (local dev)
 

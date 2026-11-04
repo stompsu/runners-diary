@@ -33,6 +33,17 @@ export default defineConfig({
             { name: 'router-vendor', test: /node_modules[\\/](react-router)[\\/]/ },
             { name: 'query-vendor', test: /node_modules[\\/](@tanstack|openapi-fetch|openapi-react-query)[\\/]/ },
             { name: 'i18n-vendor', test: /node_modules[\\/](i18next|react-i18next)[\\/]/ },
+            // clsx is shared by class-variance-authority (initial load) and Recharts (lazy). Unassigned, Rolldown parks it
+            // in the chart group and the initial load then imports the whole chart stack. Pin it to the initial side.
+            { name: 'ui-vendor', test: /node_modules[\\/]clsx[\\/]/ },
+            // M4: the map engine and the chart stack are reached only through dynamic import() (MapView / the elevation
+            // profile), so these groups are lazy chunks. scripts/bundle-budget.mjs fails the build if one ever becomes
+            // part of the initial load.
+            { name: 'map-vendor', test: /node_modules[\\/]maplibre-gl[\\/]/ },
+            {
+              name: 'chart-vendor',
+              test: /node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|@reduxjs|redux|redux-thunk|react-redux|immer|reselect|es-toolkit|decimal\.js-light|eventemitter3|internmap|tiny-invariant|use-sync-external-store|react-is)[\\/]/,
+            },
           ],
         },
       },

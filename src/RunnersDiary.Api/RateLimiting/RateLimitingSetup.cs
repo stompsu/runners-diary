@@ -13,6 +13,8 @@ public static class RateLimitingSetup
 {
     public const string GuestCreatePolicy = "guest-create";
     public const string GeneralPolicy = "api";
+    public const string GpxUploadPolicy = "gpx-upload";
+    public const string GeocodePolicy = "geocode";
 
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
@@ -43,6 +45,10 @@ public static class RateLimitingSetup
                     QueueLimit = 0,
                 }));
 
+            // Endpoint-level policies replace the group's general policy for their route (the most specific metadata wins).
+            options.AddPolicy(GpxUploadPolicy, context => PerCaller(context, limits.Value.GpxUpload));
+            options.AddPolicy(GeocodePolicy, context => PerCaller(context, limits.Value.Geocode));
+
             options.AddPolicy(GeneralPolicy, context => RateLimitPartition.GetTokenBucketLimiter(
                 context.User.FindFirst(AppClaims.UserId)?.Value ?? "ip:" + ClientIp(context),
                 _ => new TokenBucketRateLimiterOptions
@@ -55,6 +61,20 @@ public static class RateLimitingSetup
                 }));
         });
         return services;
+    }
+
+    private static RateLimitPartition<string> PerCaller(HttpContext context, RateLimitingOptions.PerCallerLimit limit)
+    {
+        var isGuest = context.User.FindFirst(AppClaims.Kind)?.Value == AppClaims.KindGuest;
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            context.User.FindFirst(AppClaims.UserId)?.Value ?? "ip:" + ClientIp(context),
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = isGuest ? limit.GuestPermitLimit : limit.UserPermitLimit,
+                Window = limit.Window,
+                SegmentsPerWindow = 6,
+                QueueLimit = 0,
+            });
     }
 
     internal static IResult RateLimitedProblem() => Results.Problem(

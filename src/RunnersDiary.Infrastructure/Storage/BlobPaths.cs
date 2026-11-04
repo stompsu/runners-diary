@@ -8,5 +8,11 @@ public static class BlobPaths
     /// <summary>Prefix of everything a user owns; deleting it removes all of the user's blobs.</summary>
     public static string UserPrefix(Guid userId) => $"users/{userId:N}/";
 
-    public static string TrackOriginal(Guid userId, Guid trackId) => $"{UserPrefix(userId)}tracks/{trackId:N}/original.gpx";
+    /// <summary>Prefix of one track's blobs (the uploaded file and the processed GeoJSON); deleting it removes the track's storage.</summary>
+    public static string TrackPrefix(Guid userId, Guid trackId) => $"{UserPrefix(userId)}tracks/{trackId:N}/";
+
+    public static string TrackOriginal(Guid userId, Guid trackId) => $"{TrackPrefix(userId, trackId)}original.gpx";
+
+    /// <summary>The processed track document (<c>application/geo+json</c>, ADR 0021 §5).</summary>
+    public static string TrackProcessed(Guid userId, Guid trackId) => $"{TrackPrefix(userId, trackId)}track.json";
 }

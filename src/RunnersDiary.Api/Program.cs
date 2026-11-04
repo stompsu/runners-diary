@@ -3,15 +3,18 @@ using Microsoft.AspNetCore.Http;
 using RunnersDiary.Api.Auth;
 using RunnersDiary.Api.Features.Calendar;
 using RunnersDiary.Api.Features.ClientConfig;
+using RunnersDiary.Api.Features.Geocoding;
 using RunnersDiary.Api.Features.GuestSessions;
 using RunnersDiary.Api.Features.Health;
 using RunnersDiary.Api.Features.Account;
 using RunnersDiary.Api.Features.RunTypes;
 using RunnersDiary.Api.Features.Runs;
+using RunnersDiary.Api.Features.Tracks;
 using RunnersDiary.Api.Http;
 using RunnersDiary.Api.OpenApi;
 using RunnersDiary.Api.RateLimiting;
 using RunnersDiary.Infrastructure;
+using RunnersDiary.Infrastructure.Gpx;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +46,15 @@ builder.Services.AddOpenApi("v1", options =>
     options.AddSchemaTransformer<TimeOnlySchemaTransformer>();
 });
 builder.Services.AddHealthFeature();
+// Form parsing limits (the only form endpoint is the GPX upload; ASP.NET Core 10 has no per-endpoint form options for minimal APIs,
+// so these are global): file sections up to the largest file limit, and only the few small fields the upload defines.
+var gpxLimits = builder.Configuration.GetSection(GpxLimitsOptions.SectionName).Get<GpxLimitsOptions>() ?? new GpxLimitsOptions();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = Math.Max(gpxLimits.MaxFileBytes, gpxLimits.GuestMaxFileBytes) + TracksEndpoints.MultipartOverheadBytes;
+    options.ValueCountLimit = 16;
+    options.ValueLengthLimit = 1024;
+});
 builder.Services.Configure<RequestLimitsOptions>(builder.Configuration.GetSection(RequestLimitsOptions.SectionName));
 
 var app = builder.Build();
@@ -104,6 +116,9 @@ api.MapMeEndpoints();
 api.MapRunTypeEndpoints();
 api.MapRunEndpoints();
 api.MapCalendarEndpoints();
+// The upload route's body limit is fixed at mapping time from configuration (the other routes keep the 64 KB default).
+api.MapTrackEndpoints(gpxLimits);
+api.MapGeocodingEndpoints();
 
 await app.RunAsync();
 

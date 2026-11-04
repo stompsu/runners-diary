@@ -293,7 +293,7 @@ describe('Conditional sections', () => {
 })
 
 describe('Edit run', () => {
-  it('loads the run in display units and saves a change, keeping the location the form does not show', async () => {
+  it('loads the run in display units and saves a change, sending the location the form shows', async () => {
     resetFakeApi({
       guestSeed: [
         {

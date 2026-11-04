@@ -145,3 +145,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* MapLibre's attribution links are only distinguishable by colour; underline them (WCAG 1.4.1). The selector is more
+   specific than maplibre-gl.css, which loads later with the lazy map chunk. */
+.maplibregl-map .maplibregl-ctrl-attrib a {
+  text-decoration: underline;
+}

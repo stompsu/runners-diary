@@ -428,13 +428,54 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2(0)");
 
+                    b.Property<double?>("DistanceMeters")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("ElapsedSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("ElevationGainMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("ElevationLossMeters")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("EndUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<Point>("FinishPoint")
+                        .HasColumnType("geography");
+
                     b.Property<byte>("Kind")
                         .HasColumnType("tinyint");
+
+                    b.Property<double?>("MaxElevationMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("MinElevationMeters")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("MovingSeconds")
+                        .HasColumnType("int");
 
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<int?>("PointCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<string>("ProcessedBlobName")
+                        .HasMaxLength(400)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(400)");
+
+                    b.Property<byte?>("ProcessorVersion")
+                        .HasColumnType("tinyint");
 
                     b.Property<string>("RawBlobName")
                         .IsRequired()
@@ -452,11 +493,20 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<Point>("StartPoint")
+                        .HasColumnType("geography");
+
+                    b.Property<DateTime?>("StartUtc")
+                        .HasColumnType("datetime2(0)");
+
                     b.Property<byte>("Status")
                         .HasColumnType("tinyint");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("WarningFlags")
+                        .HasColumnType("tinyint");
 
                     b.HasKey("Id");
 
@@ -469,7 +519,10 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RunId", "UserId");
 
-                    b.ToTable("GpxTracks", (string)null);
+                    b.ToTable("GpxTracks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GpxTracks_Processed", "[Status] <> 1 OR ([ProcessedBlobName] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [PointCount] IS NOT NULL AND [StartPoint] IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("RunnersDiary.Domain.Users.User", b =>
