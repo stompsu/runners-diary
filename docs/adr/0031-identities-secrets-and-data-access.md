@@ -1,6 +1,6 @@
 # 0031 – Identities, role assignments, secrets and data-plane access in Azure
 
-**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, see the end)
+**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation and after gate G2, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -100,6 +100,14 @@ Deviations from §1–§3 as written in Bicep (`infra/modules/{identities,keyvau
 4. **Deployer roles as implemented:** AcrPush (ACR), Container Apps Contributor `358470bc-…` (RG), Container Apps Jobs Contributor `4e3d2b60-…` (RG), Reader (RG), Managed Identity Operator on `id-rd-api`, `id-rd-web`, `id-rd-migrator`. ⚠ Whether Container Apps Contributor alone suffices for app updates, and the Jobs Contributor GUID, are confirmed at G2/G4.
 5. **SQL identities (unchanged, ⚠ until the first migrate run):** the UAMI admin `sid` = the migrator's client id, and `CREATE USER … WITH SID = <api client id>, TYPE = E` run by `infra/sql/grant-app-users.sql`. Both are documented (see the 2026-11-04 Learn check in plan §11) but first exercised at G4.
 6. **Role propagation:** the first provision creates identities, role assignments and the apps in one deployment. A pull or Key Vault reference may fail for a few minutes until RBAC propagates; ACA retries. ⚠ Observed at G2.
+
+## Amendment: G2 (2026-11-04, first provision)
+
+Run log: [M7 plan §12.7](../plans/M7-azure-deployment.md#127-part-b-outcomes).
+
+1. **Guest key bootstrap, as actually run.** azd 1.37.2 did not run the project hooks during `azd provision` in this setup ([ADR 0030](0030-azure-topology-iac-and-deployment.md) amendment "Region" §4), so the key was bootstrapped with **`azd hooks run preprovision`** (generated `GUEST_KEY_BOOTSTRAP` because the vault secret did not exist yet; never printed), written to Key Vault by Bicep through the secure parameter during `azd provision`, and the local copy was cleared with **`azd hooks run postprovision`**. The design of Part A amendment §2 is unchanged; only the invocation is manual. Every later provision must use the same sequence, or the bootstrap value can stay in the local azd env file (`postprovision` skipped) — on a re-provision the secret exists, so `preprovision` generates nothing and the key is not rotated.
+2. **SQL firewall rule renamed** from `AllowAllWindowsAzureIps` to **`AllowAzureServices`** (§3). Same range (0.0.0.0–0.0.0.0 = "Allow Azure services"), same control model (Entra-only auth). azd warned that the old name contains the reserved word "Windows". The SQL server is now in `polandcentral` (ADR 0030 amendment "Region"); identities, roles and the Entra-only admin are unchanged.
+3. Role propagation (Part A amendment §6): the provision itself succeeded; whether pulls and the Key Vault reference work without retries is observed at G4, when the real images run.
 
 ## References (checked 2026-11-04)
 

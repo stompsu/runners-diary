@@ -8,12 +8,15 @@ targetScope = 'subscription'
 param environmentName string
 
 @minLength(1)
-@description('Primary region (AZURE_LOCATION), e.g. swedencentral. Everything lives here except the Maps account.')
+@description('Primary region (AZURE_LOCATION), e.g. westeurope. Everything lives here except the Maps account and, when SQL_LOCATION is set, the SQL server.')
 param location string
 
 @allowed(['dev', 'prod'])
 @description('Stage suffix in resource names (rg-runnersdiary-<stage>). Local Aspire is the dev environment; the cloud has prod only.')
 param stage string = 'prod'
+
+@description('Region of the Azure SQL server and database (SQL_LOCATION). Empty = the primary region. West Europe was not accepting new SQL servers for this subscription on 2026-11-04 (RegionDoesNotAllowProvisioning), so prod uses polandcentral (westeurope and northeurope are restricted for this subscription per the SQL capabilities API).')
+param sqlLocation string = ''
 
 @description('Region of the Azure Maps account. It must support managed identities (not "global"); West/North Europe sit behind eu.atlas.microsoft.com.')
 param mapsLocation string = 'westeurope'
@@ -151,7 +154,8 @@ module sql 'modules/sql.bicep' = {
   scope: rg
   name: 'sql'
   params: {
-    location: location
+    location: empty(sqlLocation) ? location : sqlLocation
+    nameSuffix: empty(sqlLocation) ? '' : sqlLocation
     tags: tags
     token: token
     migratorName: identities.outputs.migratorName

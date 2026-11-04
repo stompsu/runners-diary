@@ -6,6 +6,7 @@
     "location": { "value": "${AZURE_LOCATION}" },
     "stage": { "value": "${RD_STAGE=prod}" },
     "mapsLocation": { "value": "${MAPS_LOCATION=westeurope}" },
+    "sqlLocation": { "value": "${SQL_LOCATION}" },
     "principalId": { "value": "${AZURE_PRINCIPAL_ID}" },
     "entraTenantId": { "value": "${ENTRA_TENANT_ID}" },
     "entraTenantSubdomain": { "value": "${ENTRA_TENANT_SUBDOMAIN}" },

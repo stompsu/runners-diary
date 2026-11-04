@@ -1,6 +1,6 @@
 # M7 – Azure deployment: plan
 
-**Status:** Approved 2026-11-04 (all §11 defaults; claims checked against Microsoft Learn). **Part A (offline) implemented on branch `m7-azure-deployment`, awaiting approval** (deviations and review/QA findings: §12). Part B gates (§6.2) unchanged and not started. **No cloud resource exists, and none is created, changed or deployed without the user's explicit confirmation of that specific gate.**
+**Status:** Approved 2026-11-04 (all §11 defaults except Q2, see §11; claims checked against Microsoft Learn). **Part A (offline) merged** (stompsu/runners-diary#12; deviations and review/QA findings: §12). **Part B: G1 (what-if) and G2 (provision) done 2026-11-04** with the user's explicit approval per gate (log: §12.7). 25 resources exist in `rg-runnersdiary-prod` (primary region **`westeurope`**, SQL in **`polandcentral`**); the apps run the placeholder image until G4; AI is off. **Next gate: G3** (GitHub environment and values). No further cloud resource is created, changed or deployed without the user's explicit confirmation of that specific gate.
 
 **Builds on:**
 - M1–M6 (all merged or awaiting merge);
@@ -64,13 +64,13 @@ The milestone has two halves.
                          Internet (HTTPS only, ACA-managed TLS)
                                      │
                     ┌────────────────▼────────────────┐  Container Apps environment `cae-rd-prod`
-                    │ web  (external ingress, 0–2)    │  Consumption plan, no VNet, swedencentral
+                    │ web  (external ingress, 0–2)    │  Consumption plan, no VNet, westeurope (was swedencentral; §12.7)
                     │ nginx: SPA + headers/CSP        │──── id-rd-web ──▶ ACR (AcrPull)
                     │ /api/* → https://<api int FQDN> │
                     └────────────────┬────────────────┘
                                      │ internal only
                     ┌────────────────▼────────────────┐
-                    │ api  (internal ingress, 0–2)    │──── id-rd-api ──┬─▶ Azure SQL (free offer, Entra-only): db_datareader/writer
+                    │ api  (internal ingress, 0–2)    │──── id-rd-api ──┬─▶ Azure SQL (free offer, Entra-only, polandcentral): db_datareader/writer
                     │ ASP.NET Core 10, /alive probes  │                 ├─▶ Storage blob `gpx` (shared key off): Blob Data Contributor
                     └─────────────────────────────────┘                 ├─▶ Key Vault: Secrets User (guest-token-signing-key only)
    job-guest-cleanup (cron weekly, API image, id-rd-api) ───────────────┤─▶ Foundry AIServices (local auth off), gpt-5.4-mini Global Std 30k TPM
@@ -92,6 +92,8 @@ The milestone has two halves.
 4. GPX files are streamed through the API to and from Blob. Geocoding is a server-side call to `eu.atlas.microsoft.com`. An AI summary is a server-side call to the Foundry v1 endpoint.
 
 Nothing in the browser holds an Azure credential.
+
+**Region (as provisioned at G2, 2026-11-04; §12.7):** everything is in **`westeurope`** (user decision, Q2) except the **SQL server and database, which are in `polandcentral`** (`SQL_LOCATION`), because new SQL servers could not be provisioned for this subscription in West Europe, North Europe or Norway East. App ↔ DB traffic is therefore **cross-region** (West Europe → Poland Central: a few tens of ms per round trip, on top of the SQL resume time after auto-pause; acceptable at hobby scale, ⚠ to watch in App Insights dependency durations at G5). All data at rest stays in the EU. Maps was already `westeurope`, so it is now co-located.
 
 ## 3. Files by owning agent
 
@@ -167,6 +169,8 @@ web/src/components/layout/ApiStatus.tsx      # verify: no /api/health call befor
 
 ## 4. Monthly cost estimate (USD, retail, `swedencentral` unless noted; retail prices API 2026-11-04)
 
+> **Region changed at G2 (2026-11-04):** resources are in `westeurope`, SQL in `polandcentral` (§2, §12.7). The table below still uses the `swedencentral` retail prices it was built from. European region prices for these meters are usually close, and the large items (SQL free offer, Container Apps free grant, Foundry Global Standard per-token price) do not depend on the region. **⚠ Re-check the `westeurope` (and `polandcentral` for SQL) retail prices** with the retail prices API before G4; the numbers are not updated here until then. Cross-region app ↔ DB traffic adds inter-region data transfer (⚠ price not checked; negligible at hobby volumes of a few MB a day). Subscription: a Visual Studio subscriber (MSDN) credit subscription with a spending limit by default, so actual spend is capped by the monthly credit unless the user removes the limit (when the credit runs out, resources are disabled until the next period).
+
 Assumptions:
 - **Idle:** nobody uses the app.
 - **Low traffic:** 1–3 users a day plus a few guests; ≤ 60 h a month of both apps awake; ≈ 30 AI summaries a month.
@@ -207,13 +211,13 @@ Names use `<token>` = `uniqueString(subscription().id, env, location)`. All reso
 
 | Resource | Name | Key settings |
 |---|---|---|
-| Resource group | `rg-runnersdiary-prod` | `swedencentral` |
+| Resource group | `rg-runnersdiary-prod` | `westeurope` (was `swedencentral`; §12.7) |
 | Log Analytics / App Insights | `log-rd-prod` / `appi-rd-prod` | 30 d, `dailyQuotaGb` 0.15; workspace-based |
 | ACR | `acrrd<token>` | Basic, admin user off |
 | Identities | `id-rd-{api,web,migrator,deployer}` (+ `id-rd-maps-sas` in `westeurope` if G9) | ADR 0031 table |
 | Key Vault | `kv-rd-<token>` | RBAC, soft delete 7 d, purge protection off; secret `guest-token-signing-key` (hook) |
 | Storage | `strd<token>` | StorageV2 Hot LRS, shared key off, public blob off, TLS 1.2, container `gpx`, soft delete 7 d |
-| SQL server / DB | `sql-rd-<token>` / `runnersdiary` | Entra-only, admin `id-rd-migrator`, *Allow Azure services*; GP_S_Gen5_2, min 0.5, `useFreeLimit: true`, `freeLimitExhaustionBehavior: AutoPause` |
+| SQL server / DB | `sql-rd-<token>` / `runnersdiary`; with `SQL_LOCATION` set: `sql-rd-<token>-<sqlLocation>` (prod: `sql-rd-m3dcwctu5kpwi-polandcentral`) | Region `SQL_LOCATION` (empty = primary; prod `polandcentral`); Entra-only, admin `id-rd-migrator`, firewall rule `AllowAzureServices` (0.0.0.0; was `AllowAllWindowsAzureIps`); GP_S_Gen5_2, min 0.5, `useFreeLimit: true`, `freeLimitExhaustionBehavior: AutoPause` |
 | Foundry | `ais-rd-<token>` (custom subdomain) | kind `AIServices`, S0, `disableLocalAuth: true`; deployment `gpt-54-mini`: model `gpt-5.4-mini` `2026-03-17`, sku **`GlobalStandard`** (was `DataZoneStandard`; §12 D-AI), capacity `${AI_CAPACITY_KTPM}` = 30 (unit = 1k TPM, confirmed) |
 | Azure Maps | `map-rd-prod` (`westeurope`) | Gen2 `G2`; `disableLocalAuth: true` unless G9; CORS = web origin |
 | ACA environment | `cae-rd-prod` | Consumption, logs → `log-rd-prod`, no VNet |
@@ -226,7 +230,7 @@ Names use `<token>` = `uniqueString(subscription().id, env, location)`. All reso
 
 ### 5.2 Configuration mapping
 
-azd env values live in `.azure/rd-prod/.env` (git-ignored, non-secret). They feed Bicep params, which become container env vars.
+azd env values live in `.azure/prod/.env` (git-ignored, non-secret; the env was created as `prod`, not `rd-prod`, §12.7). They feed Bicep params, which become container env vars.
 
 | API env var | Local (AppHost) | Azure `prod` | From |
 |---|---|---|---|
@@ -255,7 +259,7 @@ azd env values live in `.azure/rd-prod/.env` (git-ignored, non-secret). They fee
 - `job-guest-cleanup`: the API's settings (except Entra and the guest key, which job mode does not need) + args `--job guest-cleanup`.
 - `job-migrate`: `SQL_SERVER`, `SQL_DATABASE`, `AZURE_CLIENT_ID` (`id-rd-migrator`), `API_IDENTITY_NAME`, `API_IDENTITY_CLIENT_ID`.
 
-**Other azd env values:** `AZURE_ENV_NAME`, `AZURE_LOCATION`, `AZURE_SUBSCRIPTION_ID`, `AZURE_PRINCIPAL_ID` (set by azd), `BUDGET_AMOUNT` (25), `BUDGET_CONTACT_EMAIL`, `AI_CAPACITY_KTPM` (30), `GUEST_CLEANUP_CRON`, `GRANT_DEVELOPER_AI_ACCESS` (true).
+**Other azd env values:** `AZURE_ENV_NAME`, `AZURE_LOCATION` (prod `westeurope`), `AZURE_SUBSCRIPTION_ID`, `AZURE_PRINCIPAL_ID` (set by azd), `BUDGET_AMOUNT` (25), `BUDGET_CONTACT_EMAIL`, `BUDGET_START_DATE` (`yyyy-MM-01`; must be set by hand before the first provision, §10), `SQL_LOCATION` (empty = primary region; prod `polandcentral`), `AI_CAPACITY_KTPM` (30), `GUEST_CLEANUP_CRON`, `GRANT_DEVELOPER_AI_ACCESS` (true).
 
 ### 5.3 API deltas
 
@@ -334,8 +338,8 @@ Headers, routing, timeouts and client-IP handling: [ADR 0029](../adr/0029-web-ti
 | Gate | Action (who runs it) | What changes | Cost impact |
 |---|---|---|---|
 | **G0** | User: §10 steps 1–4 (subscription, `azd` install, quota check: **read-only**) | nothing | $0 |
-| **G1** | `azd provision --preview` (what-if) by the user, or by azure-infra after the user's yes | nothing (shows the planned resources) | $0 |
-| **G2** | `azd provision` (+ `postprovision` hook writing the guest key) | creates the RG and ≈ 20 resources (§5.1), the identities and roles, and the GitHub federated credential; apps start on a placeholder image | from now on ≈ **$5.5/month idle** (ACR) |
+| **G1** ✔ 2026-11-04 | `azd provision --preview` (what-if) by the user, or by azure-infra after the user's yes; full detail via `az deployment sub what-if` | nothing (shows the planned resources) | $0 |
+| **G2** ✔ 2026-11-04 | `azd hooks run preprovision`, `azd provision`, `azd hooks run postprovision` (§10 step 5; the guest key is generated by `preprovision`, written by Bicep, cleared locally by `postprovision`) | created the RG and 25 resources (§5.1), the identities and roles, and the GitHub federated credential; apps run a placeholder image | from now on ≈ **$5.5/month idle** (ACR; ⚠ westeurope prices, §4) |
 | **G3** | User: GitHub environment `prod` (reviewer, `main` only), 3 secrets, variables, `DEPLOY_ENABLED=true` | GitHub settings only | $0 |
 | **G4** | User: run `deploy.yml` (dispatch) and **approve** it | pushes 3 images (≈ 0.5 GB of the 10 GB ACR quota), runs the migration job (schema + API DB user), deploys apps and jobs | ≈ $0 (free grants) |
 | **G5** | User + qa-tester: go-live checklist §7.3, incl. the XFF test (6 guest creations) | app data only (guests expire) | $0 |
@@ -407,6 +411,7 @@ Each run creates one guest.
 | `GlobalStandard` quota is a subscription-wide pool shared with the user's other deployments (1 000k TPM, 700k used) | If other deployments grow past 970k, G2 fails, or a later re-provision does | Re-read the free quota (≥ 30k) right before G1 and any later G2; `AI_CAPACITY_KTPM` can go lower (more 503 `ai-busy`). |
 | ~~⚠ The capacity unit for `DataZoneStandard` is not 1k TPM~~ | Wrong throughput | Resolved: 1 capacity = 1k TPM (Learn check below). |
 | AI prompts processed outside the EU (Global Standard) | Data-residency expectation | Only the metrics-only fact sheet is sent (ADR 0026 amendment); user accepted 2026-11-04; switch back to `DataZoneStandard` if EU quota is granted. |
+| New SQL servers restricted for the subscription in a region (**materialized at G2, 2026-11-04**: westeurope, northeurope, norwayeast) | Provision fails at SQL; a failed create can hold the server name in that region | Check the SQL capabilities API before G1 (§10 step 5.1); `SQL_LOCATION` + region-suffixed server name (§12.7 B2/B3). A teardown and re-provision must re-check, since availability can change. |
 | XFF chain differs from the design (extra hop) | All guests share one bucket, or spoofing | nginx overwrites to a single value; `ForwardLimit` and `KnownIPNetworks` are config; AC9 before announcing the URL. |
 | CSP or COOP breaks MSAL or MapLibre | Sign-in or map fails | CI runs the full Playwright suite on the image with CSP; COOP off for `redirect.html`; real-tenant check at G8; header tweaks need only a web redeploy. |
 | Container Apps "Environment Management Hour" ($0.10/h, new meter 2026-11-01) applies to Consumption environments | +$73/month | Learn says management fees apply only to Dedicated profiles, private endpoints and planned maintenance (none used); checked in Cost analysis 48 h after G2; if charged, stop and reassess (Q14). |
@@ -468,8 +473,31 @@ Below 90 %: prompt v2 or a model change (a Bicep param, G1 + G2) before G7.
    - `az account set -s <id>`.
 3. **Quota check (read-only):** in the Foundry portal or `az cognitiveservices usage list -l swedencentral`, check **`OpenAI.GlobalStandard.gpt-5.4-mini`**: limit minus current usage must be **≥ 30** (k TPM). (Changed 2026-11-04 from the Data Zone Standard quota, which is 0 on this subscription; §12 D-AI. Done once on 2026-11-04: 1 000 limit, 700 used, 300 free. Re-read right before G1, because the pool is shared with your other deployments.)
 4. **Answer §11.** Optionally create the Entra external tenant now (M2 §10); otherwise production starts guests-only.
-5. **G1:** review the what-if output. **G2:** provision. Send me the printed web FQDN.
-6. **G3:** in GitHub, create the environment `prod` with yourself as required reviewer and branch `main`; add the 3 secrets and the variables printed by the hook; set `DEPLOY_ENABLED=true`. Optionally add the new CI job to branch protection.
+5. **G1 + G2: the provisioning procedure** (as run on 2026-11-04 with azd 1.37.2; §12.7). Replace the `<…>` values; nothing here is secret, but the e-mail stays out of the repo.
+   1. **Check SQL region availability first** (read-only). New SQL servers can be restricted per subscription and region, independently of the portal's region list:
+      ```bash
+      az rest --method get --url "https://management.azure.com/subscriptions/<sub-id>/providers/Microsoft.Sql/locations/<region>/capabilities?api-version=2023-08-01" --query "{status:status, reason:reason}"
+      ```
+      Use a region whose `status` is `Available`. "Provisioning is restricted in this region" needs a support request; "Subscriptions are restricted" is a hard no. On 2026-11-04 `westeurope`, `northeurope` and `norwayeast` were restricted for this subscription; `polandcentral` was available.
+   2. Tools and environment:
+      ```bash
+      brew install azd
+      azd auth login
+      azd env new prod --subscription <sub-id> --location westeurope
+      azd env set BUDGET_CONTACT_EMAIL <e-mail>
+      azd env set BUDGET_START_DATE <yyyy-MM-01>      # first day of the current month
+      azd env set SQL_LOCATION polandcentral          # omit (empty) to keep SQL in the primary region
+      ```
+      `BUDGET_START_DATE` must be set by hand: **azd validates required Bicep parameters before it runs the `preprovision` hook**, so the hook cannot supply it on the first run.
+   3. **G1** (what-if, $0): `azd hooks run preprovision`, then `azd provision --preview`. azd's summary lists only the main resource types; for the full per-resource detail run `az deployment sub what-if` with the same template and parameters. After a partial provision, what-if may report `NestedDeploymentShortCircuited` and skip modules whose parameters use outputs of existing resources: an ARM limitation, not a template error (§12.7).
+   4. **G2** (provision): run the hooks explicitly around the provision, because `azd provision` (incl. `--no-prompt`) did **not** run the project hooks in this setup (⚠ §12.7):
+      ```bash
+      azd hooks run preprovision      # creates GUEST_KEY_BOOTSTRAP only if the vault secret is absent; never prints it
+      azd provision
+      azd hooks run postprovision     # clears GUEST_KEY_BOOTSTRAP locally; prints the web URL, redirect URIs and GitHub values
+      ```
+      Never skip `postprovision`: otherwise the bootstrap key stays in `.azure/prod/.env`. Send me the printed web FQDN.
+6. **G3:** in GitHub, create the environment `prod` with yourself as required reviewer and branch `main`; add the 3 secrets and the variables printed by the hook; set `DEPLOY_ENABLED=true`. Optionally add the new CI job to branch protection. The values from the 2026-11-04 provision are in §12.7.
 7. **G4:** run *deploy* and approve it. **G5:** the go-live checklist with qa-tester (the XFF test from your network, then from your phone on mobile data).
 8. **G6:** the live AI eval. **G7:** enable AI.
 9. **G8** (when the tenant is ready): add the two redirect URIs (§5.6), set the `ENTRA_*` values, provision.
@@ -494,7 +522,7 @@ Below 90 %: prompt v2 or a model change (a Bicep param, G1 + G2) before G7.
 
 **Answers (user, 2026-11-04):** all recommended defaults.
 - Q1 one `prod`.
-- Q2 `swedencentral` (Maps in `westeurope`).
+- Q2 ~~`swedencentral` (Maps in `westeurope`)~~ → **`westeurope`** (user decision 2026-11-04, before G1), so everything except SQL is co-located with Maps. gpt-5.4-mini Global Standard is offered there; the Global Standard quota pool is shared across regions (300k of 1 000k free). **SQL in `polandcentral`** (user choice at G2, 2026-11-04), because new SQL servers were not available to this subscription in `westeurope` (§12.7).
 - Q3 ACR Basic.
 - Q4 MapLibre + OpenFreeMap display; Azure Maps geocoding capped under the free tier; Azure Maps display built but off (G9).
 - Q5 weekly cleanup job.
@@ -605,12 +633,69 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 
 ### 12.7 Part B outcomes
 
-*(Filled in per gate: G1 what-if summary, actual resource names, G4 first migrate run, live eval results (G6), first 48 h cost by meter.)*
+*(Filled in per gate. Still to come: G4 first migrate run, live eval results (G6), first 48 h cost by meter.)*
+
+**Gate status (2026-11-04):** G0 ✔, **G1 ✔, G2 ✔** (each with the user's explicit approval). **Next: G3.** The IaC changes made during G2 are on branch `m7-sql-region` (uncommitted at the time of writing).
+
+**Subscription:** "Visual Studio Ultimate z subskrypcją MSDN" (Visual Studio subscriber monthly credit, spending limit on by default, so the cost risk is capped by the credit unless the limit is removed). Subscription id in the local azd environment (not recorded in this public repository). azd 1.37.2, azd env `prod`, `AZURE_LOCATION=westeurope`.
+
+#### G1: what-if
+
+- `azd provision --preview` succeeded. Its summary lists only the main resource types; the full `az deployment sub what-if` on the first run showed **46 Create, 0 Modify, 0 Delete**.
+- **Finding G1-a:** azd validates required Bicep parameters **before** running the `preprovision` hook. `BUDGET_START_DATE` (set by the hook in the Part A design, D6/L2) therefore had to be set by hand (`azd env set BUDGET_START_DATE 2026-11-01`), and the hook (guest key) was run with `azd hooks run preprovision` before provisioning.
+- **Finding G1-b:** for the per-resource detail, `az deployment sub what-if` is needed; azd's preview is a summary.
+- **Finding G1-c:** once some resources exist (after the failed G2 runs), what-if reports `NestedDeploymentShortCircuited` and silently skips modules whose parameters reference outputs of existing resources. Known ARM what-if limitation, not a template error. A re-run G1 after a partial provision is therefore incomplete; review the module list it covers.
+- From §12.6: the azd parameter defaults resolved (preview and provision both succeeded) and the first-provision path used the placeholder image as designed. The fetch-image path for an *existing* app image is exercised only by the first re-provision after G4 (G7 or G8) ⚠.
+
+#### G2: provision (4 runs)
+
+| Run | SQL location / name | Result |
+|---|---|---|
+| 1 | `westeurope` / `sql-rd-m3dcwctu5kpwi` | Everything up to SQL created, then **`RegionDoesNotAllowProvisioning`**: "Location 'West Europe' is not accepting creation of new Windows Azure SQL Database servers". azd also warned that the firewall rule name `AllowAllWindowsAzureIps` contains the reserved word "Windows". |
+| 2 | `northeurope` / same name | **`InvalidResourceLocation`**: the failed westeurope create still held the name `sql-rd-m3dcwctu5kpwi` (no server exists; an ARM leftover). |
+| 3 | `northeurope` / `sql-rd-m3dcwctu5kpwi-northeurope` | **`RegionDoesNotAllowProvisioning`** again. |
+| — | read-only check | SQL capabilities API (`GET /subscriptions/{sub}/providers/Microsoft.Sql/locations/{region}/capabilities?api-version=2023-08-01`) for this subscription: `westeurope`, `northeurope`, `norwayeast` "Provisioning is restricted in this region" (support request needed); `uksouth` "Subscriptions are restricted"; `swedencentral`, `germanywestcentral`, `francecentral`, **`polandcentral`**, `italynorth`, `spaincentral`, `switzerlandnorth` "Available". |
+| 4 | **`polandcentral`** / `sql-rd-m3dcwctu5kpwi-polandcentral` (user's choice) | **Succeeded in 3 min 22 s.** |
+
+**Result:**
+- **25 resources** in `rg-runnersdiary-prod` (`westeurope`).
+- SQL server `sql-rd-m3dcwctu5kpwi-polandcentral`; database `runnersdiary`, GP_S_Gen5_2, free offer (`useFreeLimit`, `AutoPause`), status Online.
+- ACR `acrrdm3dcwctu5kpwi`.
+- Budget `budget-rd-prod` ($25); alerts `maps-usage`, `ai-tokens`, `api-5xx`, `sql-free`.
+- Web FQDN `web.grayisland-d22ea91b.westeurope.azurecontainerapps.io`.
+- Apps run the placeholder image until G4. AI off (`AI_ENABLED` false).
+- Hooks: `azd hooks run preprovision` before, `azd hooks run postprovision` after (it cleared `GUEST_KEY_BOOTSTRAP` locally and printed the G3/G8 values).
+
+**Values for G3** (non-secret identifiers, recorded on purpose; stored as GitHub *secrets* only per Learn guidance):
+- Environment `prod` secrets: `AZURE_CLIENT_ID` (client id of `id-rd-deployer`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`. The values are printed by `azd hooks run postprovision` and are kept out of this public repository.
+- Environment `prod` variables: `AZURE_RESOURCE_GROUP` = `rg-runnersdiary-prod`, `ACR_NAME` = `acrrdm3dcwctu5kpwi`, `WEB_FQDN` = `web.grayisland-d22ea91b.westeurope.azurecontainerapps.io`.
+- Repository variable: `DEPLOY_ENABLED` = `true`.
+
+**Values for G8** (SPA redirect URIs, §5.6): `https://web.grayisland-d22ea91b.westeurope.azurecontainerapps.io/redirect.html` and `https://web.grayisland-d22ea91b.westeurope.azurecontainerapps.io/signin`.
+
+#### Part B deviations
+
+| # | Plan said | Done | Why / where recorded |
+|---|---|---|---|
+| B1 | Primary region `swedencentral` (Q2 default; ADR 0030 §3) | **`westeurope`** | User decision before G1; co-located with Maps; gpt-5.4-mini Global Standard offered there. ADR 0030 amend. "Region" |
+| B2 | SQL in the primary region | **`polandcentral`** via the new param `sqlLocation` (`SQL_LOCATION`, empty = primary region) | New SQL servers restricted for this subscription in `westeurope`/`northeurope`/`norwayeast` (capabilities API). Cross-region app ↔ DB; data stays in the EU (§2). ADR 0030 amend. "Region" |
+| B3 | SQL server name `sql-rd-<token>` | `sql-rd-<token>-<sqlLocation>` when `SQL_LOCATION` is set (Bicep `nameSuffix`) | A failed create holds the plain name in the other region (`InvalidResourceLocation`). ADR 0030 amend. "Region" |
+| B4 | Firewall rule `AllowAllWindowsAzureIps` | **`AllowAzureServices`** (still 0.0.0.0 = Azure services) | azd warned about the reserved word "Windows". ADR 0031 amend. "G2" |
+| B5 | Hooks run by `azd provision`; `preprovision` sets `BUDGET_START_DATE` (D6, L2) | Hooks run by hand (`azd hooks run preprovision` / `postprovision`); `BUDGET_START_DATE` set by hand | Findings G1-a and H-1 below. §10 step 5; ADR 0030 amend. "Region", 0031 amend. "G2" |
+| B6 | azd env `rd-prod` (ADR 0030 §2, §5.2) | azd env **`prod`** | Matches the resource names (`rg-runnersdiary-prod`, `budget-rd-prod`). Docs updated in §5.2. |
+
+**Open items from Part B so far (⚠):**
+- **H-1: why azd 1.37.2 skipped the project `preprovision`/`postprovision` hooks** on `azd provision --no-prompt` in this setup. To investigate (azure-infra): the hook declaration in `azure.yaml` (project-level `hooks:` block, `posix` shell/`run` paths, `continueOnError`), and whether `--no-prompt` or the azd version changes hook behaviour. Until resolved, the manual sequence in §10 step 5 is **the required procedure**, and a forgotten `postprovision` leaves `GUEST_KEY_BOOTSTRAP` in `.azure/prod/.env`.
+- **H-2: `BUDGET_START_DATE` as a hook-set value does not work on a first provision** (G1-a). azure-infra should either give `budgetStartDate` a non-required path or document the manual `azd env set` as the only path (already in §10).
+- **H-3: stale Bicep description** — the `sqlLocation` `@description` in `infra/main.bicep` says "prod uses northeurope"; it is `polandcentral`. One-line fix for azure-infra (no infra change; a later what-if will show no diff).
+- **H-4:** latency of the cross-region SQL hop and the inter-region transfer price: check at G5 (App Insights dependency durations) and in the 48 h cost-by-meter view.
+- **H-5:** `westeurope`/`polandcentral` retail prices for the §4 table (⚠ not re-checked).
+- Still open from §12.6: role-assignment propagation (observe at G4), deployer roles (G4), `CREATE USER … WITH SID` and go-sqlcmd flags (G4), budget `startDate` semantics (first notification in November).
 
 ## Assumptions
 
 1. The user's subscription is in a workforce tenant they own. The Entra **external** tenant (for app users) is separate and does not hold the Azure resources.
-2. The SQL free offer is eligible for the subscription and still unused in it.
+2. The SQL free offer is eligible for the subscription and still unused in it. (Confirmed at G2: the database was created with `useFreeLimit`.)
 3. One maintainer. The GitHub repo `stompsu/runners-diary` keeps `main` as the only deploy branch.
 4. USD retail prices apply; billing in EUR/PLN differs by the exchange rate. Azure credits, if any, offset but do not change these numbers.
 5. The deploy workflow may build images on GitHub-hosted runners (Docker available), so no ACR Tasks are needed.
@@ -640,6 +725,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 - Log Analytics daily cap (updated 2026-01-09): https://learn.microsoft.com/azure/azure-monitor/logs/daily-cap · budgets template: https://learn.microsoft.com/azure/templates/microsoft.consumption/budgets
 - Entra External ID pricing (core free < 50 K MAU): https://learn.microsoft.com/entra/external-id/external-identities-pricing
 - NuGet `Azure.Monitor.OpenTelemetry.AspNetCore` 1.6.0: https://www.nuget.org/packages/Azure.Monitor.OpenTelemetry.AspNetCore
+- Azure SQL location capabilities (per-subscription provisioning status), REST `Capabilities - List By Location` (top-level `status`, plus `reason` when restricted; the page documents api-version `2025-01-01`, the call at G2 used `2023-08-01`, both work), called read-only at G2 (2026-11-04): https://learn.microsoft.com/rest/api/sql/capabilities/list-by-location
 - Azure retail prices API (2026-11-04): Container Apps, Container Registry, Key Vault, Log Analytics and Storage in `swedencentral`; Azure Maps in `westeurope`. `https://prices.azure.com/api/retail/prices?$filter=serviceName eq '<service>' and armRegionName eq '<region>'`
 
 **Checked against Microsoft Learn (MCP server, 2026-11-04, main agent):**
