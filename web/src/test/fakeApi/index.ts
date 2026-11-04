@@ -308,6 +308,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
             provider: 'MapLibre',
             mapLibreStyleUrl: 'https://tiles.openfreemap.org/styles/liberty',
             geocodingEnabled,
+            azureMapsDomain: null,
           },
           gpx: { maxFileBytesUser: 20 * 1024 * 1024, maxFileBytesGuest: 5 * 1024 * 1024 },
           ai: { summaryGeneration: summaryService.generationEnabled() },

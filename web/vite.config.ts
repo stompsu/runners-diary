@@ -40,6 +40,8 @@ export default defineConfig({
             // profile), so these groups are lazy chunks. scripts/bundle-budget.mjs fails the build if one ever becomes
             // part of the initial load.
             { name: 'map-vendor', test: /node_modules[\\/]maplibre-gl[\\/]/ },
+            // M7: the Azure Maps Web SDK (with its own nested dependencies) is a lazy chunk used only when client-config selects it.
+            { name: 'azure-maps-vendor', test: /node_modules[\\/]azure-maps-control[\\/]/ },
             {
               name: 'chart-vendor',
               test: /node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|@reduxjs|redux|redux-thunk|react-redux|immer|reselect|es-toolkit|decimal\.js-light|eventemitter3|internmap|tiny-invariant|use-sync-external-store|react-is)[\\/]/,

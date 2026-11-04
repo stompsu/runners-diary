@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { DEMO_REPORT_TODAY } from '../src/test/fakeApi/index.ts'
-import { horizontalOverflow, mockApi, restoreGuest, seriousViolations } from './support.ts'
+import { horizontalOverflow, mockApi, restoreGuest, seriousViolations, test } from './support.ts'
 
 // Runs only in the `phone-la` project: 360x640, touch, browser zone America/Los_Angeles (M5 AC12).
 

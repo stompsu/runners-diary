@@ -10,6 +10,14 @@ export interface LatLon {
 /** Providers are chosen at runtime from `GET /api/client-config` `maps.provider` (ADR 0022). */
 export type MapProviderId = 'MapLibre' | 'AzureMaps'
 
+/** The `maps` section of client-config, as far as the map UI reads it (all optional so callers can pass a partial). */
+export interface MapsConfig {
+  provider?: MapProviderId
+  mapLibreStyleUrl?: string | null
+  /** Azure Maps host (`eu.atlas.microsoft.com`); null unless the provider is `AzureMaps`. */
+  azureMapsDomain?: string | null
+}
+
 /** `loading` until the style is ready; `unavailable` = no WebGL2; `error` = the engine or the style failed. */
 export type MapState = 'loading' | 'ready' | 'unavailable' | 'error'
 
@@ -33,13 +41,15 @@ export interface MapViewProps {
   provider?: MapProviderId
   /** `maps.mapLibreStyleUrl` of client-config; null/undefined = the built-in default. */
   styleUrl?: string | null
+  /** `maps.azureMapsDomain` of client-config; the Azure Maps provider is used only when this is set. */
+  azureMapsDomain?: string | null
   className?: string
 }
 
 /** What `MapView` hands to a provider component (which renders only the map surface). */
 export interface MapProviderProps extends Pick<
   MapViewProps,
-  'track' | 'marker' | 'highlight' | 'onPick' | 'fitTo' | 'center' | 'dashed' | 'styleUrl'
+  'track' | 'marker' | 'highlight' | 'onPick' | 'fitTo' | 'center' | 'dashed' | 'styleUrl' | 'azureMapsDomain'
 > {
   onStateChange: (state: MapState) => void
 }

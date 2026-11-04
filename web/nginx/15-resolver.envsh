@@ -1,0 +1,20 @@
+# shellcheck shell=sh
+# Sourced by the nginx image entrypoint before the envsubst step (files named *.envsh are sourced, not executed).
+# Derives the values the templates need from the container environment.
+
+# nginx resolves the upstream at request time and needs explicit name servers; take them from resolv.conf.
+# IPv6 server addresses must be bracketed.
+NGINX_RESOLVER=$(awk '/^nameserver/ { if ($2 ~ /:/) printf "[%s] ", $2; else printf "%s ", $2 }' /etc/resolv.conf)
+export NGINX_RESOLVER="${NGINX_RESOLVER:-127.0.0.11}"
+
+# An empty CSP_ENTRA_HOST (guests-only deployment) means no Entra host and no MSAL: frame-src becomes 'none'.
+# With Entra, MSAL's silent renewal opens a hidden iframe to the Entra host which comes back to /redirect.html on our own
+# origin, so 'self' is allowed as well (the framed /redirect.html gets frame-ancestors 'self', see default.conf.template).
+export CSP_ENTRA_HOST="${CSP_ENTRA_HOST:-}"
+# The single quotes are CSP keywords and meant literally.
+# shellcheck disable=SC2089,SC2090
+if [ -n "${CSP_ENTRA_HOST}" ]; then
+  export CSP_FRAME_SRC="frame-src 'self' ${CSP_ENTRA_HOST}"
+else
+  export CSP_FRAME_SRC="frame-src 'none'"
+fi

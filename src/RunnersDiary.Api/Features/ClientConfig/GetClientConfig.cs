@@ -9,8 +9,11 @@ namespace RunnersDiary.Api.Features.ClientConfig;
 /// <summary>Non-secret MSAL values for the SPA (ADR 0015). Client ids, the authority and the scope are visible in every login URL anyway.</summary>
 public sealed record EntraClientConfig(string ClientId, string Authority, string ApiScope);
 
-/// <summary>Map settings for the SPA (ADR 0022): which provider to load, the MapLibre style URL, and whether place search is wired.</summary>
-public sealed record MapsClientConfig(MapProvider Provider, string? MapLibreStyleUrl, bool GeocodingEnabled);
+/// <summary>
+/// Map settings for the SPA (ADR 0022, 0033): which provider to load, the MapLibre style URL (also the session fallback when Azure Maps
+/// cannot get a token), whether place search is wired, and the Azure Maps host (null unless the provider is <c>AzureMaps</c>).
+/// </summary>
+public sealed record MapsClientConfig(MapProvider Provider, string? MapLibreStyleUrl, bool GeocodingEnabled, string? AzureMapsDomain);
 
 /// <summary>GPX upload limits (anonymous endpoint, so both callers' values): the SPA picks the guest value for guest sessions.</summary>
 public sealed record GpxClientConfig(long MaxFileBytesUser, long MaxFileBytesGuest);
@@ -53,11 +56,8 @@ public static class GetClientConfig
     {
         ArgumentNullException.ThrowIfNull(maps);
         ArgumentNullException.ThrowIfNull(gpxLimits);
-        // The Azure Maps provider is deferred to M7 (plan section 9 Q1): a misconfiguration fails at startup, not in the browser.
-        if (maps.Provider != MapProvider.MapLibre)
-        {
-            throw new InvalidOperationException($"Maps:Provider '{maps.Provider}' is not available yet; use MapLibre.");
-        }
+        // A misconfiguration fails at startup, not in the browser.
+        AzureMapsOptions.EnsureValid(maps);
 
         var styleUrl = string.IsNullOrWhiteSpace(maps.MapLibre.StyleUrl) ? MapsOptions.DefaultStyleUrl : maps.MapLibre.StyleUrl.Trim();
         // The browser loads this URL (and the tiles it names): only absolute https is accepted, a bad value fails at startup.
@@ -66,7 +66,7 @@ public static class GetClientConfig
             throw new InvalidOperationException("Maps:MapLibre:StyleUrl must be an absolute https URL.");
         }
 
-        var mapsConfig = new MapsClientConfig(maps.Provider, styleUrl, false);
+        var mapsConfig = new MapsClientConfig(maps.Provider, styleUrl, false, maps.Provider == MapProvider.AzureMaps ? maps.AzureMaps.Domain.Trim().ToLowerInvariant() : null);
         var gpxConfig = new GpxClientConfig(gpxLimits.MaxFileBytes, gpxLimits.GuestMaxFileBytes);
         if (!entraEnabled || string.IsNullOrWhiteSpace(entra.SpaClientId))
         {

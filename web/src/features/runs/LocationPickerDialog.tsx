@@ -1,8 +1,9 @@
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { MapPrivacyNote } from '@/components/map/MapPrivacyNote'
 import { MapView } from '@/components/map/MapView'
-import type { LatLon, MapProviderId } from '@/components/map/types'
+import type { LatLon, MapsConfig } from '@/components/map/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +20,7 @@ import '@/i18n/lazyBundles'
 export interface LocationPickerDialogProps {
   /** The current pin, if the run has a location. */
   initial: LatLon | null
-  maps?: { provider?: MapProviderId; mapLibreStyleUrl?: string | null }
+  maps?: MapsConfig
   onConfirm: (position: LatLon) => void
   onClose: () => void
   returnFocusTo?: () => HTMLElement | null | undefined
@@ -83,12 +84,14 @@ export function LocationPickerDialog({ initial, maps, onConfirm, onClose, return
           fitTo="marker"
           provider={maps?.provider}
           styleUrl={maps?.mapLibreStyleUrl}
+          azureMapsDomain={maps?.azureMapsDomain}
           onPick={(picked) => {
             setLatText(coordinateText(picked.latitude))
             setLonText(coordinateText(picked.longitude))
           }}
           className="h-[max(240px,40vh)] w-full"
         />
+        <MapPrivacyNote maps={maps} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor={`${id}-lat`}>{t('picker.latitude')}</Label>

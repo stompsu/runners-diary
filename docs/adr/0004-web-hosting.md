@@ -1,6 +1,6 @@
 # 0004 – Hosting the React SPA in Azure
 
-**Status:** Proposed — awaiting user decision (deployment itself is M7)
+**Status:** Superseded by [ADR 0029](0029-web-tier-nginx-container.md) (2026-11-04)
 **Date:** 2026-11-03
 
 ## Context

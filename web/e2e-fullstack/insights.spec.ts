@@ -1,5 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+// Same test with the CSP guard (fails on Content-Security-Policy violations when the web image serves the page)
+import { test } from '../e2e/support.ts'
 
 // Full-stack Insights journey (M5 step 6, plan §6): nothing is mocked. Guest -> /insights shows the real demo report ->
 // a completed run added in the diary changes the next report (query invalidation, AC14) -> the run is deleted again.

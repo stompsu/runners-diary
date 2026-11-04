@@ -33,7 +33,11 @@ public static class DependencyInjection
     /// The DbContext is registered without pooling (it takes the scoped <see cref="ICurrentUser"/>, ADR 0010) and then
     /// enriched by Aspire with health checks, retries and telemetry.
     /// </summary>
-    public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
+    /// <param name="jobMode">
+    /// A one-shot job host (<c>--job guest-cleanup</c>, ADR 0032 §2): no startup work and no background services, only the services a
+    /// job resolves explicitly.
+    /// </param>
+    public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder, bool jobMode = false)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -45,19 +49,21 @@ public static class DependencyInjection
 
         var connectionString = builder.Configuration.GetConnectionString(DatabaseConnectionName)
             ?? throw new InvalidOperationException($"Connection string '{DatabaseConnectionName}' is missing.");
-        builder.Services.AddDbContext<RunnersDiaryDbContext>(options => options
+        // Counts opened connections for the guest-cleanup idle-skip (ADR 0032 §2).
+        builder.Services.AddSingleton<SqlActivityInterceptor>();
+        builder.Services.AddDbContext<RunnersDiaryDbContext>((services, options) => options
             .UseSqlServer(connectionString, sql => sql.UseNetTopologySuite())
-            .AddInterceptors(OwnershipGuardInterceptor.Instance));
+            .AddInterceptors(OwnershipGuardInterceptor.Instance, services.GetRequiredService<SqlActivityInterceptor>()));
         builder.EnrichSqlServerDbContext<RunnersDiaryDbContext>();
 
-        if (builder.Configuration.GetValue<bool>(MigrateOnStartupKey))
+        if (!jobMode && builder.Configuration.GetValue<bool>(MigrateOnStartupKey))
         {
             builder.Services.AddHostedService<DatabaseMigrator>();
         }
 
         builder.AddAzureBlobServiceClient(BlobsConnectionName);
         builder.Services.AddSingleton<IBlobStore, AzureBlobStore>();
-        if (builder.Configuration.GetValue<bool>(CreateContainerOnStartupKey))
+        if (!jobMode && builder.Configuration.GetValue<bool>(CreateContainerOnStartupKey))
         {
             builder.Services.AddHostedService<BlobContainerInitializer>();
         }
@@ -69,24 +75,23 @@ public static class DependencyInjection
         builder.Services.AddScoped<TrackIngestionService>();
         builder.Services.AddScoped<TrackDeletionService>();
 
-        // Azure Maps adapters are deferred to M7 (plan section 9 Q1): until then only "None" is accepted, so a wrong setting fails at startup.
-        var maps = builder.Configuration.GetSection(MapsOptions.SectionName).Get<MapsOptions>() ?? new MapsOptions();
-        if (maps.Geocoding.Provider != GeocodingProvider.None)
+        // Geocoder, SAS issuer and geocode budget for the configured providers (M7, ADR 0033); an invalid setup fails here.
+        builder.Services.AddMaps(builder.Configuration.GetSection(MapsOptions.SectionName).Get<MapsOptions>() ?? new MapsOptions());
+        builder.Services.AddSingleton<DemoDatasetLoader>();
+        if (!jobMode)
         {
-            throw new InvalidOperationException($"Maps:Geocoding:Provider '{maps.Geocoding.Provider}' is not available yet; use None.");
+            builder.Services.AddHostedService<DemoDatasetStartupCheck>();
         }
 
-        builder.Services.TryAddSingleton<IGeocoder, NoGeocoder>();
-        builder.Services.AddSingleton<DemoDatasetLoader>();
-        builder.Services.AddHostedService<DemoDatasetStartupCheck>();
         builder.Services.AddSingleton<DemoDataSeeder>();
         builder.Services.AddSingleton<GuestCleanup>();
+        builder.Services.AddSingleton<IGuestCleanupPass>(services => services.GetRequiredService<GuestCleanup>());
         builder.Services.AddSingleton<GuestAccountService>();
         builder.Services.AddScoped<IInsightsReportService, InsightsReportService>();
         builder.Services.AddScoped<IAiGenerationStore, EfAiGenerationStore>();
         builder.Services.AddScoped<IAiSummaryStore, EfAiSummaryStore>();
-        builder.AddTrainingInsights();
-        if (builder.Configuration.GetValue("Guests:Cleanup:Enabled", true))
+        builder.AddTrainingInsights(runStartupChecks: !jobMode);
+        if (!jobMode && builder.Configuration.GetValue("Guests:Cleanup:Enabled", true))
         {
             builder.Services.AddHostedService<GuestCleanupService>();
         }

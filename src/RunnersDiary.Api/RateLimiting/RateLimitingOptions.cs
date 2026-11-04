@@ -15,8 +15,14 @@ public sealed class RateLimitingOptions
     /// <summary>Place searches per caller, sliding window (ADR 0022 §4).</summary>
     public PerCallerLimit Geocode { get; set; } = new() { UserPermitLimit = 20, GuestPermitLimit = 10, Window = TimeSpan.FromMinutes(1) };
 
+    /// <summary>Azure Maps SAS token requests per caller (ADR 0033: users 30, guests 10 per hour).</summary>
+    public PerCallerLimit MapsToken { get; set; } = new() { UserPermitLimit = 30, GuestPermitLimit = 10, Window = TimeSpan.FromHours(1) };
+
     /// <summary>AI summary generations per caller, burst guard on top of the durable quotas (M6 plan Q4: users 6, guests 3 per 10 minutes).</summary>
     public PerCallerLimit AiSummary { get; set; } = new() { UserPermitLimit = 6, GuestPermitLimit = 3, Window = TimeSpan.FromMinutes(10) };
+
+    /// <summary>GET /api/health, anonymous or not (per client IP when anonymous): a light guard, the anonymous answer costs no SQL.</summary>
+    public PerCallerLimit Health { get; set; } = new() { UserPermitLimit = 30, GuestPermitLimit = 30, Window = TimeSpan.FromMinutes(1) };
 
     /// <summary>Sliding window per caller (user id); guests get their own, lower, permit count.</summary>
     public sealed class PerCallerLimit

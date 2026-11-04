@@ -1,3 +1,4 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,12 @@ public static class Extensions
 {
     /// <summary>The ActivitySource and Meter of the AI chat client pipeline (Infrastructure <c>ChatClientFactory.TelemetrySourceName</c>).</summary>
     private const string AiTelemetrySourceName = "RunnersDiary.Ai";
+
+    /// <summary>Environment variable (configuration key) that Azure sets for App Insights; its presence turns the Azure Monitor exporter on.</summary>
+    public const string ApplicationInsightsConnectionStringKey = "APPLICATIONINSIGHTS_CONNECTION_STRING";
+
+    /// <summary>Trace sampling budget per second (ADR 0034).</summary>
+    private const double AzureMonitorTracesPerSecond = 5;
 
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
@@ -93,12 +100,17 @@ public static class Extensions
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
-        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
-        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-        //{
-        //    builder.Services.AddOpenTelemetry()
-        //       .UseAzureMonitor();
-        //}
+        // Application Insights (ADR 0034): only when Azure provides the connection string, so local runs and tests keep OTLP only.
+        // The exporter reads APPLICATIONINSIGHTS_CONNECTION_STRING itself; no key is ever copied into configuration files.
+        if (!string.IsNullOrWhiteSpace(builder.Configuration[ApplicationInsightsConnectionStringKey]))
+        {
+            builder.Services.AddOpenTelemetry()
+                .UseAzureMonitor(options =>
+                {
+                    // Rate-limited sampling keeps a request flood from exhausting the Log Analytics daily cap.
+                    options.TracesPerSecond = AzureMonitorTracesPerSecond;
+                });
+        }
 
         return builder;
     }
@@ -114,10 +126,11 @@ public static class Extensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        // Mapped in all environments: Container Apps uses them as liveness/readiness probes (ADR 0007).
-        // They are explicitly anonymous (so M2's fallback auth policy can't break platform probes) and return only
-        // the aggregate status text, never per-check details. TODO(M7): readiness probes must not query SQL on every
-        // call, or serverless SQL never auto-pauses (ADR 0006).
+        // Mapped in all environments. Container Apps probes (startup, liveness, readiness) must target /alive only (ADR 0032/0034):
+        // it runs the "live" check, which never touches SQL or Blob, so probes cannot wake an auto-paused serverless database
+        // (ADR 0006). /health runs every registered check (including the EF Core SQL check) and is for manual diagnosis and
+        // the deploy smoke test only. Both are explicitly anonymous (M2's fallback auth policy must not break platform probes)
+        // and return only the aggregate status text, never per-check details.
 
         // All health checks must pass for app to be considered ready to accept traffic after starting
         app.MapHealthChecks(HealthEndpointPath)

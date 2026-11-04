@@ -4,23 +4,6 @@
  */
 
 export interface paths {
-    "/api/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Aggregate API health for the web app shell. */
-        get: operations["getApiHealth"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/client-config": {
         parameters: {
             query?: never;
@@ -30,6 +13,23 @@ export interface paths {
         };
         /** Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable; map settings). */
         get: operations["getClientConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate API health for the web app shell. */
+        get: operations["getApiHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -134,8 +134,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured. */
+        /** Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent. */
         get: operations["searchPlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/maps/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Issues a short-lived Azure Maps SAS token for the browser SDK. 503 feature-unavailable unless Azure Maps display is enabled, or when the token cannot be issued. */
+        get: operations["getMapsToken"];
         put?: never;
         post?: never;
         delete?: never;
@@ -564,6 +581,12 @@ export interface components {
             provider: components["schemas"]["MapProvider"];
             mapLibreStyleUrl: null | string;
             geocodingEnabled: boolean;
+            azureMapsDomain: null | string;
+        };
+        MapsTokenResponse: {
+            token: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         MeResponse: {
             /** Format: uuid */
@@ -983,6 +1006,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getClientConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientConfigResponse"];
+                };
+            };
+        };
+    };
     getApiHealth: {
         parameters: {
             query?: never;
@@ -1008,26 +1051,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiHealthResponse"];
-                };
-            };
-        };
-    };
-    getClientConfig: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ClientConfigResponse"];
                 };
             };
         };
@@ -1399,6 +1422,62 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getMapsToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapsTokenResponse"];
                 };
             };
             /** @description Unauthorized */

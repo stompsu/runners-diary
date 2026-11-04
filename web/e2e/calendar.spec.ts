@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './support.ts'
 import { createFakeApi } from '../src/test/fakeApi/index.ts'
 
 // The in-memory fake API (src/test/fakeApi, ADR 0019) answers every /api call; today is 2026-11-03.

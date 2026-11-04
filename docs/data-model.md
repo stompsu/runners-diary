@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 adds migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; implemented, awaiting CI + approval)**.
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**.
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -14,6 +14,7 @@ Users 1 ──< Runs >── 1 RunTypes (catalog, seeded)
   └──< AiSummaries  (M6; one per period + compare + language)
 
 AiGenerations  (M6; system usage ledger: UserId without FK, no Owner filter)
+GeocodeUsage   (M7; system counter per UTC day: no user id, no Owner filter)
 ```
 
 ## Users
@@ -220,12 +221,28 @@ Migration `20261104070212_AiSummaries`; [ADR 0028](adr/0028-summary-cache-quotas
 - **Retention:** 30 days (`AiUsageLedger.Retention`). The guest cleanup run purges older rows with one set-based delete.
 - Account deletion (post-MVP) must purge this table explicitly, because there is no FK.
 
+## GeocodeUsage (M7, system counter)
+
+[ADR 0033 amendment](adr/0033-production-maps-and-azure-maps.md) §1. The global daily budget for Azure Maps geocoding calls, shared by all replicas and durable across restarts (default 75 per UTC day, `Maps:Geocoding:GlobalDailyLimit`).
+
+**Documented exception to the `Owner` filter** (the third, after `GuestCleanup` and `AiGenerations`, ADR 0010 §6): not `IUserOwned`, no `Owner` filter. It holds **no user id and no query text**, only a count per day. Only `GeocodeBudget` writes it (through a context created with the anonymous current user), and only the guest cleanup deletes from it.
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Day` | `date` | no | PK (clustered). The UTC day. |
+| `Count` | `int` | no | Provider calls granted that day; never exceeds the limit. |
+
+- **Write path (one round trip per search):** `INSERT … SELECT @day, 0 WHERE NOT EXISTS (… WITH (UPDLOCK, HOLDLOCK) …)`, then `UPDATE … SET Count = Count + 1 OUTPUT inserted.Count WHERE Day = @day AND Count < @limit`. No row returned = budget spent → 429 `code: geocode-budget`.
+- **Indexes:** the PK only (point seek by day; the purge is a range on the same key).
+- **Retention:** 35 days (`GeocodeBudget.Retention`); each guest cleanup pass deletes older rows.
+- Migration `20261104153828_GeocodeUsage` only creates the table, so it is compatible with the previous release (ADR 0032 expand rule).
+
 ## Deferred (by milestone)
 
 | Item | Milestone |
 |---|---|
 | ~~GPX metrics columns, GeoJSON blob, upload validation~~ | done in M4 |
-| Saved places / geocoding cache (if needed) | not needed in M4 (no geocoder yet); revisit with the Azure geocoder in M7 |
+| Saved places / geocoding cache (if needed) | not built in M7: the durable daily budget (`GeocodeUsage`) bounds cost without caching personal queries; revisit only if the 75/day cap is hit in practice |
 | Orphan-blob reconciliation for users | post-MVP (ADR 0023 §5) |
 | ~~Aggregate views/indexes for insights~~ | not needed in M5 (see *Insights reads*); revisit only if App Insights shows slow reports (M7) |
 | ~~`AiSummaries` (cache per user + period + data hash), guest AI counter~~ | done in M6 (`AiSummaries`, `AiGenerations` ledger) |

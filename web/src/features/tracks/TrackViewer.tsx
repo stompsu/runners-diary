@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MapPrivacyNote } from '@/components/map/MapPrivacyNote'
 import { MapView } from '@/components/map/MapView'
-import type { MapProviderId } from '@/components/map/types'
+import type { MapsConfig } from '@/components/map/types'
 import { TrackDataTable } from '@/components/map/TrackDataTable'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsPhone } from '@/hooks/useIsPhone'
@@ -19,7 +20,7 @@ export interface TrackViewerProps {
   /** Planned courses are drawn dashed. */
   planned?: boolean
   /** `maps` section of client-config (ADR 0022). */
-  maps?: { provider?: MapProviderId; mapLibreStyleUrl?: string | null }
+  maps?: MapsConfig
 }
 
 /**
@@ -44,8 +45,10 @@ export function TrackViewer({ geoJson, summary, warnings = [], planned = false, 
         highlight={sample ? profilePosition(sample) : null}
         provider={maps?.provider}
         styleUrl={maps?.mapLibreStyleUrl}
+        azureMapsDomain={maps?.azureMapsDomain}
         className="h-[max(240px,40vh)] w-full"
       />
+      <MapPrivacyNote maps={maps} />
       {profile && profile.length > 1 && (
         <section aria-labelledby="track-profile-title">
           <h3 id="track-profile-title" className="sr-only">

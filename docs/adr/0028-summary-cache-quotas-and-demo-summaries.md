@@ -1,6 +1,6 @@
 # 0028 – AI summaries: cache by fact-sheet fingerprint, explicit generation, durable quotas, demo example summaries
 
-**Status:** Accepted (M6 plan approved 2026-11-04) · Amended 2026-11-04 (implementation, see the end)
+**Status:** Accepted (M6 plan approved 2026-11-04) · Amended 2026-11-04 (implementation, see the end) · Amended 2026-11-04 (deployment type: Global Standard prices, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -112,7 +112,7 @@ Quotas, checked before the model call. **Every attempt that reached the provider
 ## References (checked 2026-11-04)
 
 - ASP.NET Core rate limiting (per-endpoint policies, partitions; page dated 2026-10-27): https://learn.microsoft.com/aspnet/core/performance/rate-limit?view=aspnetcore-10.0
-- Azure retail prices (gpt-5.4-mini Data Zone 0.825 / 4.95 USD per 1M): see ADR 0027.
+- Azure retail prices (gpt-5.4-mini Data Zone 0.825 / 4.95 USD per 1M): see ADR 0027. (→ since 2026-11-04: **Global Standard 0.75 / 4.50 USD per 1M**, see the amendment "deployment type" at the end and ADR 0027's amendment of the same name.)
 - ADRs 0010, 0011, 0024, 0025 (this repo).
 
 ## Amended 2026-11-04 (implementation)
@@ -142,7 +142,7 @@ Credential failures write no row (nothing was sent).
 
 ### Cost ceiling (replaces "$2.5/day" in §4)
 
-Per HTTP call, at the fact-sheet cap: ≈ $0.0157 (ADR 0027 amendment).
+Per HTTP call, at the fact-sheet cap: ≈ $0.0157 (ADR 0027 amendment). (→ Data Zone prices; superseded by the amendment "deployment type" at the end: ≈ $0.0143 per call, ceiling $2.89–5.79/day.)
 
 | Scenario | Calls per day | Per day | Per month |
 |---|---|---|---|
@@ -167,3 +167,21 @@ Per HTTP call, at the fact-sheet cap: ≈ $0.0157 (ADR 0027 amendment).
 - Freshness ignores the deployment name when `Ai:Provider = None`. Otherwise a stored row would turn stale just because the model was switched off.
 - `AiSummaries.CreatedAt` is truncated to whole seconds before storing (`datetime2(0)`), so the POST response equals later reads.
 - **Info (review):** the SPA requests the summary **after** the report, not in parallel. A GET makes up to **3 ledger queries**: the user's generation times, then the global attempts and the guest attempts. Both are negligible at this scale; not changed.
+
+## Amended 2026-11-04 (deployment type: Global Standard prices)
+
+The Foundry deployment is **Global Standard** since 2026-11-04 ([ADR 0027 amendment "deployment type"](0027-ai-model-provider-foundry-and-local-dev.md#amended-2026-11-04-deployment-type)): gpt-5.4-mini **$0.75 in / $4.50 out per 1M tokens** (Data Zone was $0.825 / $4.95). The quotas and the counting rules are unchanged; only the dollar figures move, by a factor of 0.75 / 0.825 ≈ 0.909.
+
+### Cost ceiling (replaces the dollar figures of the implementation amendment's table)
+
+Per HTTP call, at the fact-sheet cap: 10 000 × 0.75 / 10⁶ + 1 500 × 4.50 / 10⁶ ≈ **$0.0143** (was $0.0157). Global Standard prices since 2026-11-04.
+
+| Scenario | Calls per day | Per day | Per month (× 30) |
+|---|---|---|---|
+| Global budget, each attempt billed once | 203 | ≈ **$2.89** (was $3.18) | ≈ $87 (was $95) |
+| Same, but every attempt also used the SDK's one transport retry and both calls were billed | 406 | ≈ **$5.79** (was $6.37) | ≈ $174 (was $191) |
+| Guest share (60 attempts, ×1 or ×2) | 60–120 | ≈ $0.9–1.7 (was $1–2) | — |
+| *For comparison:* the plan's row-based ceiling (200 generations × 2 attempts × 2 transport calls) | 800 | ≈ $11.4 (was $12.5) | — |
+
+- **The M7 budget and alerts:** the alert level "near $6.4/day" becomes **near $5.8/day**. The actual AI alert is token-based (> 400k tokens per 24 h, ADR 0034) and does not change.
+- Typical calls cost about **$0.0064** (was $0.007), so real spend stays well below these figures.

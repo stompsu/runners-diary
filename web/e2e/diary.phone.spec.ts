@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
-import { cell, horizontalOverflow, mockApi, openDiary, recordWrites, restoreGuest, TODAY } from './support.ts'
+import { expect } from '@playwright/test'
+import { cell, horizontalOverflow, mockApi, openDiary, recordWrites, restoreGuest, test, TODAY } from './support.ts'
 
 // Runs only in the `phone-la` project (playwright.config.ts): 360x640, touch, browser zone America/Los_Angeles while
 // the (fake) account's zone is Europe/Warsaw. AC12 (dates never shift) and AC14 (usable at 360 px).

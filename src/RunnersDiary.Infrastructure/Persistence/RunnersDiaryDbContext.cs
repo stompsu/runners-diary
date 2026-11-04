@@ -5,6 +5,7 @@ using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.Tracks;
 using RunnersDiary.Domain.Users;
 using RunnersDiary.Infrastructure.Identity;
+using RunnersDiary.Infrastructure.Maps;
 
 namespace RunnersDiary.Infrastructure.Persistence;
 
@@ -31,6 +32,9 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
     /// (the per-request ledger and the guest cleanup's 30-day purge both go through it); every per-user read there filters by an explicit user id.
     /// </summary>
     public DbSet<AiGeneration> AiGenerations => Set<AiGeneration>();
+
+    /// <summary>The durable daily geocode budget: a system table without the Owner filter, only used by <see cref="GeocodeBudget"/> (and the cleanup's purge through it). Holds no user data.</summary>
+    public DbSet<GeocodeUsage> GeocodeUsages => Set<GeocodeUsage>();
 
     /// <summary>Read by the query filter on every query (EF parameterizes it per context instance) and by the ownership guard.</summary>
     internal Guid? CurrentUserId => currentUser.UserIdOrNull;

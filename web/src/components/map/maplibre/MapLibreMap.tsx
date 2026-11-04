@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import type { TrackGeoJson } from '@/features/tracks/trackGeoJson'
 import { DEFAULT_MAPLIBRE_STYLE_URL, DEFAULT_MAP_CENTER } from '../mapConfig'
 import type { MapProviderProps } from '../types'
-import { createEndpointElement, createHighlightElement } from './markers'
+import { createEndpointElement, createHighlightElement } from '../markers'
 import '@/i18n/lazyBundles'
 
 // MapLibre 6 resolves its worker at runtime (`new URL('./maplibre-gl-worker.mjs', import.meta.url)`), which a bundler or

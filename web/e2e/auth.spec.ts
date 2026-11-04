@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { faults } from '../src/test/fakeApi/index.ts'
-import { mockApi, restoreGuest, seriousViolations } from './support.ts'
+import { mockApi, restoreGuest, seriousViolations, test } from './support.ts'
 
 // Sign-in page states, demo expiry, Entra visibility/redirect and returnTo hardening (AC1-AC5).
 

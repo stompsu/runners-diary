@@ -3,16 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeMap, resetFakeMap } from '@/test/fakeMapState'
 import { gliwice10kGeoJson } from '@/test/fixtures/tracks'
+import { resetAzureMapsFallback } from './azure/azureSession'
 import { MapView } from './MapView'
 import { supportsWebGl2 } from './webgl'
 
 vi.mock('./webgl', () => ({ supportsWebGl2: vi.fn<() => boolean>(() => true) }))
 vi.mock('./maplibre/MapLibreMap', () => import('@/test/fakeMapProvider'))
+vi.mock('./azure/AzureMapsMap', () => import('@/test/fakeAzureMapProvider'))
 
 const region = () => screen.getByRole('region', { name: 'Map of the route' })
 
 beforeEach(() => {
   resetFakeMap()
+  resetAzureMapsFallback()
   vi.mocked(supportsWebGl2).mockReturnValue(true)
 })
 
@@ -71,9 +74,57 @@ describe('MapView', () => {
     expect(provider).toHaveAttribute('data-dashed', 'true')
   })
 
-  it('uses MapLibre for a configured Azure Maps provider until that adapter exists (M7)', async () => {
-    render(<MapView ariaLabel="Map of the route" provider="AzureMaps" />)
+  it('uses MapLibre by default and by an unknown or incomplete configuration, never loading the Azure Maps provider', async () => {
+    const { unmount } = render(
+      <MapView ariaLabel="Map of the route" provider="MapLibre" azureMapsDomain="eu.atlas.microsoft.com" />,
+    )
     expect(await screen.findByTestId('fake-map')).toBeInTheDocument()
+    unmount()
+
+    // Azure Maps without its domain (misconfigured client-config) is not usable: MapLibre.
+    render(<MapView ariaLabel="Map of the route" provider="AzureMaps" azureMapsDomain={null} />)
+    expect(await screen.findByTestId('fake-map')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-azure-map')).not.toBeInTheDocument()
+  })
+
+  it('uses the Azure Maps provider when client-config selects it, handing it the domain', async () => {
+    render(<MapView ariaLabel="Map of the route" provider="AzureMaps" azureMapsDomain="eu.atlas.microsoft.com" />)
+
+    const azure = await screen.findByTestId('fake-azure-map')
+    expect(azure).toHaveAttribute('data-domain', 'eu.atlas.microsoft.com')
+    expect(screen.queryByTestId('fake-map')).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(region()).toHaveAttribute('data-map-state', 'ready'))
+  })
+
+  it('falls back to MapLibre for the rest of the session when Azure Maps cannot get a token', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <MapView ariaLabel="Map of the route" provider="AzureMaps" azureMapsDomain="eu.atlas.microsoft.com" />,
+    )
+    await user.click(await screen.findByRole('button', { name: 'Fail token' }))
+
+    expect(await screen.findByTestId('fake-map')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-azure-map')).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(region()).toHaveAttribute('data-map-state', 'ready'))
+    unmount()
+
+    // A map created later in the same session does not try Azure Maps again.
+    render(<MapView ariaLabel="Map of the route" provider="AzureMaps" azureMapsDomain="eu.atlas.microsoft.com" />)
+    expect(await screen.findByTestId('fake-map')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-azure-map')).not.toBeInTheDocument()
+  })
+
+  it("does not show the failed provider's error state after the fallback", async () => {
+    const user = userEvent.setup()
+    fakeMap.state = 'error'
+    render(<MapView ariaLabel="Map of the route" provider="AzureMaps" azureMapsDomain="eu.atlas.microsoft.com" />)
+    await vi.waitFor(() => expect(region()).toHaveAttribute('data-map-state', 'error'))
+
+    fakeMap.state = 'ready'
+    await user.click(screen.getByRole('button', { name: 'Fail token' }))
+
+    await vi.waitFor(() => expect(region()).toHaveAttribute('data-map-state', 'ready'))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('passes picks from the map through to the caller', async () => {

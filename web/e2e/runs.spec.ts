@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './support.ts'
 import { createFakeApi } from '../src/test/fakeApi/index.ts'
 
 // Mocked journeys against the production build: the in-memory fake API answers every /api call (ADR 0019).

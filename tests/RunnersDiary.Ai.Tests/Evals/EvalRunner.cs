@@ -9,8 +9,8 @@ public sealed record EvalOutcome(EvalCase Case, GenerationResult Result, IReadOn
 {
     public bool Passed => Result.Status == GenerationStatus.Succeeded && Failures.Count == 0;
 
-    /// <summary>gpt-5.4-mini Data Zone Standard EU, USD per 1M tokens (ADR 0027 §6: 0.825 input, 4.95 output).</summary>
-    public decimal EstimatedCostUsd => (InputTokens * 0.825m + OutputTokens * 4.95m) / 1_000_000m;
+    /// <summary>gpt-5.4-mini Global Standard, USD per 1M tokens (ADR 0027 amendment 2026-11-04: 0.75 input, 4.50 output).</summary>
+    public decimal EstimatedCostUsd => (InputTokens * 0.75m + OutputTokens * 4.50m) / 1_000_000m;
 
     public override string ToString() =>
         $"{Case.Name}: {(Passed ? "pass" : "FAIL")} ({Result.Status}{(Result.Failure is { } f ? "/" + f : string.Empty)}, attempts {Result.Summary?.Attempts.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-"}), " +

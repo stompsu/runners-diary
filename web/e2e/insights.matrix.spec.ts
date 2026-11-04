@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { DEMO_REPORT_TODAY, type InsightsScenario } from '../src/test/fakeApi/index.ts'
-import { mockApi, restoreGuest, seriousViolations, settled } from './support.ts'
+import { mockApi, restoreGuest, seriousViolations, settled, test } from './support.ts'
 
 // M5 step 6 (qa-tester): the parts of plan §6 the smoke spec leaves out - comparison modes, paging, custom range, URL
 // round-trips, a fallback for broken params, and axe in every state / selection. The report is a canned fixture

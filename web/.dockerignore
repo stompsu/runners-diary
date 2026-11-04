@@ -1,0 +1,9 @@
+# Build context for the web image is web/.
+node_modules
+dist
+playwright-report
+test-results
+e2e-fullstack
+.DS_Store
+Dockerfile
+.dockerignore

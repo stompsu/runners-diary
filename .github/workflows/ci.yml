@@ -101,22 +101,128 @@ jobs:
             exit 1
           fi
 
-  # Real stack (SQL Server + Azurite + API + built SPA) with no mocks (plan M3 section 9, Q1). Not on PRs: it is slow and the
-  # frontend job already covers the mocked suite. Plain containers + `dotnet run` rather than the Aspire AppHost: no DCP
+  # Deployment artifacts (plan M7 AC1-AC3): Bicep, workflows and scripts are validated, the three images are built, and the
+  # web image is tested as a black box (headers, proxy, limits) and with the whole mocked Playwright suite under its real
+  # CSP. Nothing here talks to Azure.
+  deploy-artifacts:
+    name: deploy-artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WEB_PORT: 8081
+      # The auth specs assert redirect URIs on http://localhost:4173, so the Playwright container must be reachable there.
+      PW_PORT: 4173
+      # The mocked auth specs use this tenant host; the image's CSP must name it (ADR 0029: the host comes from an env var).
+      CSP_ENTRA_HOST: https://e2etenant.ciamlogin.com
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Bicep build and lint (rules are errors, see infra/bicepconfig.json)
+        run: |
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep lint --file infra/main.bicep
+          for module in infra/modules/*.bicep; do az bicep lint --file "$module"; done
+          python3 -c "import json; json.load(open('infra/main.parameters.json'))"
+      - name: No secrets in the parameter file
+        run: |
+          # Placeholders such as ${BUDGET_CONTACT_EMAIL} are fine; literal values for secret-like names are not.
+          if grep -Ei '"(.*(password|secret|connectionstring|apikey|accesskey).*)"[[:space:]]*:[[:space:]]*\{[[:space:]]*"value"[[:space:]]*:[[:space:]]*"[^$]' infra/main.parameters.json; then
+            echo "::error::infra/main.parameters.json holds a literal value for a secret-like parameter"; exit 1
+          fi
+      - name: actionlint (workflows)
+        run: |
+          docker run --rm -v "$PWD:/repo" --workdir /repo \
+            rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+      - name: shellcheck (deployment scripts)
+        run: shellcheck infra/scripts/*.sh infra/hooks/*.sh infra/docker/migrate.sh web/scripts/verify-web-image.sh web/nginx/15-resolver.envsh
+
+      - name: Build the API image
+        run: docker build --file src/RunnersDiary.Api/Dockerfile --tag rd-api:ci .
+      - name: Build the migrate image
+        run: docker build --file infra/docker/migrate.Dockerfile --tag rd-migrate:ci .
+      - name: Build the web image
+        run: docker build --tag rd-web:ci web
+
+      - name: API image has ICU and tzdata (Europe/Warsaw), runs as non-root
+        run: |
+          # The image is chiseled (no shell), so inspect it from outside.
+          docker create --name api-inspect rd-api:ci > /dev/null
+          docker cp api-inspect:/usr/share/zoneinfo/Europe/Warsaw - > /dev/null
+          docker export api-inspect | tar -t | grep -E 'libicuuc\.so' > /dev/null
+          docker rm api-inspect > /dev/null
+          user="$(docker inspect --format '{{.Config.User}}' rd-api:ci)"
+          [ -n "$user" ] && [ "$user" != "root" ] && [ "$user" != "0" ] || { echo "::error::API image runs as '$user'"; exit 1; }
+          echo "API image user: $user"
+      - name: Web and migrate images run as non-root
+        run: |
+          for image in rd-web:ci rd-migrate:ci; do
+            user="$(docker inspect --format '{{.Config.User}}' "$image")"
+            [ -n "$user" ] && [ "$user" != "root" ] && [ "$user" != "0" ] || { echo "::error::$image runs as '$user'"; exit 1; }
+            echo "$image user: $user"
+          done
+      - name: Migrate image has the bundle, go-sqlcmd and the grant script
+        run: |
+          docker run --rm --entrypoint ./efbundle rd-migrate:ci --help > /dev/null
+          docker run --rm --entrypoint ./sqlcmd rd-migrate:ci --version > /dev/null
+          docker run --rm --entrypoint test rd-migrate:ci -s ./grant-app-users.sql
+
+      - name: Start the web image in front of a stub upstream
+        run: |
+          docker network create rdnet
+          docker run -d --name stub --network rdnet -v "$PWD/web/scripts/stub-upstream.mjs:/stub.mjs:ro" \
+            node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 node /stub.mjs 9100
+          docker run -d --name web --network rdnet -p "$WEB_PORT:8080" \
+            -e API_UPSTREAM=http://stub:9100 -e CSP_ENTRA_HOST="$CSP_ENTRA_HOST" rd-web:ci
+          # A second instance for Playwright whose upstream is unreachable, like `vite preview` without an API: the mocked
+          # suite answers /api in the browser, and an upstream that says 200 to everything would change what the app does.
+          docker run -d --name web-pw --network rdnet -p "$PW_PORT:8080" \
+            -e API_UPSTREAM=http://unreachable.invalid:8080 -e CSP_ENTRA_HOST="$CSP_ENTRA_HOST" rd-web:ci
+          for _ in $(seq 1 30); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$WEB_PORT/nginx-alive")" = "200" ] &&
+               [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PW_PORT/nginx-alive")" = "200" ]; then exit 0; fi
+            sleep 1
+          done
+          docker logs web; echo "::error::the web image did not start"; exit 1
+      - name: Web image - headers, routing, proxy and limits (curl)
+        run: |
+          worker="$(docker exec web sh -c 'cd /usr/share/nginx/html && ls assets/*.mjs | head -1')"
+          web/scripts/verify-web-image.sh "http://127.0.0.1:$WEB_PORT" "/$worker"
+      - name: Web image - whole Playwright suite (fake API) under the real CSP
+        run: |
+          npm --prefix web ci
+          npx --prefix web playwright install --with-deps chromium
+          # The fixture in web/e2e/support.ts fails any test that sees a Content-Security-Policy violation.
+          PLAYWRIGHT_BASE_URL="http://localhost:$PW_PORT" CI=true npm --prefix web run test:e2e
+      - name: Container logs
+        if: failure()
+        run: |
+          docker logs web || true
+          docker logs web-pw || true
+          docker logs stub || true
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: deploy-artifacts-playwright-report
+          path: web/playwright-report
+          retention-days: 7
+
+  # Real stack with no mocks: SQL Server + Azurite + the BUILT API and web images (plan M7 AC4). Not on PRs: it is slow and the
+  # frontend job already covers the mocked suite. Plain containers on one network rather than the Aspire AppHost: no DCP
   # orchestrator, dashboard or persistent volumes to bootstrap in CI, and the same images as the test fixtures.
   e2e-fullstack:
     name: e2e-fullstack
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
-      API_URL: http://127.0.0.1:5080
       WEB_URL: http://127.0.0.1:4173
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
       - uses: actions/setup-node@v7
         with:
           node-version-file: web/.nvmrc
@@ -133,12 +239,18 @@ jobs:
           echo "SQL_PASSWORD=$sql_password" >> "$GITHUB_ENV"
           echo "GUEST_KEY=$guest_key" >> "$GITHUB_ENV"
 
+      - name: Build the API and web images
+        run: |
+          docker build --file src/RunnersDiary.Api/Dockerfile --tag rd-api:ci .
+          docker build --tag rd-web:ci web
+
       - name: Start SQL Server and Azurite
         run: |
+          docker network create rdnet
           # Keep the tags in sync with the AppHost and tests/RunnersDiary.Api.Tests/Infrastructure/ContainersApiFactory.cs.
-          docker run -d --name sql -p 1433:1433 -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=$SQL_PASSWORD" \
+          docker run -d --name sql --network rdnet -p 1433:1433 -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=$SQL_PASSWORD" \
             mcr.microsoft.com/mssql/server:2022-latest
-          docker run -d --name azurite -p 10000:10000 \
+          docker run -d --name azurite --network rdnet \
             mcr.microsoft.com/azure-storage/azurite:3.37.0 \
             azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --inMemoryPersistence
           for i in $(seq 1 60); do
@@ -150,50 +262,48 @@ jobs:
           docker logs sql | tail -50
           echo "::error::SQL Server did not become ready"; exit 1
 
-      - run: dotnet build src/RunnersDiary.Api -c Release
-
-      - name: Start the API
+      - name: Start the API image
         run: |
-          # Development: guest limits and rate limits are the Development ones (appsettings.Development.json). Entra off: guests only.
-          export ASPNETCORE_ENVIRONMENT=Development
-          export ASPNETCORE_URLS="$API_URL"
-          export ConnectionStrings__runnersdiary="Server=127.0.0.1,1433;Database=runnersdiary;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=True;Encrypt=False"
-          # Azurite's published, well-known development account (not a secret).
-          export ConnectionStrings__blobs="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
-          export Database__MigrateOnStartup=true
-          export Storage__CreateContainerOnStartup=true
-          export ForwardedHeaders__Enabled=false
-          export Auth__Entra__Enabled=false
-          export Auth__Guest__SigningKey="$GUEST_KEY"
-          nohup dotnet run --project src/RunnersDiary.Api -c Release --no-build --no-launch-profile > api.log 2>&1 &
+          # Development: guest limits and rate limits are the Development ones (appsettings.Development.json); production
+          # limits would stop the journeys after 5 guests. Entra off: guests only. Migrations and the blob container are
+          # created at startup here, as in the AppHost; Azure never does that (ADR 0013 section 7).
+          docker run -d --name api --network rdnet \
+            -e ASPNETCORE_ENVIRONMENT=Development \
+            -e "ConnectionStrings__runnersdiary=Server=sql,1433;Database=runnersdiary;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=True;Encrypt=False" \
+            -e "ConnectionStrings__blobs=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;" \
+            -e Database__MigrateOnStartup=true \
+            -e Storage__CreateContainerOnStartup=true \
+            -e ForwardedHeaders__Enabled=false \
+            -e Auth__Entra__Enabled=false \
+            -e "Auth__Guest__SigningKey=$GUEST_KEY" \
+            rd-api:ci
 
-      - run: npm --prefix web ci
-      - run: npm --prefix web run build
-      - name: Serve the SPA with /api proxied to the API
+      - name: Start the web image (nginx proxies /api to the API container)
         run: |
-          # vite preview inherits server.proxy; API_HTTP is the existing override in web/vite.config.ts.
-          API_HTTP="$API_URL" nohup npm --prefix web run preview -- --host 127.0.0.1 --port 4173 --strictPort > web.log 2>&1 &
+          docker run -d --name web --network rdnet -p 4173:8080 -e API_UPSTREAM=http://api:8080 rd-web:ci
 
       - name: Wait for the stack (through the proxy)
         run: |
-          for i in $(seq 1 60); do
+          for i in $(seq 1 90); do
             if [ "$(curl -s -o /dev/null -w '%{http_code}' "$WEB_URL/api/health")" = "200" ]; then
               echo "Stack ready after ~$((i * 2))s"; exit 0
             fi
             sleep 2
           done
-          echo "::group::api.log"; tail -100 api.log; echo "::endgroup::"
-          echo "::group::web.log"; tail -50 web.log; echo "::endgroup::"
+          for c in api web sql; do echo "::group::$c"; docker logs "$c" 2>&1 | tail -100; echo "::endgroup::"; done
           echo "::error::/api/health did not return 200"; exit 1
 
-      - run: npx playwright install --with-deps chromium
-        working-directory: web
-      - run: npm run test:e2e:fullstack
-        working-directory: web
+      - run: npm --prefix web ci
+      - run: npx --prefix web playwright install --with-deps chromium
+      - run: npm --prefix web run test:e2e:fullstack
         env:
           CI: true
           FULLSTACK_BASE_URL: ${{ env.WEB_URL }}
 
+      - name: Container logs
+        if: failure()
+        run: |
+          for c in api web sql; do docker logs "$c" > "$c.log" 2>&1 || true; done
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -203,4 +313,5 @@ jobs:
             web/test-results
             api.log
             web.log
+            sql.log
           retention-days: 7

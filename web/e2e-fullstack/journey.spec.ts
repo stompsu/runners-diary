@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+// Same test with the CSP guard (fails on Content-Security-Policy violations when the web image serves the page)
+import { test } from '../e2e/support.ts'
 
 // One real journey through the whole stack (web -> /api proxy -> API -> SQL): nothing is mocked (M3 §6, AC2/AC9/AC10).
 // Every run created here is deleted again; the guest account is isolated and expires on its own.

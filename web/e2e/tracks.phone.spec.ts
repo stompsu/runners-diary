@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { sampleGpx, typeId, type RunWriteRequest } from '../src/test/fakeApi/index.ts'
 import {
   horizontalOverflow,
@@ -8,6 +8,7 @@ import {
   seriousViolationsIn,
   settled,
   stubMapNetwork,
+  test,
 } from './support.ts'
 
 // Runs only in the `phone-la` project: 360x640, touch, browser zone Los Angeles (plan AC15). Track view, upload,

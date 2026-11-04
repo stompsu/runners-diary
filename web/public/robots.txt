@@ -1,0 +1,3 @@
+# Private training diary: nothing here is meant for crawlers, and a crawler would wake the API and the database.
+User-agent: *
+Disallow: /

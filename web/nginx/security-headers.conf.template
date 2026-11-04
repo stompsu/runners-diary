@@ -1,0 +1,13 @@
+# Security headers (ADR 0029 §4). Rendered by the image's envsubst entrypoint into /etc/nginx/conf.d/snippets/ (a
+# subdirectory, so nginx does not also include it at http level) and included by every location that sets headers of its own:
+# nginx drops inherited add_header directives as soon as a location defines one.
+#
+# CSP_STYLE_HASHES: hashes of the <style> elements that libraries inject at runtime (no 'unsafe-inline', ADR 0029 §4).
+# Only ${CSP_*} placeholders are substituted (NGINX_ENVSUBST_FILTER); nginx variables such as $rd_coop stay intact.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' ${CSP_STYLE_HASHES}; img-src 'self' data: blob: ${CSP_MAP_HOSTS}; font-src 'self' ${CSP_MAP_HOSTS}; connect-src 'self' ${CSP_ENTRA_HOST} ${CSP_MAP_HOSTS}; ${CSP_FRAME_SRC}; worker-src 'self' blob:; frame-ancestors $rd_frame_ancestors; base-uri 'none'; form-action 'self'; object-src 'none'" always;
+add_header Strict-Transport-Security "max-age=31536000" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+# COOP everywhere except /redirect.html (ADR 0014 §3): an empty value makes nginx omit the header ($rd_coop is a map in default.conf).
+add_header Cross-Origin-Opener-Policy $rd_coop always;
