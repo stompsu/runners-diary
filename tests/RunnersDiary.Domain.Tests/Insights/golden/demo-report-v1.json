@@ -1,0 +1,1372 @@
+{
+  "metricsVersion": 1,
+  "today": "2026-11-04",
+  "period": {
+    "from": "2026-08-17",
+    "to": "2026-11-08",
+    "asOf": "2026-11-04",
+    "isPartial": true,
+    "days": 84,
+    "elapsedDays": 80
+  },
+  "thresholds": {
+    "acwrLow": 0.8,
+    "acwrHigh": 1.3,
+    "monotonyHigh": 2,
+    "acwrMinHistoryDays": 35
+  },
+  "totals": {
+    "runCount": 39,
+    "distanceMeters": 382593,
+    "durationSeconds": 134412,
+    "elevationGainMeters": 2594,
+    "averagePaceSecondsPerKm": 351.3,
+    "longestRunMeters": 21800,
+    "load": 11676.6,
+    "loadSessionCount": 41,
+    "activeDays": 41,
+    "restDays": 3
+  },
+  "planned": {
+    "runCount": 3,
+    "distanceMeters": 30300,
+    "durationSeconds": 10314,
+    "upcomingCount": 3,
+    "missedCount": 0
+  },
+  "comparison": {
+    "kind": "previous",
+    "from": "2026-05-25",
+    "to": "2026-08-12",
+    "totals": {
+      "runCount": 37,
+      "distanceMeters": 334907,
+      "durationSeconds": 115469,
+      "elevationGainMeters": 1690,
+      "averagePaceSecondsPerKm": 344.8,
+      "longestRunMeters": 16300,
+      "load": 9961.1,
+      "loadSessionCount": 39,
+      "activeDays": 39,
+      "restDays": 2
+    },
+    "deltas": {
+      "runCount": {
+        "absolute": 2,
+        "percent": 5.4
+      },
+      "distanceMeters": {
+        "absolute": 47686,
+        "percent": 14.2
+      },
+      "durationSeconds": {
+        "absolute": 18943,
+        "percent": 16.4
+      },
+      "elevationGainMeters": {
+        "absolute": 904,
+        "percent": 53.5
+      },
+      "load": {
+        "absolute": 1715.5,
+        "percent": 17.2
+      },
+      "activeDays": {
+        "absolute": 2,
+        "percent": 5.1
+      }
+    }
+  },
+  "load": {
+    "historyStart": "2026-05-05",
+    "atAsOf": {
+      "date": "2026-11-04",
+      "value": 0.8,
+      "band": "optimal",
+      "acute": 926.1,
+      "chronic": 1155.4,
+      "unavailableReason": null
+    },
+    "peak": {
+      "date": "2026-10-23",
+      "value": 1.79,
+      "band": "high",
+      "acute": 1822.6,
+      "chronic": 1019.1,
+      "unavailableReason": null
+    },
+    "bandDays": {
+      "low": 13,
+      "optimal": 48,
+      "high": 19,
+      "unavailable": 0
+    },
+    "daily": [
+      {
+        "date": "2026-08-17",
+        "load": 0,
+        "acute": 1187.6,
+        "chronic": 902,
+        "acwr": 1.32,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-18",
+        "load": 95.5,
+        "acute": 1144.4,
+        "chronic": 914.5,
+        "acwr": 1.25,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-08-19",
+        "load": 65.3,
+        "acute": 1209.7,
+        "chronic": 914.5,
+        "acwr": 1.32,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-20",
+        "load": 400.4,
+        "acute": 1223.7,
+        "chronic": 930.9,
+        "acwr": 1.31,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-21",
+        "load": 0,
+        "acute": 1133.7,
+        "chronic": 953.4,
+        "acwr": 1.19,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-08-22",
+        "load": 107.7,
+        "acute": 1176.3,
+        "chronic": 946.7,
+        "acwr": 1.24,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-08-23",
+        "load": 771.7,
+        "acute": 1440.7,
+        "chronic": 975.5,
+        "acwr": 1.48,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-24",
+        "load": 0,
+        "acute": 1440.7,
+        "chronic": 975.5,
+        "acwr": 1.48,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-25",
+        "load": 144.4,
+        "acute": 1489.5,
+        "chronic": 965.2,
+        "acwr": 1.54,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-26",
+        "load": 0,
+        "acute": 1424.2,
+        "chronic": 981.5,
+        "acwr": 1.45,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-27",
+        "load": 307.1,
+        "acute": 1330.9,
+        "chronic": 1004.3,
+        "acwr": 1.33,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-28",
+        "load": 0,
+        "acute": 1330.9,
+        "chronic": 1004.3,
+        "acwr": 1.33,
+        "band": "high"
+      },
+      {
+        "date": "2026-08-29",
+        "load": 0,
+        "acute": 1223.2,
+        "chronic": 1031.2,
+        "acwr": 1.19,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-08-30",
+        "load": 325.8,
+        "acute": 777.3,
+        "chronic": 1110.1,
+        "acwr": 0.7,
+        "band": "low"
+      },
+      {
+        "date": "2026-08-31",
+        "load": 0,
+        "acute": 777.3,
+        "chronic": 1110.1,
+        "acwr": 0.7,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-01",
+        "load": 161.1,
+        "acute": 793.9,
+        "chronic": 1102.4,
+        "acwr": 0.72,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-02",
+        "load": 54.7,
+        "acute": 848.6,
+        "chronic": 1102.4,
+        "acwr": 0.77,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-03",
+        "load": 356.2,
+        "acute": 897.8,
+        "chronic": 1086.1,
+        "acwr": 0.83,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-04",
+        "load": 0,
+        "acute": 897.8,
+        "chronic": 1086.1,
+        "acwr": 0.83,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-05",
+        "load": 92,
+        "acute": 989.8,
+        "chronic": 1086.1,
+        "acwr": 0.91,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-06",
+        "load": 542.7,
+        "acute": 1206.6,
+        "chronic": 1046.4,
+        "acwr": 1.15,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-07",
+        "load": 0,
+        "acute": 1206.6,
+        "chronic": 1046.4,
+        "acwr": 1.15,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-08",
+        "load": 120.3,
+        "acute": 1165.8,
+        "chronic": 1056.1,
+        "acwr": 1.1,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-09",
+        "load": 0,
+        "acute": 1111.1,
+        "chronic": 1069.8,
+        "acwr": 1.04,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-10",
+        "load": 220.5,
+        "acute": 975.4,
+        "chronic": 1083,
+        "acwr": 0.9,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-11",
+        "load": 0,
+        "acute": 975.4,
+        "chronic": 1083,
+        "acwr": 0.9,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-12",
+        "load": 57.4,
+        "acute": 940.9,
+        "chronic": 1091.6,
+        "acwr": 0.86,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-13",
+        "load": 234,
+        "acute": 632.2,
+        "chronic": 1153,
+        "acwr": 0.55,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-14",
+        "load": 0,
+        "acute": 632.2,
+        "chronic": 1153,
+        "acwr": 0.55,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-15",
+        "load": 103.5,
+        "acute": 615.4,
+        "chronic": 1148.4,
+        "acwr": 0.54,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-16",
+        "load": 0,
+        "acute": 615.4,
+        "chronic": 1148.4,
+        "acwr": 0.54,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-17",
+        "load": 87.8,
+        "acute": 482.7,
+        "chronic": 1106.9,
+        "acwr": 0.44,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-18",
+        "load": 0,
+        "acute": 482.7,
+        "chronic": 1084.4,
+        "acwr": 0.45,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-19",
+        "load": 0,
+        "acute": 425.3,
+        "chronic": 1082.5,
+        "acwr": 0.39,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-20",
+        "load": 1023,
+        "acute": 1214.3,
+        "chronic": 1014.2,
+        "acwr": 1.2,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-21",
+        "load": 0,
+        "acute": 1214.3,
+        "chronic": 1014.2,
+        "acwr": 1.2,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-22",
+        "load": 76.3,
+        "acute": 1187,
+        "chronic": 1016.2,
+        "acwr": 1.17,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-23",
+        "load": 0,
+        "acute": 1187,
+        "chronic": 999.8,
+        "acwr": 1.19,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-24",
+        "load": 236.6,
+        "acute": 1335.9,
+        "chronic": 921.7,
+        "acwr": 1.45,
+        "band": "high"
+      },
+      {
+        "date": "2026-09-25",
+        "load": 0,
+        "acute": 1335.9,
+        "chronic": 921.7,
+        "acwr": 1.45,
+        "band": "high"
+      },
+      {
+        "date": "2026-09-26",
+        "load": 0,
+        "acute": 1335.9,
+        "chronic": 894.8,
+        "acwr": 1.49,
+        "band": "high"
+      },
+      {
+        "date": "2026-09-27",
+        "load": 381.2,
+        "acute": 694.1,
+        "chronic": 957.6,
+        "acwr": 0.72,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-28",
+        "load": 0,
+        "acute": 694.1,
+        "chronic": 957.6,
+        "acwr": 0.72,
+        "band": "low"
+      },
+      {
+        "date": "2026-09-29",
+        "load": 163.8,
+        "acute": 781.6,
+        "chronic": 940.5,
+        "acwr": 0.83,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-09-30",
+        "load": 0,
+        "acute": 781.6,
+        "chronic": 940.5,
+        "acwr": 0.83,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-01",
+        "load": 403.5,
+        "acute": 948.5,
+        "chronic": 922.9,
+        "acwr": 1.03,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-02",
+        "load": 120,
+        "acute": 1068.5,
+        "chronic": 922.9,
+        "acwr": 1.16,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-03",
+        "load": 0,
+        "acute": 1068.5,
+        "chronic": 922.9,
+        "acwr": 1.16,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-04",
+        "load": 358,
+        "acute": 1045.3,
+        "chronic": 936.8,
+        "acwr": 1.12,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-05",
+        "load": 0,
+        "acute": 1045.3,
+        "chronic": 936.8,
+        "acwr": 1.12,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-06",
+        "load": 118.3,
+        "acute": 999.8,
+        "chronic": 937.5,
+        "acwr": 1.07,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-07",
+        "load": 0,
+        "acute": 999.8,
+        "chronic": 923.8,
+        "acwr": 1.08,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-08",
+        "load": 315,
+        "acute": 911.3,
+        "chronic": 935.6,
+        "acwr": 0.97,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-09",
+        "load": 0,
+        "acute": 791.3,
+        "chronic": 965.6,
+        "acwr": 0.82,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-10",
+        "load": 0,
+        "acute": 791.3,
+        "chronic": 942.6,
+        "acwr": 0.84,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-11",
+        "load": 591.1,
+        "acute": 1024.4,
+        "chronic": 896.4,
+        "acwr": 1.14,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-12",
+        "load": 0,
+        "acute": 1024.4,
+        "chronic": 896.4,
+        "acwr": 1.14,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-13",
+        "load": 102.8,
+        "acute": 1008.9,
+        "chronic": 896,
+        "acwr": 1.13,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-14",
+        "load": 0,
+        "acute": 1008.9,
+        "chronic": 896,
+        "acwr": 1.13,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-15",
+        "load": 186.7,
+        "acute": 880.6,
+        "chronic": 919.6,
+        "acwr": 0.96,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-16",
+        "load": 0,
+        "acute": 880.6,
+        "chronic": 919.6,
+        "acwr": 0.96,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-17",
+        "load": 0,
+        "acute": 880.6,
+        "chronic": 905.2,
+        "acwr": 0.97,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-18",
+        "load": 1296,
+        "acute": 1585.5,
+        "chronic": 994.5,
+        "acwr": 1.59,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-19",
+        "load": 0,
+        "acute": 1585.5,
+        "chronic": 994.5,
+        "acwr": 1.59,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-20",
+        "load": 104,
+        "acute": 1586.7,
+        "chronic": 994.3,
+        "acwr": 1.6,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-21",
+        "load": 0,
+        "acute": 1586.7,
+        "chronic": 994.3,
+        "acwr": 1.6,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-22",
+        "load": 302.6,
+        "acute": 1702.6,
+        "chronic": 1019.1,
+        "acwr": 1.67,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-23",
+        "load": 120,
+        "acute": 1822.6,
+        "chronic": 1019.1,
+        "acwr": 1.79,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-24",
+        "load": 0,
+        "acute": 1822.6,
+        "chronic": 1019.1,
+        "acwr": 1.79,
+        "band": "high"
+      },
+      {
+        "date": "2026-10-25",
+        "load": 431.7,
+        "acute": 958.3,
+        "chronic": 1087.3,
+        "acwr": 0.88,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-26",
+        "load": 0,
+        "acute": 958.3,
+        "chronic": 1087.3,
+        "acwr": 0.88,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-27",
+        "load": 172,
+        "acute": 1026.3,
+        "chronic": 1094.2,
+        "acwr": 0.94,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-28",
+        "load": 0,
+        "acute": 1026.3,
+        "chronic": 1094.2,
+        "acwr": 0.94,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-29",
+        "load": 350.8,
+        "acute": 1074.5,
+        "chronic": 1110.7,
+        "acwr": 0.97,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-30",
+        "load": 0,
+        "acute": 954.5,
+        "chronic": 1140.7,
+        "acwr": 0.84,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-10-31",
+        "load": 0,
+        "acute": 954.5,
+        "chronic": 1140.7,
+        "acwr": 0.84,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-11-01",
+        "load": 488.7,
+        "acute": 1011.5,
+        "chronic": 1153.4,
+        "acwr": 0.88,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-11-02",
+        "load": 0,
+        "acute": 1011.5,
+        "chronic": 1153.4,
+        "acwr": 0.88,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-11-03",
+        "load": 86.6,
+        "acute": 926.1,
+        "chronic": 1155.4,
+        "acwr": 0.8,
+        "band": "optimal"
+      },
+      {
+        "date": "2026-11-04",
+        "load": 0,
+        "acute": 926.1,
+        "chronic": 1155.4,
+        "acwr": 0.8,
+        "band": "optimal"
+      }
+    ]
+  },
+  "weeks": [
+    {
+      "isoYear": 2026,
+      "isoWeek": 34,
+      "start": "2026-08-17",
+      "end": "2026-08-23",
+      "completed": {
+        "runCount": 5,
+        "distanceMeters": 51900,
+        "durationSeconds": 18129,
+        "elevationGainMeters": 324
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1440.7,
+      "monotony": 0.78,
+      "strain": 1127.2,
+      "acwrAtEnd": 1.48,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 35,
+      "start": "2026-08-24",
+      "end": "2026-08-30",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 30000,
+        "durationSeconds": 10407,
+        "elevationGainMeters": 149
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 777.3,
+      "monotony": 0.8,
+      "strain": 621.5,
+      "acwrAtEnd": 0.7,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 36,
+      "start": "2026-08-31",
+      "end": "2026-09-06",
+      "completed": {
+        "runCount": 5,
+        "distanceMeters": 44000,
+        "durationSeconds": 15462,
+        "elevationGainMeters": 176
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1206.6,
+      "monotony": 0.91,
+      "strain": 1098.9,
+      "acwrAtEnd": 1.15,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 37,
+      "start": "2026-09-07",
+      "end": "2026-09-13",
+      "completed": {
+        "runCount": 4,
+        "distanceMeters": 26000,
+        "durationSeconds": 8826,
+        "elevationGainMeters": 124
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 632.2,
+      "monotony": 0.94,
+      "strain": 596.9,
+      "acwrAtEnd": 0.55,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 38,
+      "start": "2026-09-14",
+      "end": "2026-09-20",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 32098,
+        "durationSeconds": 10645,
+        "elevationGainMeters": 88
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1214.3,
+      "monotony": 0.5,
+      "strain": 602.9,
+      "acwrAtEnd": 1.2,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 39,
+      "start": "2026-09-21",
+      "end": "2026-09-27",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 24000,
+        "durationSeconds": 8128,
+        "elevationGainMeters": 107
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 694.1,
+      "monotony": 0.71,
+      "strain": 489.6,
+      "acwrAtEnd": 0.72,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 40,
+      "start": "2026-09-28",
+      "end": "2026-10-04",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 34000,
+        "durationSeconds": 11672,
+        "elevationGainMeters": 200
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1045.3,
+      "monotony": 0.94,
+      "strain": 984.1,
+      "acwrAtEnd": 1.12,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 41,
+      "start": "2026-10-05",
+      "end": "2026-10-11",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 37100,
+        "durationSeconds": 12611,
+        "elevationGainMeters": 204
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1024.4,
+      "monotony": 0.69,
+      "strain": 709.3,
+      "acwrAtEnd": 1.14,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 42,
+      "start": "2026-10-12",
+      "end": "2026-10-18",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 26995,
+        "durationSeconds": 12296,
+        "elevationGainMeters": 815
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1585.5,
+      "monotony": 0.51,
+      "strain": 812.9,
+      "acwrAtEnd": 1.59,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 43,
+      "start": "2026-10-19",
+      "end": "2026-10-25",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 32900,
+        "durationSeconds": 11326,
+        "elevationGainMeters": 152
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 958.3,
+      "monotony": 0.87,
+      "strain": 837,
+      "acwrAtEnd": 0.88,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 44,
+      "start": "2026-10-26",
+      "end": "2026-11-01",
+      "completed": {
+        "runCount": 3,
+        "distanceMeters": 36000,
+        "durationSeconds": 12311,
+        "elevationGainMeters": 216
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 1011.5,
+      "monotony": 0.77,
+      "strain": 780.8,
+      "acwrAtEnd": 0.88,
+      "complete": true
+    },
+    {
+      "isoYear": 2026,
+      "isoWeek": 45,
+      "start": "2026-11-02",
+      "end": "2026-11-08",
+      "completed": {
+        "runCount": 1,
+        "distanceMeters": 7600,
+        "durationSeconds": 2599,
+        "elevationGainMeters": 39
+      },
+      "planned": {
+        "runCount": 3,
+        "distanceMeters": 30300,
+        "durationSeconds": 10314,
+        "elevationGainMeters": 163
+      },
+      "load": 86.6,
+      "monotony": null,
+      "strain": null,
+      "acwrAtEnd": 0.8,
+      "complete": false
+    }
+  ],
+  "months": [
+    {
+      "year": 2026,
+      "month": 8,
+      "start": "2026-08-01",
+      "end": "2026-08-31",
+      "completed": {
+        "runCount": 17,
+        "distanceMeters": 164102,
+        "durationSeconds": 56814,
+        "elevationGainMeters": 793
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 4670.1
+    },
+    {
+      "year": 2026,
+      "month": 9,
+      "start": "2026-09-01",
+      "end": "2026-09-30",
+      "completed": {
+        "runCount": 16,
+        "distanceMeters": 135598,
+        "durationSeconds": 46337,
+        "elevationGainMeters": 557
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 3910.9
+    },
+    {
+      "year": 2026,
+      "month": 10,
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "completed": {
+        "runCount": 13,
+        "distanceMeters": 141295,
+        "durationSeconds": 51076,
+        "elevationGainMeters": 1436
+      },
+      "planned": {
+        "runCount": 0,
+        "distanceMeters": 0,
+        "durationSeconds": 0,
+        "elevationGainMeters": 0
+      },
+      "load": 4972.5
+    },
+    {
+      "year": 2026,
+      "month": 11,
+      "start": "2026-11-01",
+      "end": "2026-11-30",
+      "completed": {
+        "runCount": 2,
+        "distanceMeters": 23800,
+        "durationSeconds": 8463,
+        "elevationGainMeters": 128
+      },
+      "planned": {
+        "runCount": 13,
+        "distanceMeters": 121204,
+        "durationSeconds": 37579,
+        "elevationGainMeters": 575
+      },
+      "load": 575.3
+    }
+  ],
+  "typeDistribution": [
+    {
+      "runTypeId": 22,
+      "code": "long",
+      "category": "training",
+      "runCount": 9,
+      "distanceMeters": 135600,
+      "durationSeconds": 48061,
+      "load": 4124.8
+    },
+    {
+      "runTypeId": 20,
+      "code": "easy",
+      "category": "training",
+      "runCount": 15,
+      "distanceMeters": 112700,
+      "durationSeconds": 38691,
+      "load": 1705.7
+    },
+    {
+      "runTypeId": 2,
+      "code": "trailRace",
+      "category": "race",
+      "runCount": 1,
+      "distanceMeters": 15995,
+      "durationSeconds": 8640,
+      "load": 1296
+    },
+    {
+      "runTypeId": 1,
+      "code": "roadRace",
+      "category": "race",
+      "runCount": 1,
+      "distanceMeters": 21098,
+      "durationSeconds": 6820,
+      "load": 1023
+    },
+    {
+      "runTypeId": 24,
+      "code": "intervals",
+      "category": "training",
+      "runCount": 2,
+      "distanceMeters": 19600,
+      "durationSeconds": 6458,
+      "load": 803.9
+    },
+    {
+      "runTypeId": 25,
+      "code": "fartlek",
+      "category": "training",
+      "runCount": 2,
+      "distanceMeters": 18100,
+      "durationSeconds": 5782,
+      "load": 622.1
+    },
+    {
+      "runTypeId": 23,
+      "code": "tempo",
+      "category": "training",
+      "runCount": 3,
+      "distanceMeters": 17500,
+      "durationSeconds": 5518,
+      "load": 643.8
+    },
+    {
+      "runTypeId": 40,
+      "code": "crossTraining",
+      "category": "other",
+      "runCount": 2,
+      "distanceMeters": 0,
+      "durationSeconds": 4200,
+      "load": 240
+    },
+    {
+      "runTypeId": 21,
+      "code": "recovery",
+      "category": "training",
+      "runCount": 2,
+      "distanceMeters": 9600,
+      "durationSeconds": 3601,
+      "load": 120
+    },
+    {
+      "runTypeId": 26,
+      "code": "hillRepeats",
+      "category": "training",
+      "runCount": 1,
+      "distanceMeters": 8800,
+      "durationSeconds": 3053,
+      "load": 356.2
+    },
+    {
+      "runTypeId": 27,
+      "code": "progression",
+      "category": "training",
+      "runCount": 1,
+      "distanceMeters": 8900,
+      "durationSeconds": 3026,
+      "load": 302.6
+    },
+    {
+      "runTypeId": 28,
+      "code": "racePace",
+      "category": "training",
+      "runCount": 1,
+      "distanceMeters": 9700,
+      "durationSeconds": 3007,
+      "load": 350.8
+    },
+    {
+      "runTypeId": 29,
+      "code": "stridesDrills",
+      "category": "training",
+      "runCount": 1,
+      "distanceMeters": 5000,
+      "durationSeconds": 1755,
+      "load": 87.8
+    }
+  ],
+  "paceTrend": {
+    "runTypeCodes": [
+      "easy"
+    ],
+    "slopeSecondsPerKmPerWeek": -0.48,
+    "excludedRunCount": 0,
+    "weeks": [
+      {
+        "start": "2026-08-17",
+        "runCount": 2,
+        "distanceMeters": 14500,
+        "durationSeconds": 5020,
+        "paceSecondsPerKm": 346.2,
+        "avgHeartRate": 145
+      },
+      {
+        "start": "2026-08-24",
+        "runCount": 1,
+        "distanceMeters": 8400,
+        "durationSeconds": 2888,
+        "paceSecondsPerKm": 343.8,
+        "avgHeartRate": 144
+      },
+      {
+        "start": "2026-08-31",
+        "runCount": 2,
+        "distanceMeters": 12300,
+        "durationSeconds": 4256,
+        "paceSecondsPerKm": 346,
+        "avgHeartRate": 142.6
+      },
+      {
+        "start": "2026-09-07",
+        "runCount": 2,
+        "distanceMeters": 12000,
+        "durationSeconds": 4128,
+        "paceSecondsPerKm": 344,
+        "avgHeartRate": 141.8
+      },
+      {
+        "start": "2026-09-14",
+        "runCount": 1,
+        "distanceMeters": 6000,
+        "durationSeconds": 2070,
+        "paceSecondsPerKm": 345,
+        "avgHeartRate": 142
+      },
+      {
+        "start": "2026-09-21",
+        "runCount": 1,
+        "distanceMeters": 6700,
+        "durationSeconds": 2288,
+        "paceSecondsPerKm": 341.5,
+        "avgHeartRate": 144
+      },
+      {
+        "start": "2026-09-28",
+        "runCount": 1,
+        "distanceMeters": 9500,
+        "durationSeconds": 3276,
+        "paceSecondsPerKm": 344.8,
+        "avgHeartRate": 146
+      },
+      {
+        "start": "2026-10-05",
+        "runCount": 1,
+        "distanceMeters": 10400,
+        "durationSeconds": 3550,
+        "paceSecondsPerKm": 341.3,
+        "avgHeartRate": 145
+      },
+      {
+        "start": "2026-10-12",
+        "runCount": 1,
+        "distanceMeters": 6000,
+        "durationSeconds": 2056,
+        "paceSecondsPerKm": 342.7,
+        "avgHeartRate": 139
+      },
+      {
+        "start": "2026-10-19",
+        "runCount": 1,
+        "distanceMeters": 9200,
+        "durationSeconds": 3120,
+        "paceSecondsPerKm": 339.1,
+        "avgHeartRate": 144
+      },
+      {
+        "start": "2026-10-26",
+        "runCount": 1,
+        "distanceMeters": 10100,
+        "durationSeconds": 3440,
+        "paceSecondsPerKm": 340.6,
+        "avgHeartRate": 142
+      },
+      {
+        "start": "2026-11-02",
+        "runCount": 1,
+        "distanceMeters": 7600,
+        "durationSeconds": 2599,
+        "paceSecondsPerKm": 342,
+        "avgHeartRate": 138
+      }
+    ]
+  },
+  "races": [
+    {
+      "runId": "0000004d-0000-0000-0000-000000000000",
+      "date": "2026-09-20",
+      "status": "completed",
+      "runTypeCode": "roadRace",
+      "name": "Labedy Half Marathon",
+      "distanceCategory": "halfMarathon",
+      "officialDistanceMeters": 21097.5,
+      "distanceMeters": 21098,
+      "resultTimeSeconds": 6820,
+      "targetTimeSeconds": 6900,
+      "paceSecondsPerKm": 323.3,
+      "overallPlace": 203,
+      "categoryPlace": 41,
+      "categoryName": "M30",
+      "ratingStars": 5,
+      "isPersonalBest": true
+    },
+    {
+      "runId": "0000005b-0000-0000-0000-000000000000",
+      "date": "2026-10-18",
+      "status": "completed",
+      "runTypeCode": "trailRace",
+      "name": "Beskid Trail 16K",
+      "distanceCategory": "other",
+      "officialDistanceMeters": 16000,
+      "distanceMeters": 15995,
+      "resultTimeSeconds": 8640,
+      "targetTimeSeconds": null,
+      "paceSecondsPerKm": 540.2,
+      "overallPlace": 61,
+      "categoryPlace": 14,
+      "categoryName": "M30",
+      "ratingStars": 4,
+      "isPersonalBest": false
+    }
+  ],
+  "dataQuality": {
+    "completedSessions": 41,
+    "sessionsWithEstimatedRpe": 0,
+    "estimatedLoadShare": 0,
+    "sessionsWithoutDuration": 0,
+    "runningSessionsWithoutDistance": 0
+  }
+}

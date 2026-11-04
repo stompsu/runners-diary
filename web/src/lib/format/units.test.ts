@@ -5,6 +5,7 @@ import {
   formatElevationDelta,
   formatKmInput,
   formatPace,
+  formatPaceValue,
   kmToMeters,
   metersToKm,
   paceSecondsPerKm,
@@ -79,5 +80,13 @@ describe('formatElevationDelta', () => {
     expect(formatElevationDelta(3.2, 'en')).toBe('+3 m')
     expect(formatElevationDelta(-2.4, 'en')).toBe('-2 m')
     expect(formatElevationDelta(0, 'en')).toBe('0 m')
+  })
+})
+
+describe('formatPaceValue', () => {
+  it('formats a pace in seconds per km and never writes 5:60', () => {
+    expect(formatPaceValue(351.3)).toBe('5:51 /km')
+    expect(formatPaceValue(359.6)).toBe('6:00 /km')
+    expect(formatPaceValue(300)).toBe('5:00 /km')
   })
 })

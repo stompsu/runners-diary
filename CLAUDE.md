@@ -11,8 +11,9 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 - **M2 – Domain & Runs API** — done (merged, stompsu/runners-diary#4). Plan, deviations (§11) and the Entra tenant checklist (§10): [`docs/plans/M2-domain-runs-api.md`](docs/plans/M2-domain-runs-api.md).
   - The user creates the Entra external tenant themself (checklist §10). Until its IDs are in AppHost user-secrets, the API runs with Entra disabled; guests work and tests mint their own tokens.
 - **M3 – Calendar UI** — done (merged, stompsu/runners-diary#5). Real Entra sign-in/sign-out and zone sync (AC3/AC4) still to check once the tenant exists. Plan and deviations (§12): [`docs/plans/M3-calendar-ui.md`](docs/plans/M3-calendar-ui.md).
-- **M4 – Maps & GPX** — plan approved 2026-11-03 (Azure Maps deferred to M7; no cloud resources), implemented and verified locally on branch `m4-maps-gpx`; awaiting CI + approval: [`docs/plans/M4-maps-gpx.md`](docs/plans/M4-maps-gpx.md).
-- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0023).
+- **M4 – Maps & GPX** — done (merged, stompsu/runners-diary#9). Azure Maps (adapters, token endpoint, geocoder) deferred to M7. Plan and deviations (§12): [`docs/plans/M4-maps-gpx.md`](docs/plans/M4-maps-gpx.md).
+- **M5 – Insights** — plan approved 2026-11-04 (all defaults), implemented and verified locally on branch `m5-insights`; awaiting CI + approval: [`docs/plans/M5-insights.md`](docs/plans/M5-insights.md) (ADRs 0024–0025).
+- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0025).
 
 ## Prerequisites (local dev)
 
@@ -93,7 +94,7 @@ dotnet user-secrets set "Entra:TenantId" "<tenant GUID>" --project src/RunnersDi
 az bicep build --file infra/main.bicep   # M7 — validation only; never deploy without explicit user confirmation
 ```
 
-CI (`.github/workflows/ci.yml`) runs three jobs on every PR and push to `main`: **backend** (build + tests with Testcontainers), **frontend** (lint, typecheck, Prettier, Vitest incl. `test:tz`, build, Playwright), **api-contract** (fails if the committed OpenAPI doc or generated TS schema is stale). A fourth job, **e2e-fullstack** (SQL + Azurite containers, API, `vite preview`, full-stack Playwright journey), runs only on push to `main` and manual dispatch; superseded PR runs are cancelled, `main` runs never are.
+CI (`.github/workflows/ci.yml`) runs three jobs on every PR and push to `main`: **backend** (build + tests with Testcontainers), **frontend** (lint, typecheck, Prettier, Vitest incl. `test:tz`, build, Playwright), **api-contract** (fails if the committed OpenAPI doc or generated TS schema is stale). A fourth job, **e2e-fullstack** (SQL + Azurite containers, API, `vite preview`, full-stack Playwright journeys: runs, GPX tracks, insights), runs only on push to `main` and manual dispatch; superseded PR runs are cancelled, `main` runs never are.
 
 ## Conventions
 

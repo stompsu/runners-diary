@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`, merged); M4 adds migration `GpxTrackProcessing` (implemented, awaiting CI + approval)**.
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing` (both merged); M5 (Insights) has no schema change (implemented, awaiting CI + approval)**.
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -161,6 +161,12 @@ gpx/users/{userId:N}/tracks/{trackId:N}/track.json     Content-Type application/
 
 Each track has its own prefix, so deleting a track or a run is a prefix delete per track (blobs first, then rows; ADR 0023). A replace writes the new track id's prefix first and deletes the old prefix after commit (best effort; failures logged `TrackBlobOrphaned`). Upload failures and cancellations roll back the new prefix. A fresh guest gets 6 demo tracks = 12 blobs. The API never serves blob URLs; it streams the blobs itself.
 
+## Insights reads (M5)
+
+**No schema change in M5**: no migration, table, column, view or index ([ADR 0025](adr/0025-insights-report-computation-and-api.md)). Metrics are computed on demand in `RunnersDiary.Domain/Insights` ([ADR 0024](adr/0024-training-metrics-definitions-v1.md)); nothing is stored.
+
+`InsightsReportService` reads through the `Owner`-filtered context with `AsNoTracking` **projections** only: the user's `TimeZoneId` (`Users` PK); then, each a seek on `CX_Runs_User_Date (UserId, Date)`, run facts (`Id, Date, Status, RunTypeId, DistanceMeters, DurationSeconds, ElevationGainMeters, Rpe, Surface, AvgHeartRate`) for the bucket/load window; the comparison window's part outside it (when needed); `MIN(Date)` of completed load-counting runs; race facts (the `Race_*` scalars and `Rating_Stars`, `Date ≤ to`). `Notes`, `Location_*`, `Title` and `GpxTracks` are never read. 1–5 queries per report.
+
 ## Deferred (by milestone)
 
 | Item | Milestone |
@@ -168,7 +174,7 @@ Each track has its own prefix, so deleting a track or a run is a prefix delete p
 | ~~GPX metrics columns, GeoJSON blob, upload validation~~ | done in M4 |
 | Saved places / geocoding cache (if needed) | not needed in M4 (no geocoder yet); revisit with the Azure geocoder in M7 |
 | Orphan-blob reconciliation for users | post-MVP (ADR 0023 §5) |
-| Aggregate views/indexes for insights (only if query plans need them) | M5 |
+| ~~Aggregate views/indexes for insights~~ | not needed in M5 (see *Insights reads*); revisit only if App Insights shows slow reports (M7) |
 | `AiSummaries` (cache per user + period + data hash), guest AI counter | M6 |
 | `ExternalSource`/`ExternalId` on `Runs` (Strava/Garmin/FIT) | post-MVP |
 | Account deletion / guest → user conversion | post-MVP |

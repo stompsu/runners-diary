@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2, M3 implemented (merged); M4 adds tracks, geocoding and `client-config.maps`/`gpx` (implemented, awaiting CI + approval)**.
+Living document, owned by the `architect` agent. Status: **M2–M4 implemented (merged); M5 adds `GET /api/insights/report` (implemented, awaiting CI + approval)**.
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -241,6 +241,96 @@ ClientConfigResponse.gpx  = { maxFileBytesUser: number; maxFileBytesGuest: numbe
 
 `ETag` of `getTrackGeoJson` is `"{hex of the first 8 bytes of the file's SHA-256}-v{processorVersion}"` (a track id's content never changes; a replace creates a new id). `client-config.maps.provider` is always `MapLibre` in M4 (another value fails API startup); `mapLibreStyleUrl` comes from `Maps:MapLibre:StyleUrl` (absolute https, default `https://tiles.openfreemap.org/styles/liberty`); `geocodingEnabled` is `false` while `Maps:Geocoding:Provider = None`.
 
+## Added in M5 (Insights)
+
+[Plan](plans/M5-insights.md) (deviations [§12](plans/M5-insights.md#12-implementation-notes--deviations-2026-11-04)), ADRs [0024](adr/0024-training-metrics-definitions-v1.md) (metric definitions v1) and [0025](adr/0025-insights-report-computation-and-api.md) (computation, API, M6 contract).
+
+| Method & path | operationId | Policy | Success | Errors |
+|---|---|---|---|---|
+| `GET /api/insights/report?from&to&compare` | `getInsightsReport` | Auth (users and guests), general rate limiter | 200 `InsightsReportResponse`, `Cache-Control: private, no-store` | 400 (keys `from`, `to`, `compare`), 401, 429 |
+
+**Parameters**
+
+| Name | Required | Values |
+|---|---|---|
+| `from` | yes | `YYYY-MM-DD`, 1950-01-01 … 2100-12-31 |
+| `to` | yes | `YYYY-MM-DD`, 1950-01-01 … 2100-12-31, `≥ from`; span `to − from + 1 ≤ 366` days |
+| `compare` | no | `none` \| `previous` (default) \| `previousYear` — a **plain string** in OpenAPI (no enum), matched **case-sensitively** (`Previous` → 400) |
+
+- Validation: a missing or malformed date is a binding failure (`errors.from` / `errors.to`, fixed message). Range errors are reported per parameter; `to < from` and a span > 366 days are reported on `to`. An unknown `compare` → `errors.compare`. The handler's range and `compare` errors are returned together in one 400; a binding failure is answered by the framework before the handler runs.
+- No route parameter names a user or a resource: the report always reads the caller's own runs (`Owner` filter), so there is no 404. An empty or wholly future period answers 200 with zeros and empty arrays.
+- No server cache. The SPA invalidates `getInsightsReport` on `createRun`/`updateRun`/`deleteRun`.
+- `metricsVersion` (currently `1`) changes only with a definitional change (ADR 0024 §9); additive fields keep it.
+
+### Shapes
+
+All units SI except load (AU = RPE × minutes) and pace (s/km). Every array is always present (possibly empty). Rounding: ADR 0024 §9.
+
+```ts
+InsightsReportResponse = {
+  metricsVersion: number;                      // 1
+  today: string;                               // in the caller's profile zone
+  period: InsightsPeriodDto;
+  thresholds: { acwrLow: number /* 0.8 */; acwrHigh: number /* 1.3 */; monotonyHigh: number /* 2.0 */; acwrMinHistoryDays: number /* 35 */ };
+  totals: PeriodTotalsDto;                     // completed, [from, asOf]
+  planned: { runCount: number; distanceMeters: number; durationSeconds: number /* int64 */; upcomingCount: number; missedCount: number };  // [from, to]
+  comparison: InsightsComparisonDto | null;    // null for compare=none or when elapsedDays = 0
+  load: {
+    historyStart: string | null;               // first completed load-counting session ever (even without duration)
+    atAsOf: AcwrPointDto;
+    peak: AcwrPointDto | null;                 // max ACWR in [from, asOf], earliest on ties
+    bandDays: { low: number; optimal: number; high: number; unavailable: number };
+    daily: { date: string; load: number; acute: number; chronic: number | null; acwr: number | null; band: Band | null }[];  // [Monday(from), asOf]
+  };
+  weeks: InsightsWeekDto[];                    // whole ISO weeks Monday(from) … week of `to` (bucket rules: ADR 0024 amendment)
+  months: InsightsMonthDto[];                  // whole months of `from` … `to`
+  typeDistribution: { runTypeId: number; code: string; category: "Race" | "Training" | "Other";
+                      runCount: number; distanceMeters: number; durationSeconds: number; load: number }[];   // rest excluded
+  paceTrend: { runTypeCodes: string[] /* ["easy"] */; slopeSecondsPerKmPerWeek: number | null; excludedRunCount: number;
+               weeks: { start: string; runCount: number; distanceMeters: number; durationSeconds: number;
+                        paceSecondsPerKm: number; avgHeartRate: number | null /* 0.1 */ }[] };
+  races: RaceResultDto[];
+  dataQuality: { completedSessions: number /* rest excluded */; sessionsWithEstimatedRpe: number;
+                 estimatedLoadShare: number /* 0..1, 2 dp */; sessionsWithoutDuration: number; runningSessionsWithoutDistance: number };
+}
+
+InsightsPeriodDto = { from: string; to: string;
+  asOf: string;          // min(to, today); BEFORE `from` for a wholly future period (ADR 0025 amendment)
+  isPartial: boolean;    // to > today
+  days: number; elapsedDays: number /* 0 for a wholly future period */ }
+
+PeriodTotalsDto = { runCount: number; distanceMeters: number; durationSeconds: number /* int64 */; elevationGainMeters: number;
+  averagePaceSecondsPerKm: number | null; longestRunMeters: number | null;
+  load: number; loadSessionCount: number; activeDays: number;
+  restDays: number /* distinct dates with a completed rest entry */ }
+
+InsightsComparisonDto = { kind: "previous" | "previousYear"; from: string; to: string /* aligned to elapsed days when partial */;
+  totals: PeriodTotalsDto; deltas: DeltasDto }
+DeltasDto = { [k in "runCount" | "distanceMeters" | "durationSeconds" | "elevationGainMeters" | "load" | "activeDays"]:
+              { absolute: number; percent: number | null /* null when previous = 0 */ } }   // from rounded totals
+
+AcwrPointDto = { date: string; value: number | null; band: Band | null; acute: number; chronic: number | null;
+                 unavailableReason: "insufficientHistory" | "noChronicLoad" | null }
+Band = "low" | "optimal" | "high"
+
+InsightsWeekDto = { isoYear: number; isoWeek: number; start: string; end: string;
+  completed: Totals; planned: Totals;          // calendar `Totals` schema (TotalsDto), running-distance types only
+  load: number; monotony: number | null; strain: number | null;
+  acwrAtEnd: number | null;                    // ACWR on min(Sunday, today); null for a future week
+  complete: boolean }                          // Sunday ≤ today
+InsightsMonthDto = { year: number; month: number; start: string; end: string; completed: Totals; planned: Totals; load: number }
+
+RaceResultDto = { runId: string; date: string; status: "Planned" | "Completed"; runTypeCode: string; name: string;
+  distanceCategory: "FiveK" | "TenK" | "HalfMarathon" | "Marathon" | "Other";
+  officialDistanceMeters: number | null; distanceMeters: number | null;
+  resultTimeSeconds: number | null;            // Race.ResultTimeSeconds ?? DurationSeconds (completed only)
+  targetTimeSeconds: number | null; paceSecondsPerKm: number | null;
+  overallPlace: number | null; categoryPlace: number | null; categoryName: string | null; ratingStars: number | null;
+  isPersonalBest: boolean }                    // PB at the time (ADR 0024 §8; ties: earlier date holds it)
+```
+
+**Enum casing is mixed on purpose — do not "fix" it in M6.** Values that exist only in the insights contract are lowerCamel via dedicated DTO enums with `JsonStringEnumMemberName`: `band` (`BandDto`), `unavailableReason` (`AcwrUnavailableReasonDto`), `comparison.kind` (`ComparisonKindDto`). Values that reuse existing domain enums keep the API-wide **PascalCase**: race `status` (`RunStatus`), `distanceCategory` (`RaceDistanceCategory`) and `typeDistribution[].category` (`RunTypeCategory`), identical to `RunDto` and `RunTypeDto`. Changing either side would be a breaking contract change for the SPA and the M6 tool payloads.
+
 ## Planned for later milestones
 
-Azure Maps SAS token endpoint and Azure geocoder (M7, ADR 0022). Insights/metrics (M5), AI summaries (M6).
+Azure Maps SAS token endpoint and Azure geocoder (M7, ADR 0022). AI summaries (M6).

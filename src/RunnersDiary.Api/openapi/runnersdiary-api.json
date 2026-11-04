@@ -403,6 +403,100 @@
         ]
       }
     },
+    "/api/insights/report": {
+      "get": {
+        "tags": [
+          "Insights"
+        ],
+        "summary": "Deterministic training metrics of a date range (at most 366 days) with an optional comparison period.",
+        "description": "compare is one of none, previous (default) or previousYear. Load is in AU (RPE x minutes), pace in s/km, distances in metres. The response is never cached.",
+        "operationId": "getInsightsReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "compare",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/geocoding/search": {
       "get": {
         "tags": [
@@ -1405,6 +1499,69 @@
   },
   "components": {
     "schemas": {
+      "AcwrPointDto": {
+        "required": [
+          "date",
+          "value",
+          "band",
+          "acute",
+          "chronic",
+          "unavailableReason"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "value": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "band": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BandDto"
+              }
+            ]
+          },
+          "acute": {
+            "type": "number",
+            "format": "double"
+          },
+          "chronic": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "unavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AcwrUnavailableReasonDto"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AcwrUnavailableReasonDto": {
+        "enum": [
+          "insufficientHistory",
+          "noChronicLoad",
+          null
+        ]
+      },
       "ApiHealthResponse": {
         "required": [
           "status",
@@ -1426,6 +1583,42 @@
           "Unhealthy",
           "Degraded",
           "Healthy"
+        ]
+      },
+      "BandDaysDto": {
+        "required": [
+          "low",
+          "optimal",
+          "high",
+          "unavailable"
+        ],
+        "type": "object",
+        "properties": {
+          "low": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "optimal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "high": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unavailable": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BandDto": {
+        "enum": [
+          "low",
+          "optimal",
+          "high",
+          null
         ]
       },
       "CalendarMonthResponse": {
@@ -1529,6 +1722,148 @@
           },
           "gpx": {
             "$ref": "#/components/schemas/GpxClientConfig"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComparisonKindDto": {
+        "enum": [
+          "previous",
+          "previousYear"
+        ]
+      },
+      "DailyLoadDto": {
+        "required": [
+          "date",
+          "load",
+          "acute",
+          "chronic",
+          "acwr",
+          "band"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "load": {
+            "type": "number",
+            "format": "double"
+          },
+          "acute": {
+            "type": "number",
+            "format": "double"
+          },
+          "chronic": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "acwr": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "band": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BandDto"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DataQualityDto": {
+        "required": [
+          "completedSessions",
+          "sessionsWithEstimatedRpe",
+          "estimatedLoadShare",
+          "sessionsWithoutDuration",
+          "runningSessionsWithoutDistance"
+        ],
+        "type": "object",
+        "properties": {
+          "completedSessions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sessionsWithEstimatedRpe": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimatedLoadShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "sessionsWithoutDuration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "runningSessionsWithoutDistance": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeltaDto": {
+        "required": [
+          "absolute",
+          "percent"
+        ],
+        "type": "object",
+        "properties": {
+          "absolute": {
+            "type": "number",
+            "format": "double"
+          },
+          "percent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeltasDto": {
+        "required": [
+          "runCount",
+          "distanceMeters",
+          "durationSeconds",
+          "elevationGainMeters",
+          "load",
+          "activeDays"
+        ],
+        "type": "object",
+        "properties": {
+          "runCount": {
+            "$ref": "#/components/schemas/DeltaDto"
+          },
+          "distanceMeters": {
+            "$ref": "#/components/schemas/DeltaDto"
+          },
+          "durationSeconds": {
+            "$ref": "#/components/schemas/DeltaDto"
+          },
+          "elevationGainMeters": {
+            "$ref": "#/components/schemas/DeltaDto"
+          },
+          "load": {
+            "$ref": "#/components/schemas/DeltaDto"
+          },
+          "activeDays": {
+            "$ref": "#/components/schemas/DeltaDto"
           }
         },
         "additionalProperties": false
@@ -1660,6 +1995,338 @@
         "type": "string",
         "format": "binary"
       },
+      "InsightsComparisonDto": {
+        "required": [
+          "kind",
+          "from",
+          "to",
+          "totals",
+          "deltas"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ComparisonKindDto"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PeriodTotalsDto"
+          },
+          "deltas": {
+            "$ref": "#/components/schemas/DeltasDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsLoadDto": {
+        "required": [
+          "historyStart",
+          "atAsOf",
+          "peak",
+          "bandDays",
+          "daily"
+        ],
+        "type": "object",
+        "properties": {
+          "historyStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "atAsOf": {
+            "$ref": "#/components/schemas/AcwrPointDto"
+          },
+          "peak": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AcwrPointDto"
+              }
+            ]
+          },
+          "bandDays": {
+            "$ref": "#/components/schemas/BandDaysDto"
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyLoadDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsMonthDto": {
+        "required": [
+          "year",
+          "month",
+          "start",
+          "end",
+          "completed",
+          "planned",
+          "load"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "month": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "end": {
+            "type": "string",
+            "format": "date"
+          },
+          "completed": {
+            "$ref": "#/components/schemas/TotalsDto"
+          },
+          "planned": {
+            "$ref": "#/components/schemas/TotalsDto"
+          },
+          "load": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsPeriodDto": {
+        "required": [
+          "from",
+          "to",
+          "asOf",
+          "isPartial",
+          "days",
+          "elapsedDays"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date"
+          },
+          "isPartial": {
+            "type": "boolean"
+          },
+          "days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "elapsedDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsReportResponse": {
+        "required": [
+          "metricsVersion",
+          "today",
+          "period",
+          "thresholds",
+          "totals",
+          "planned",
+          "comparison",
+          "load",
+          "weeks",
+          "months",
+          "typeDistribution",
+          "paceTrend",
+          "races",
+          "dataQuality"
+        ],
+        "type": "object",
+        "properties": {
+          "metricsVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "period": {
+            "$ref": "#/components/schemas/InsightsPeriodDto"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/InsightsThresholdsDto"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PeriodTotalsDto"
+          },
+          "planned": {
+            "$ref": "#/components/schemas/PlannedSummaryDto"
+          },
+          "comparison": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InsightsComparisonDto"
+              }
+            ]
+          },
+          "load": {
+            "$ref": "#/components/schemas/InsightsLoadDto"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsightsWeekDto"
+            }
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsightsMonthDto"
+            }
+          },
+          "typeDistribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TypeShareDto"
+            }
+          },
+          "paceTrend": {
+            "$ref": "#/components/schemas/PaceTrendDto"
+          },
+          "races": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RaceResultDto"
+            }
+          },
+          "dataQuality": {
+            "$ref": "#/components/schemas/DataQualityDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsThresholdsDto": {
+        "required": [
+          "acwrLow",
+          "acwrHigh",
+          "monotonyHigh",
+          "acwrMinHistoryDays"
+        ],
+        "type": "object",
+        "properties": {
+          "acwrLow": {
+            "type": "number",
+            "format": "double"
+          },
+          "acwrHigh": {
+            "type": "number",
+            "format": "double"
+          },
+          "monotonyHigh": {
+            "type": "number",
+            "format": "double"
+          },
+          "acwrMinHistoryDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsightsWeekDto": {
+        "required": [
+          "isoYear",
+          "isoWeek",
+          "start",
+          "end",
+          "completed",
+          "planned",
+          "load",
+          "monotony",
+          "strain",
+          "acwrAtEnd",
+          "complete"
+        ],
+        "type": "object",
+        "properties": {
+          "isoYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isoWeek": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "end": {
+            "type": "string",
+            "format": "date"
+          },
+          "completed": {
+            "$ref": "#/components/schemas/TotalsDto"
+          },
+          "planned": {
+            "$ref": "#/components/schemas/TotalsDto"
+          },
+          "load": {
+            "type": "number",
+            "format": "double"
+          },
+          "monotony": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "strain": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "acwrAtEnd": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "complete": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "JsonElement": { },
       "LocationDto": {
         "required": [
@@ -1769,6 +2436,146 @@
         },
         "additionalProperties": false
       },
+      "PaceTrendDto": {
+        "required": [
+          "runTypeCodes",
+          "slopeSecondsPerKmPerWeek",
+          "excludedRunCount",
+          "weeks"
+        ],
+        "type": "object",
+        "properties": {
+          "runTypeCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slopeSecondsPerKmPerWeek": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "excludedRunCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaceWeekDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaceWeekDto": {
+        "required": [
+          "start",
+          "runCount",
+          "distanceMeters",
+          "durationSeconds",
+          "paceSecondsPerKm",
+          "avgHeartRate"
+        ],
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "runCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paceSecondsPerKm": {
+            "type": "number",
+            "format": "double"
+          },
+          "avgHeartRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeriodTotalsDto": {
+        "required": [
+          "runCount",
+          "distanceMeters",
+          "durationSeconds",
+          "elevationGainMeters",
+          "averagePaceSecondsPerKm",
+          "longestRunMeters",
+          "load",
+          "loadSessionCount",
+          "activeDays",
+          "restDays"
+        ],
+        "type": "object",
+        "properties": {
+          "runCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "elevationGainMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "averagePaceSecondsPerKm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "longestRunMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "load": {
+            "type": "number",
+            "format": "double"
+          },
+          "loadSessionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "restDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "PlaceDto": {
         "required": [
           "name",
@@ -1809,6 +2616,39 @@
             "items": {
               "$ref": "#/components/schemas/PlaceDto"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlannedSummaryDto": {
+        "required": [
+          "runCount",
+          "distanceMeters",
+          "durationSeconds",
+          "upcomingCount",
+          "missedCount"
+        ],
+        "type": "object",
+        "properties": {
+          "runCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "upcomingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missedCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -1932,6 +2772,115 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceResultDto": {
+        "required": [
+          "runId",
+          "date",
+          "status",
+          "runTypeCode",
+          "name",
+          "distanceCategory",
+          "officialDistanceMeters",
+          "distanceMeters",
+          "resultTimeSeconds",
+          "targetTimeSeconds",
+          "paceSecondsPerKm",
+          "overallPlace",
+          "categoryPlace",
+          "categoryName",
+          "ratingStars",
+          "isPersonalBest"
+        ],
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "runTypeCode": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "distanceCategory": {
+            "$ref": "#/components/schemas/RaceDistanceCategory"
+          },
+          "officialDistanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "distanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "resultTimeSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "targetTimeSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "paceSecondsPerKm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "overallPlace": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "categoryPlace": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "categoryName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ratingStars": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "isPersonalBest": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -2810,6 +3759,47 @@
           "routeConverted"
         ]
       },
+      "TypeShareDto": {
+        "required": [
+          "runTypeId",
+          "code",
+          "category",
+          "runCount",
+          "distanceMeters",
+          "durationSeconds",
+          "load"
+        ],
+        "type": "object",
+        "properties": {
+          "runTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/RunTypeCategory"
+          },
+          "runCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "load": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
       "UnitSystem": {
         "enum": [
           "Metric",
@@ -2896,6 +3886,9 @@
     },
     {
       "name": "Calendar"
+    },
+    {
+      "name": "Insights"
     },
     {
       "name": "Geocoding"

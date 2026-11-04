@@ -6,8 +6,9 @@ import { RedirectToCurrentMonth } from '@/features/diary/RedirectToCurrentMonth'
 import { NotFoundPage } from '@/features/errors/NotFoundPage'
 import { RouteErrorPage } from '@/features/errors/RouteErrorPage'
 import { SignInPage } from '@/features/auth/SignInPage'
-import { InsightsPage } from '@/features/insights/InsightsPage'
 import { panelRoutes } from '@/features/runs/panelRoutes'
+
+export const loadInsightsPage = () => import('@/features/insights/InsightsPage')
 
 // The URL is the source of truth for navigation state (brief §1.1.2): /diary/2026/11.
 // Everything except /signin sits behind RequireAuth (ADR 0014 §7).
@@ -29,7 +30,8 @@ export const routes: RouteObject[] = [
             // Panels are URL-addressable and lazy-loaded (ADR 0016).
             children: panelRoutes,
           },
-          { path: 'insights', element: <InsightsPage /> },
+          // The dashboard, its i18n namespace and Recharts load only when the route is opened (M5 AC13).
+          { path: 'insights', lazy: async () => ({ Component: (await loadInsightsPage()).InsightsPage }) },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

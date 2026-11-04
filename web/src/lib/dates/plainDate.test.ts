@@ -16,6 +16,7 @@ import {
   monthName,
   monthOf,
   parse,
+  rangeLabel,
   shortDayLabel,
   startOfIsoWeek,
   todayFromMe,
@@ -151,5 +152,20 @@ describe('monthName', () => {
   it('names months in long and short form without zone drift', () => {
     expect(monthName(1, 'en')).toBe('January')
     expect(monthName(12, 'en', 'short')).toBe('Dec')
+  })
+})
+
+describe('rangeLabel', () => {
+  // ICU separates a range with thin spaces around the en dash; compare with plain spaces.
+  const label = (from: string, to: string) => rangeLabel(from, to, 'en').replace(/\s/g, ' ')
+
+  it('collapses shared parts and never shifts with the browser zone', () => {
+    expect(label('2026-11-01', '2026-11-04')).toBe('Nov 1 – 4, 2026')
+    expect(label('2026-08-17', '2026-11-08')).toBe('Aug 17 – Nov 8, 2026')
+    expect(label('2026-12-28', '2027-01-03')).toBe('Dec 28, 2026 – Jan 3, 2027')
+  })
+
+  it('shows a single date when the range is one day', () => {
+    expect(label('2026-11-04', '2026-11-04')).toBe('Nov 4, 2026')
   })
 })

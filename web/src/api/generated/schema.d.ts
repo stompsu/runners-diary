@@ -107,6 +107,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Deterministic training metrics of a date range (at most 366 days) with an optional comparison period.
+         * @description compare is one of none, previous (default) or previousYear. Load is in AU (RPE x minutes), pace in s/km, distances in metres. The response is never cached.
+         */
+        get: operations["getInsightsReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/geocoding/search": {
         parameters: {
             query?: never;
@@ -234,12 +254,38 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcwrPointDto: {
+            /** Format: date */
+            date: string;
+            /** Format: double */
+            value: null | number;
+            band: null | components["schemas"]["BandDto"];
+            /** Format: double */
+            acute: number;
+            /** Format: double */
+            chronic: null | number;
+            unavailableReason: null | components["schemas"]["AcwrUnavailableReasonDto"];
+        };
+        /** @enum {unknown} */
+        AcwrUnavailableReasonDto: "insufficientHistory" | "noChronicLoad" | null;
         ApiHealthResponse: {
             status: components["schemas"]["ApiHealthStatus"];
             version: string;
         };
         /** @enum {unknown} */
         ApiHealthStatus: "Unhealthy" | "Degraded" | "Healthy";
+        BandDaysDto: {
+            /** Format: int32 */
+            low: number;
+            /** Format: int32 */
+            optimal: number;
+            /** Format: int32 */
+            high: number;
+            /** Format: int32 */
+            unavailable: number;
+        };
+        /** @enum {unknown} */
+        BandDto: "low" | "optimal" | "high" | null;
         CalendarMonthResponse: {
             /** Format: int32 */
             year: number;
@@ -268,6 +314,47 @@ export interface components {
             entra: null | components["schemas"]["EntraClientConfig"];
             maps: components["schemas"]["MapsClientConfig"];
             gpx: components["schemas"]["GpxClientConfig"];
+        };
+        /** @enum {unknown} */
+        ComparisonKindDto: "previous" | "previousYear";
+        DailyLoadDto: {
+            /** Format: date */
+            date: string;
+            /** Format: double */
+            load: number;
+            /** Format: double */
+            acute: number;
+            /** Format: double */
+            chronic: null | number;
+            /** Format: double */
+            acwr: null | number;
+            band: null | components["schemas"]["BandDto"];
+        };
+        DataQualityDto: {
+            /** Format: int32 */
+            completedSessions: number;
+            /** Format: int32 */
+            sessionsWithEstimatedRpe: number;
+            /** Format: double */
+            estimatedLoadShare: number;
+            /** Format: int32 */
+            sessionsWithoutDuration: number;
+            /** Format: int32 */
+            runningSessionsWithoutDistance: number;
+        };
+        DeltaDto: {
+            /** Format: double */
+            absolute: number;
+            /** Format: double */
+            percent: null | number;
+        };
+        DeltasDto: {
+            runCount: components["schemas"]["DeltaDto"];
+            distanceMeters: components["schemas"]["DeltaDto"];
+            durationSeconds: components["schemas"]["DeltaDto"];
+            elevationGainMeters: components["schemas"]["DeltaDto"];
+            load: components["schemas"]["DeltaDto"];
+            activeDays: components["schemas"]["DeltaDto"];
         };
         EntraClientConfig: {
             clientId: string;
@@ -305,6 +392,99 @@ export interface components {
         };
         /** Format: binary */
         IFormFile: string;
+        InsightsComparisonDto: {
+            kind: components["schemas"]["ComparisonKindDto"];
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            totals: components["schemas"]["PeriodTotalsDto"];
+            deltas: components["schemas"]["DeltasDto"];
+        };
+        InsightsLoadDto: {
+            /** Format: date */
+            historyStart: null | string;
+            atAsOf: components["schemas"]["AcwrPointDto"];
+            peak: null | components["schemas"]["AcwrPointDto"];
+            bandDays: components["schemas"]["BandDaysDto"];
+            daily: components["schemas"]["DailyLoadDto"][];
+        };
+        InsightsMonthDto: {
+            /** Format: int32 */
+            year: number;
+            /** Format: int32 */
+            month: number;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            end: string;
+            completed: components["schemas"]["TotalsDto"];
+            planned: components["schemas"]["TotalsDto"];
+            /** Format: double */
+            load: number;
+        };
+        InsightsPeriodDto: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** Format: date */
+            asOf: string;
+            isPartial: boolean;
+            /** Format: int32 */
+            days: number;
+            /** Format: int32 */
+            elapsedDays: number;
+        };
+        InsightsReportResponse: {
+            /** Format: int32 */
+            metricsVersion: number;
+            /** Format: date */
+            today: string;
+            period: components["schemas"]["InsightsPeriodDto"];
+            thresholds: components["schemas"]["InsightsThresholdsDto"];
+            totals: components["schemas"]["PeriodTotalsDto"];
+            planned: components["schemas"]["PlannedSummaryDto"];
+            comparison: null | components["schemas"]["InsightsComparisonDto"];
+            load: components["schemas"]["InsightsLoadDto"];
+            weeks: components["schemas"]["InsightsWeekDto"][];
+            months: components["schemas"]["InsightsMonthDto"][];
+            typeDistribution: components["schemas"]["TypeShareDto"][];
+            paceTrend: components["schemas"]["PaceTrendDto"];
+            races: components["schemas"]["RaceResultDto"][];
+            dataQuality: components["schemas"]["DataQualityDto"];
+        };
+        InsightsThresholdsDto: {
+            /** Format: double */
+            acwrLow: number;
+            /** Format: double */
+            acwrHigh: number;
+            /** Format: double */
+            monotonyHigh: number;
+            /** Format: int32 */
+            acwrMinHistoryDays: number;
+        };
+        InsightsWeekDto: {
+            /** Format: int32 */
+            isoYear: number;
+            /** Format: int32 */
+            isoWeek: number;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            end: string;
+            completed: components["schemas"]["TotalsDto"];
+            planned: components["schemas"]["TotalsDto"];
+            /** Format: double */
+            load: number;
+            /** Format: double */
+            monotony: null | number;
+            /** Format: double */
+            strain: null | number;
+            /** Format: double */
+            acwrAtEnd: null | number;
+            complete: boolean;
+        };
         JsonElement: unknown;
         LocationDto: {
             /** Format: double */
@@ -333,6 +513,50 @@ export interface components {
             /** Format: date-time */
             guestExpiresAt: null | string;
         };
+        PaceTrendDto: {
+            runTypeCodes: string[];
+            /** Format: double */
+            slopeSecondsPerKmPerWeek: null | number;
+            /** Format: int32 */
+            excludedRunCount: number;
+            weeks: components["schemas"]["PaceWeekDto"][];
+        };
+        PaceWeekDto: {
+            /** Format: date */
+            start: string;
+            /** Format: int32 */
+            runCount: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int64 */
+            durationSeconds: number;
+            /** Format: double */
+            paceSecondsPerKm: number;
+            /** Format: double */
+            avgHeartRate: null | number;
+        };
+        PeriodTotalsDto: {
+            /** Format: int32 */
+            runCount: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int64 */
+            durationSeconds: number;
+            /** Format: double */
+            elevationGainMeters: number;
+            /** Format: double */
+            averagePaceSecondsPerKm: null | number;
+            /** Format: double */
+            longestRunMeters: null | number;
+            /** Format: double */
+            load: number;
+            /** Format: int32 */
+            loadSessionCount: number;
+            /** Format: int32 */
+            activeDays: number;
+            /** Format: int32 */
+            restDays: number;
+        };
         PlaceDto: {
             name: string;
             /** Format: double */
@@ -343,6 +567,18 @@ export interface components {
         };
         PlaceSearchResponse: {
             results: components["schemas"]["PlaceDto"][];
+        };
+        PlannedSummaryDto: {
+            /** Format: int32 */
+            runCount: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int64 */
+            durationSeconds: number;
+            /** Format: int32 */
+            upcomingCount: number;
+            /** Format: int32 */
+            missedCount: number;
         };
         ProblemDetails: {
             type?: null | string;
@@ -370,6 +606,34 @@ export interface components {
             categoryPlace?: null | number;
             categoryName?: null | string;
             resultsUrl?: null | string;
+        };
+        RaceResultDto: {
+            /** Format: uuid */
+            runId: string;
+            /** Format: date */
+            date: string;
+            status: components["schemas"]["RunStatus"];
+            runTypeCode: string;
+            name: string;
+            distanceCategory: components["schemas"]["RaceDistanceCategory"];
+            /** Format: double */
+            officialDistanceMeters: null | number;
+            /** Format: double */
+            distanceMeters: null | number;
+            /** Format: int32 */
+            resultTimeSeconds: null | number;
+            /** Format: int32 */
+            targetTimeSeconds: null | number;
+            /** Format: double */
+            paceSecondsPerKm: null | number;
+            /** Format: int32 */
+            overallPlace: null | number;
+            /** Format: int32 */
+            categoryPlace: null | number;
+            categoryName: null | string;
+            /** Format: int32 */
+            ratingStars: null | number;
+            isPersonalBest: boolean;
         };
         RatingDto: {
             /** Format: int32 */
@@ -581,6 +845,20 @@ export interface components {
         };
         /** @enum {unknown} */
         TrackWarningDto: "timestampsIgnored" | "noElevation" | "multipleSegments" | "routeConverted";
+        TypeShareDto: {
+            /** Format: int32 */
+            runTypeId: number;
+            code: string;
+            category: components["schemas"]["RunTypeCategory"];
+            /** Format: int32 */
+            runCount: number;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int64 */
+            durationSeconds: number;
+            /** Format: double */
+            load: number;
+        };
         /** @enum {unknown} */
         UnitSystem: "Metric" | "Imperial";
         UpdateMeRequest: {
@@ -891,6 +1169,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarMonthResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getInsightsReport: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                compare?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsReportResponse"];
                 };
             };
             /** @description Bad Request */

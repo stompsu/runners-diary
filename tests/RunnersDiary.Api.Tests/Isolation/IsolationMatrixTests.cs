@@ -81,6 +81,42 @@ public sealed class IsolationMatrixTests(ContainersApiFactory factory)
         Assert.Equal(1, ownerList.GetProperty("items").GetArrayLength());
     }
 
+    [Theory]
+    [MemberData(nameof(Pairs))]
+    public async Task The_insights_report_never_includes_another_callers_data(string ownerKind, string intruderKind)
+    {
+        factory.SkipIfDockerUnavailable();
+        var owner = await ActorAsync(ownerKind);
+        var intruder = await ActorAsync(intruderKind);
+        var query = new Uri("/api/insights/report?from=2025-05-26&to=2025-06-08&compare=previous", UriKind.Relative);
+        var before = await (await intruder.Client.GetAsync(query, Ct)).Content.ReadAsStringAsync(Ct);
+
+        // The owner adds a heavy week and a race (and an earlier race that would be the intruder's "PB at the time" if it leaked).
+        await owner.Client.PostAsJsonAsync(new Uri("/api/runs", UriKind.Relative), Json.Run("2025-05-30", r => { r["distanceMeters"] = 42_000; r["durationSeconds"] = 14_400; r["rpe"] = 9; }), Ct);
+        await owner.Client.PostAsJsonAsync(new Uri("/api/runs", UriKind.Relative), Json.Run("2025-06-01", r =>
+        {
+            r["runTypeId"] = 1;
+            r["distanceMeters"] = 10_000;
+            r["durationSeconds"] = 1_800;
+            r["rpe"] = 10;
+            r["race"] = new { name = "Owner 10K", distanceCategory = "TenK", resultTimeSeconds = 1_800 };
+        }), Ct);
+        await owner.Client.PostAsJsonAsync(new Uri("/api/runs", UriKind.Relative), Json.Run("2025-04-28", r => { r["distanceMeters"] = 30_000; r["durationSeconds"] = 9_000; }), Ct);
+        var own = await (await owner.Client.GetAsync(query, Ct)).ReadAsync();
+        var after = await (await intruder.Client.GetAsync(query, Ct)).Content.ReadAsStringAsync(Ct);
+
+        // The owner sees the data (so the test could fail), the intruder's report is byte-for-byte unchanged.
+        Assert.Equal(2, own.GetProperty("totals").GetProperty("runCount").GetInt32());
+        Assert.Equal(1, own.GetProperty("races").GetArrayLength());
+        Assert.True(own.GetProperty("load").GetProperty("historyStart").GetString() == "2025-04-28");
+        Assert.Equal(before, after);
+        var intruderReport = JsonDocument.Parse(after).RootElement;
+        Assert.Equal(0, intruderReport.GetProperty("totals").GetProperty("runCount").GetInt32());
+        Assert.Equal(0, intruderReport.GetProperty("races").GetArrayLength());
+        Assert.Equal(JsonValueKind.Null, intruderReport.GetProperty("load").GetProperty("historyStart").ValueKind);
+        Assert.Equal(0, intruderReport.GetProperty("comparison").GetProperty("totals").GetProperty("runCount").GetInt32());
+    }
+
     [Fact]
     public async Task Run_ids_cannot_be_chosen_by_the_client_to_collide_with_foreign_rows()
     {

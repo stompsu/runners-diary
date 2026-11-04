@@ -9,14 +9,18 @@ import runTypes from './en/runTypes.json'
 
 export const defaultNS = 'common'
 
-// Eager namespaces. `maps` and `tracks` load with the lazy map/track UI (./lazyBundles.ts).
+// Eager namespaces. `maps`, `tracks` and `insights` load with the lazy map/track/insights UI (./lazyBundles.ts).
 export const resources = {
   en: { common, auth, calendar, runs, runTypes, errors },
 } as const
 
 /** Every namespace, for typed keys (the lazy ones are type-only imports here). */
 export type AllResources = {
-  en: (typeof resources)['en'] & { maps: typeof import('./en/maps.json'); tracks: typeof import('./en/tracks.json') }
+  en: (typeof resources)['en'] & {
+    maps: typeof import('./en/maps.json')
+    tracks: typeof import('./en/tracks.json')
+    insights: typeof import('./en/insights.json')
+  }
 }
 
 // English first; Polish ('pl') is added next by adding a resource bundle (brief §1.2).

@@ -47,7 +47,7 @@ public sealed class OpenApiDocumentTests
             .SelectMany(p => p.Value.EnumerateObject().Select(m => (Path: p.Name, Operation: m.Value)))
             .ToDictionary(x => x.Operation.GetProperty("operationId").GetString()!, x => x);
 
-        string[] protectedIds = ["getMe", "updateMe", "listRunTypes", "listRuns", "getRun", "createRun", "updateRun", "deleteRun", "getCalendarMonth"];
+        string[] protectedIds = ["getMe", "updateMe", "listRunTypes", "listRuns", "getRun", "createRun", "updateRun", "deleteRun", "getCalendarMonth", "getInsightsReport"];
         foreach (var id in protectedIds)
         {
             Assert.True(operations.ContainsKey(id), id);
