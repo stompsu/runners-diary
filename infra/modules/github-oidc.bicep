@@ -3,6 +3,9 @@
 param deployerName string
 param registryName string
 param githubRepository string
+@description('Numeric owner id; with githubRepositoryId it selects GitHub\'s immutable OIDC subject format.')
+param githubOwnerId string = ''
+param githubRepositoryId string = ''
 param githubEnvironment string
 param managedIdentityNames array
 
@@ -20,12 +23,19 @@ resource registry 'Microsoft.ContainerRegistry/registries@2025-04-01' existing =
   name: registryName
 }
 
+// GitHub sends repo:<owner>@<ownerId>/<repo>@<repoId>:... when the repository uses immutable subjects (its default since
+// 2026); Entra needs an exact match (AADSTS700213 otherwise). The ids also stop a renamed or re-created repo from matching.
+var repoParts = split(githubRepository, '/')
+var subjectRepo = empty(githubOwnerId) || empty(githubRepositoryId)
+  ? githubRepository
+  : '${repoParts[0]}@${githubOwnerId}/${repoParts[1]}@${githubRepositoryId}'
+
 resource federatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = {
   parent: deployer
   name: 'github-${githubEnvironment}'
   properties: {
     issuer: 'https://token.actions.githubusercontent.com'
-    subject: 'repo:${githubRepository}:environment:${githubEnvironment}'
+    subject: 'repo:${subjectRepo}:environment:${githubEnvironment}'
     audiences: ['api://AzureADTokenExchange']
   }
 }

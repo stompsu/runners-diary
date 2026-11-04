@@ -62,6 +62,10 @@ param guestCleanupCron string = '15 3 * * 1'
 param githubRepository string = 'stompsu/runners-diary'
 param githubEnvironment string = 'prod'
 
+@description('Numeric GitHub owner and repository ids. When both are set, the federated credential uses GitHub\'s immutable OIDC subject (repo:<owner>@<ownerId>/<repo>@<repoId>:environment:<env>), which the repository sends (use_immutable_subject). Empty = the name-only subject. Public values: GET /users/<owner> and /repos/<owner>/<repo>.')
+param githubOwnerId string = '12047598'
+param githubRepositoryId string = '1444016204'
+
 @secure()
 @description('First provision only: written to Key Vault by the template. infra/hooks/preprovision.sh fills it when the secret does not exist yet.')
 param guestSigningKeyBootstrap string = ''
@@ -350,6 +354,8 @@ module githubOidc 'modules/github-oidc.bicep' = {
     deployerName: identities.outputs.deployerName
     registryName: registry.outputs.name
     githubRepository: githubRepository
+    githubOwnerId: githubOwnerId
+    githubRepositoryId: githubRepositoryId
     githubEnvironment: githubEnvironment
     managedIdentityNames: [
       identities.outputs.apiName
