@@ -673,6 +673,12 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 
 **Values for G8** (SPA redirect URIs, §5.6): `https://web.grayisland-d22ea91b.westeurope.azurecontainerapps.io/redirect.html` and `https://web.grayisland-d22ea91b.westeurope.azurecontainerapps.io/signin`.
 
+#### G3/G4: first deploy attempts (2026-11-04)
+
+- **Skipped runs:** `DEPLOY_ENABLED` had been created as a `prod` **environment** variable. The job-level `if: vars.DEPLOY_ENABLED == 'true'` is evaluated before the job enters its environment, so it only sees **repository** variables. Fix: `DEPLOY_ENABLED` must be a repository variable (the environment copy is removed).
+- **Missing approval:** the `prod` environment had only a branch policy and no **Required reviewers** rule. Without it, the automatic run after green CI would deploy unattended. The user is added as required reviewer before deploys are enabled.
+- **OIDC login failed:** `AADSTS700213: No matching federated identity record`. The repository uses GitHub's immutable OIDC subject (`use_immutable_subject: true`, the default for repositories since 2026), so the token subject is `repo:stompsu@12047598/runners-diary@1444016204:environment:prod`, while the federated credential expected `repo:stompsu/runners-diary:environment:prod`. Fix (user chose the immutable format): new Bicep params `githubOwnerId`/`githubRepositoryId` (public numeric ids); `github-oidc.bicep` builds the immutable subject when both are set. The credential `github-prod` is updated in place by the next `azd provision`.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |

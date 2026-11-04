@@ -116,3 +116,8 @@ Run log: [M7 plan §12.7](../plans/M7-azure-deployment.md#127-part-b-outcomes).
 - Azure Maps authentication (`disableLocalAuth` disables SAS, SAS via UAMI, roles, CORS, non-billed 429): https://learn.microsoft.com/azure/azure-maps/azure-maps-authentication
 - SQL managed identities and `CREATE USER … WITH SID … TYPE = E` (ja-jp edition read): https://learn.microsoft.com/azure/azure-sql/database/authentication-azure-ad-user-assigned-managed-identity · `Microsoft.Sql/servers` Bicep (`administrators`, `principalType`): https://learn.microsoft.com/azure/templates/microsoft.sql/servers
 - GitHub OIDC with a UAMI: https://learn.microsoft.com/azure/developer/github/connect-from-azure-openid-connect
+
+## Amendment: GitHub OIDC subject (2026-11-04, G4)
+
+The deployer's federated credential matches GitHub's **immutable** OIDC subject, `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:prod` (the repository has `use_immutable_subject: true`). The numeric ids are Bicep parameters `githubOwnerId`/`githubRepositoryId`, defaulting to this repository's public ids. Including them means a renamed or re-created repository with the same name cannot obtain tokens for this identity. If both are empty, the module falls back to the name-only subject. The first deploy failed with `AADSTS700213` until this was applied.
+
