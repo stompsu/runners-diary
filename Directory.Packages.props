@@ -29,7 +29,7 @@
   </ItemGroup>
   <ItemGroup Label="Persistence">
     <!-- Same EF Core patch that Aspire.Microsoft.EntityFrameworkCore.SqlServer 13.6.4 resolves (10.0.12); keep them aligned when Aspire bumps. -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup Label="AI">
