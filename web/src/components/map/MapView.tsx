@@ -4,7 +4,8 @@ import { vertexCount } from '@/features/tracks/trackGeoJson'
 import { cn } from '@/lib/utils'
 import { MapUnavailable } from './MapUnavailable'
 import { MAP_PROVIDERS } from './providers'
-import type { MapState, MapViewProps } from './types'
+import { useEffectiveProvider } from './providerSelection'
+import type { MapProviderId, MapState, MapViewProps } from './types'
 import { supportsWebGl2 } from './webgl'
 import '@/i18n/lazyBundles'
 
@@ -16,13 +17,19 @@ import '@/i18n/lazyBundles'
  *
  * Give it a size (height) from outside: the surface fills the region.
  */
-export function MapView({ ariaLabel, provider, styleUrl, className, ...rest }: MapViewProps) {
+export function MapView({ ariaLabel, provider, styleUrl, azureMapsDomain, className, ...rest }: MapViewProps) {
   const { t } = useTranslation('maps')
   const webGl = supportsWebGl2()
-  const [reported, setReported] = useState<MapState>('loading')
-  const handleState = useCallback((state: MapState) => setReported(state), [])
-  const state: MapState = webGl ? reported : 'unavailable'
-  const Provider = MAP_PROVIDERS[provider ?? 'MapLibre'] ?? MAP_PROVIDERS.MapLibre
+  // Azure Maps only when configured and healthy; after a token/SDK failure the whole session uses MapLibre (ADR 0022 §5).
+  const active = useEffectiveProvider(provider, azureMapsDomain)
+  // The reported state belongs to the provider that reported it, so a fallback starts again from "loading".
+  const [reported, setReported] = useState<{ provider: MapProviderId; state: MapState }>({
+    provider: active,
+    state: 'loading',
+  })
+  const handleState = useCallback((state: MapState) => setReported({ provider: active, state }), [active])
+  const state: MapState = webGl ? (reported.provider === active ? reported.state : 'loading') : 'unavailable'
+  const Provider = MAP_PROVIDERS[active]
 
   return (
     <section
@@ -33,7 +40,13 @@ export function MapView({ ariaLabel, provider, styleUrl, className, ...rest }: M
     >
       {webGl && (
         <Suspense fallback={null}>
-          <Provider {...rest} styleUrl={styleUrl} onStateChange={handleState} />
+          <Provider
+            key={active}
+            {...rest}
+            styleUrl={styleUrl}
+            azureMapsDomain={azureMapsDomain}
+            onStateChange={handleState}
+          />
         </Suspense>
       )}
       {state === 'loading' && webGl && (

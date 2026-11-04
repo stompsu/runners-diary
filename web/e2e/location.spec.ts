@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { typeId, type RunWriteRequest } from '../src/test/fakeApi/index.ts'
-import { mockApi, openDiary, restoreGuest, seriousViolations, stubMapNetwork } from './support.ts'
+import { mockApi, openDiary, restoreGuest, seriousViolations, stubMapNetwork, test } from './support.ts'
 
 // Location picker and place search (M4 step 6, AC10): real MapLibre with the stubbed style, mocked API.
 

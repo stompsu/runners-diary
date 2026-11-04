@@ -1,0 +1,149 @@
+# Web tier (ADR 0029). Rendered by the nginx image's envsubst entrypoint; only API_UPSTREAM is substituted here
+# (NGINX_ENVSUBST_FILTER). This file is included in the http context.
+
+# COOP on every response except the MSAL redirect bridge, which must stay free of it (ADR 0014 §3).
+map $request_uri $rd_coop {
+  default "same-origin";
+  ~^/redirect\.html(\?|$) "";
+}
+
+# Trust only the validated scheme from the ACA edge when passing it on.
+# frame-ancestors: nobody may frame the app, except that MSAL's silent-renewal iframe lands on our own /redirect.html.
+map $request_uri $rd_frame_ancestors {
+  default "'none'";
+  ~^/redirect\.html(\?|$) "'self'";
+}
+
+map $http_x_forwarded_proto $rd_forwarded_proto {
+  default $scheme;
+  https https;
+  http http;
+}
+
+# Client IP (ADR 0029 §3): the ACA edge appends the real client address to X-Forwarded-For, so the RIGHTMOST value is the
+# only one to trust; anything the client put before it is ignored. nginx then overwrites the header with that single address.
+real_ip_header X-Forwarded-For;
+real_ip_recursive off;
+set_real_ip_from 0.0.0.0/0;
+set_real_ip_from ::/0;
+
+server_tokens off;
+
+# The base image's mime.types has no .mjs. MapLibre's worker is a module worker served as .mjs: with nosniff and a generic
+# octet-stream type the browser refuses to run it ("Worker failed to load", the map shows its error state). Several types
+# blocks in one context add up, so this extends the mime.types included by nginx.conf.
+types {
+  text/javascript mjs;
+}
+
+gzip on;
+gzip_vary on;
+gzip_min_length 1024;
+gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml application/xml;
+
+server {
+  listen 8080;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # DNS is resolved at request time (resolver from /etc/resolv.conf, see 15-resolver.envsh) and the upstream sits in a
+  # variable, so nginx starts even while `api` has no replica (scale to zero).
+  resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+  set $rd_api_upstream "${API_UPSTREAM}";
+
+  # Liveness for the platform probes: never touches the API (and so never wakes SQL).
+  location = /nginx-alive {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok";
+  }
+
+  # API: the path is passed unchanged (no URI part in proxy_pass with a variable).
+  location /api/ {
+    client_max_body_size 21m;
+    proxy_http_version 1.1;
+    proxy_pass $rd_api_upstream;
+    proxy_ssl_server_name on;
+    # Verify the upstream certificate when API_UPSTREAM is https (ignored for the plain-http stub used locally and in CI).
+    proxy_ssl_verify on;
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+    # Single trusted client address (real_ip took the rightmost XFF value), never a client-supplied chain.
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $rd_forwarded_proto;
+    proxy_set_header X-Real-IP "";
+    proxy_set_header Connection "";
+    # The API's other headers (Cache-Control, ...) pass through; the ones set below would otherwise be duplicated.
+    proxy_hide_header Content-Security-Policy;
+    proxy_hide_header Strict-Transport-Security;
+    proxy_hide_header X-Content-Type-Options;
+    proxy_hide_header Referrer-Policy;
+    proxy_hide_header Permissions-Policy;
+    proxy_hide_header Cross-Origin-Opener-Policy;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
+  # GPX uploads are streamed to the API, not buffered by nginx (the API enforces the real per-route limits).
+  location ~ ^/api/runs/[0-9a-fA-F-]+/tracks/?$ {
+    client_max_body_size 21m;
+    proxy_request_buffering off;
+    proxy_http_version 1.1;
+    proxy_pass $rd_api_upstream;
+    proxy_ssl_server_name on;
+    # Verify the upstream certificate when API_UPSTREAM is https (ignored for the plain-http stub used locally and in CI).
+    proxy_ssl_verify on;
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $rd_forwarded_proto;
+    proxy_set_header X-Real-IP "";
+    proxy_set_header Connection "";
+    proxy_hide_header Content-Security-Policy;
+    proxy_hide_header Strict-Transport-Security;
+    proxy_hide_header X-Content-Type-Options;
+    proxy_hide_header Referrer-Policy;
+    proxy_hide_header Permissions-Policy;
+    proxy_hide_header Cross-Origin-Opener-Policy;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
+  # Hashed build output: files only, a missing file is a 404 (never the SPA fallback), cached for a year.
+  location /assets/ {
+    try_files $uri =404;
+    # No `always`: an error response (a missing asset) must not get a year-long cache lifetime.
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
+  # HTML entry points must always be revalidated: they name the current hashed assets.
+  location = /index.html {
+    add_header Cache-Control "no-store" always;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
+  # MSAL redirect bridge: no-store, and no COOP ($rd_coop is empty for this URI).
+  location = /redirect.html {
+    add_header Cache-Control "no-store" always;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
+  location = /robots.txt {
+    add_header Cache-Control "public, max-age=3600" always;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
+  # Everything else is the SPA (deep links such as /diary/2026/11 get index.html).
+  location / {
+    try_files $uri /index.html;
+    add_header Cache-Control "no-store" always;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+}

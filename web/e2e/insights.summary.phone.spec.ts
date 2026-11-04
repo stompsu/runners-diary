@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import type { SummaryPostOutcome, SummaryScenario } from '../src/test/fakeApi/index.ts'
-import { horizontalOverflow, openSummary, seriousViolations } from './support.ts'
+import { horizontalOverflow, openSummary, seriousViolations, test } from './support.ts'
 
 // Phone (360x640, Los Angeles zone): the summary card is one column, does not scroll sideways, its buttons are large
 // enough to tap and it passes axe in the main states. Desktop coverage: insights.summary.spec.ts.

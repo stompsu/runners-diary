@@ -5,6 +5,9 @@ const port = 4173
 const harnessPort = 4174
 
 // Smoke tests run against the production build (`vite preview`); the API is mocked per test with page.route.
+// PLAYWRIGHT_BASE_URL points the suite at an already running server instead, e.g. the web image (nginx with the real CSP,
+// ADR 0029): then no preview server is started. The track viewer harness still needs the Vite dev server (see above).
+const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL
 export default defineConfig({
   testDir: './e2e',
   // Software WebGL (SwiftShader) is CPU-bound: with several workers each rendering a map, a map reaching `ready` can
@@ -14,7 +17,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: `http://localhost:${port}`,
+    baseURL: externalBaseUrl ?? `http://localhost:${port}`,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -44,12 +47,16 @@ export default defineConfig({
     },
   ],
   webServer: [
-    {
-      command: `npm run build && npm run preview -- --port ${port} --strictPort`,
-      url: `http://localhost:${port}`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
+    ...(externalBaseUrl
+      ? []
+      : [
+          {
+            command: `npm run build && npm run preview -- --port ${port} --strictPort`,
+            url: `http://localhost:${port}`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 120_000,
+          },
+        ]),
     {
       command: `npx vite --port ${harnessPort} --strictPort`,
       url: `http://localhost:${harnessPort}/e2e/harness/map.html`,

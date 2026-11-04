@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
-import { seriousViolations, stubMapNetwork } from './support.ts'
+import { expect, type Page } from '@playwright/test'
+import { seriousViolations, stubMapNetwork, test } from './support.ts'
 
 // The track viewer on a test-only page (served by the Vite dev server, never built): real MapLibre GL JS 6 in headless
 // Chromium (WebGL2 via SwiftShader, see playwright.config.ts), with the OpenFreeMap style replaced by a local one.

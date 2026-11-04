@@ -11,14 +11,19 @@ const variants: Record<StatusKey, 'secondary' | 'default' | 'outline' | 'destruc
   unhealthy: 'destructive',
 }
 
-/** Shows the API's aggregate health from GET /api/health (also proves the generated client works). */
+/**
+ * Shows the API's aggregate health from GET /api/health (also proves the generated client works). The client sends
+ * this call without a token, so outside Development it reports the live checks only and never touches SQL; the full
+ * report is for the authenticated smoke test. Fetched once per page load anyway, so the badge adds no steady load
+ * (ADR 0034).
+ */
 export function ApiStatus() {
   const { t } = useTranslation()
   const { data, isPending, isError } = $api.useQuery(
     'get',
     '/api/health',
     {},
-    { refetchInterval: 30_000, retry: false },
+    { retry: false, staleTime: Infinity, refetchOnWindowFocus: false, refetchOnReconnect: false },
   )
 
   let status: StatusKey

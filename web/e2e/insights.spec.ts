@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { DEMO_REPORT_TODAY, type InsightsScenario } from '../src/test/fakeApi/index.ts'
-import { mockApi, restoreGuest, seriousViolations } from './support.ts'
+import { mockApi, restoreGuest, seriousViolations, test } from './support.ts'
 
 // Smoke coverage for the Insights dashboard (M5 steps 4-5). The full matrix (compare modes, empty month, axe on every
 // state, phone layout) is the qa-tester's step 6; the report itself is a canned fixture of the Domain golden snapshot.

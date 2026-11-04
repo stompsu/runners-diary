@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { DEMO_REPORT_TODAY, type InsightsScenario } from '../src/test/fakeApi/index.ts'
-import { horizontalOverflow, mockApi, restoreGuest, seriousViolations } from './support.ts'
+import { horizontalOverflow, mockApi, restoreGuest, seriousViolations, test } from './support.ts'
 
 // Phone (360x640, Los Angeles zone, AC12/AC10): the empty and insufficient-history states and the custom form must not
 // scroll sideways and must pass axe, like the populated dashboard in insights.phone.spec.ts.

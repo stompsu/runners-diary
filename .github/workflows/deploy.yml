@@ -1,0 +1,190 @@
+name: deploy
+
+# Production deploy (ADR 0030 §7, plan M7 §5.5). Nothing here provisions infrastructure: Bicep changes are applied by the
+# maintainer with `azd provision`. This workflow only ships code: push images -> run the migration job -> update the apps
+# and the cleanup job -> smoke test -> roll back to the previous images if the smoke test fails.
+#
+# It does nothing until the repository variable DEPLOY_ENABLED is 'true', and even then every run waits for the approval
+# of the GitHub environment `prod` (required reviewer, branch main only). Authentication is OIDC (a federated credential on
+# the id-rd-deployer managed identity): there is no stored Azure secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref (branch, tag or SHA) to deploy. Use an earlier SHA to roll back.
+        required: false
+        default: main
+        type: string
+      skip_migrations:
+        description: Skip the migration job (rollbacks; migrations are forward-only and must stay compatible, ADR 0032).
+        required: false
+        default: false
+        type: boolean
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to prod
+    # Off switch; and for workflow_run only a successful CI run of a push to main (never a fork's pull request).
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      WEB_FQDN: ${{ vars.WEB_FQDN }}
+      # Untrusted inputs reach the shell only through the environment, never through ${{ }} inside a script.
+      REQUESTED_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.workflow_run.head_sha }}
+      SKIP_MIGRATIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_migrations || 'false' }}
+    steps:
+      - name: Check configuration
+        run: |
+          for name in RESOURCE_GROUP ACR_NAME WEB_FQDN; do
+            if [ -z "${!name}" ]; then echo "::error::repository/environment variable for $name is not set (see the provision hook output)"; exit 1; fi
+          done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REQUESTED_REF }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require a commit that is part of main
+        run: |
+          # A manual run could name any ref (a branch with unreviewed code). Only commits reachable from main may ship;
+          # earlier main SHAs stay valid, so rollbacks still work.
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
+            echo "::error::$(git rev-parse HEAD) is not an ancestor of origin/main; refusing to deploy it."
+            exit 1
+          fi
+
+      - name: Resolve the commit to deploy
+        id: rev
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-$sha" >> "$GITHUB_OUTPUT"
+          echo "Deploying $sha"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push images
+        id: images
+        env:
+          TAG: ${{ steps.rev.outputs.tag }}
+        run: |
+          az acr login --name "$ACR_NAME"
+          server="$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)"
+          build_and_push() {
+            local repo="$1" dockerfile="$2" context="$3"
+            # Tags are immutable by convention: an image that already exists for this commit is reused as is (rollbacks).
+            if az acr repository show --name "$ACR_NAME" --image "$repo:$TAG" -o none 2>/dev/null; then
+              echo "$repo:$TAG already in the registry"
+            else
+              docker build --file "$dockerfile" --tag "$server/$repo:$TAG" "$context"
+              docker push "$server/$repo:$TAG"
+            fi
+          }
+          build_and_push rd-api src/RunnersDiary.Api/Dockerfile .
+          build_and_push rd-web web/Dockerfile web
+          build_and_push rd-migrate infra/docker/migrate.Dockerfile .
+          {
+            echo "api=$server/rd-api:$TAG"
+            echo "web=$server/rd-web:$TAG"
+            echo "migrate=$server/rd-migrate:$TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Record the images currently running
+        id: previous
+        run: |
+          app_image() { az containerapp show --name "$1" --resource-group "$RESOURCE_GROUP" --query 'properties.template.containers[0].image' -o tsv; }
+          job_image() { az containerapp job show --name "$1" --resource-group "$RESOURCE_GROUP" --query 'properties.template.containers[0].image' -o tsv; }
+          {
+            echo "api=$(app_image api)"
+            echo "web=$(app_image web)"
+            echo "cleanup=$(job_image job-guest-cleanup)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run the database migration job
+        if: env.SKIP_MIGRATIONS != 'true'
+        env:
+          MIGRATE_IMAGE: ${{ steps.images.outputs.migrate }}
+        run: |
+          az containerapp job update --name job-migrate --resource-group "$RESOURCE_GROUP" --image "$MIGRATE_IMAGE" -o none
+          execution="$(az containerapp job start --name job-migrate --resource-group "$RESOURCE_GROUP" --query name -o tsv)"
+          echo "Started migration execution $execution"
+          deadline=$(( $(date +%s) + 600 ))
+          while :; do
+            status="$(az containerapp job execution show --name job-migrate --resource-group "$RESOURCE_GROUP" --job-execution-name "$execution" --query properties.status -o tsv)"
+            echo "migration status: $status"
+            case "$status" in
+              Succeeded) break ;;
+              Failed | Stopped | Degraded)
+                echo "::error::The migration job ended as $status. The apps were not touched. See the job's execution logs in Log Analytics (ContainerAppConsoleLogs_CL)."
+                exit 1
+                ;;
+            esac
+            if [ "$(date +%s)" -ge "$deadline" ]; then echo "::error::The migration job did not finish within 10 minutes."; exit 1; fi
+            sleep 15
+          done
+
+      - name: Update the apps and the cleanup job
+        id: update
+        env:
+          API_IMAGE: ${{ steps.images.outputs.api }}
+          WEB_IMAGE: ${{ steps.images.outputs.web }}
+        run: |
+          # Marker for the rollback step: set before the first change, so a partial failure or a cancellation is covered.
+          echo "started=true" >> "$GITHUB_OUTPUT"
+          # The cleanup job runs the API image, so it follows the API release.
+          az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
+          az containerapp update --name api --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
+          az containerapp update --name web --resource-group "$RESOURCE_GROUP" --image "$WEB_IMAGE" -o none
+
+      - name: Smoke test
+        id: smoke
+        run: infra/scripts/smoke.sh "https://$WEB_FQDN"
+
+      - name: Roll back to the previous images
+        # Runs once the update began (the marker) unless the smoke test passed: smoke failure, a half-failed update or a cancellation.
+        # Idempotent: re-applying the previous images is harmless if nothing changed.
+        if: always() && steps.update.outputs.started == 'true' && steps.smoke.outcome != 'success'
+        env:
+          PREVIOUS_API: ${{ steps.previous.outputs.api }}
+          PREVIOUS_WEB: ${{ steps.previous.outputs.web }}
+          PREVIOUS_CLEANUP: ${{ steps.previous.outputs.cleanup }}
+        run: |
+          echo "::warning::The update or the smoke test failed or was cancelled; restoring the previous images."
+          if [ -z "$PREVIOUS_API" ] || [ -z "$PREVIOUS_WEB" ] || [ -z "$PREVIOUS_CLEANUP" ]; then echo "::error::Previous images unknown; cannot roll back."; exit 1; fi
+          az containerapp update --name api --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_API" -o none
+          az containerapp update --name web --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_WEB" -o none
+          az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_CLEANUP" -o none
+          echo "::error::Rolled back to $PREVIOUS_API and $PREVIOUS_WEB. A migration that already ran is not undone (forward-only, ADR 0032)."
+          exit 1

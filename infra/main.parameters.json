@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "stage": { "value": "${RD_STAGE=prod}" },
+    "mapsLocation": { "value": "${MAPS_LOCATION=westeurope}" },
+    "principalId": { "value": "${AZURE_PRINCIPAL_ID}" },
+    "entraTenantId": { "value": "${ENTRA_TENANT_ID}" },
+    "entraTenantSubdomain": { "value": "${ENTRA_TENANT_SUBDOMAIN}" },
+    "entraApiClientId": { "value": "${ENTRA_API_CLIENT_ID}" },
+    "entraSpaClientId": { "value": "${ENTRA_SPA_CLIENT_ID}" },
+    "entraIssuer": { "value": "${ENTRA_ISSUER}" },
+    "aiEnabled": { "value": "${AI_ENABLED=false}" },
+    "aiCapacityKtpm": { "value": "${AI_CAPACITY_KTPM=30}" },
+    "grantDeveloperAiAccess": { "value": "${GRANT_DEVELOPER_AI_ACCESS=true}" },
+    "mapsDisplay": { "value": "${MAPS_DISPLAY=false}" },
+    "budgetAmount": { "value": "${BUDGET_AMOUNT=25}" },
+    "budgetStartDate": { "value": "${BUDGET_START_DATE}" },
+    "budgetContactEmail": { "value": "${BUDGET_CONTACT_EMAIL}" },
+    "guestCleanupCron": { "value": "${GUEST_CLEANUP_CRON=15 3 * * 1}" },
+    "guestSigningKeyBootstrap": { "value": "${GUEST_KEY_BOOTSTRAP}" },
+    "apiExists": { "value": "${SERVICE_API_RESOURCE_EXISTS=false}" },
+    "webExists": { "value": "${SERVICE_WEB_RESOURCE_EXISTS=false}" }
+  }
+}

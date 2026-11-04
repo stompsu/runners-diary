@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { faults, typeId } from '../src/test/fakeApi/index.ts'
-import { cell, mockApi, openDiary, recordWrites, restoreGuest, TODAY } from './support.ts'
+import { cell, mockApi, openDiary, recordWrites, restoreGuest, test, TODAY } from './support.ts'
 
 // Mocked journeys against the production build (M3 §6, ADR 0019): the in-memory fake API answers every /api call.
 

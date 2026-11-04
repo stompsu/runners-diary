@@ -1,5 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+// Same test with the CSP guard (fails on Content-Security-Policy violations when the web image serves the page)
+import { test } from '../e2e/support.ts'
 
 // Full-stack AI summary (M6 step 5, plan §6): nothing is mocked and, as in CI, no AI provider is configured
 // (Ai:Provider=None). A seeded guest's default view shows the hand-written "Example summary" resolved against the guest's

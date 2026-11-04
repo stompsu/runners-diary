@@ -5,6 +5,10 @@ import { parseKm } from '@/lib/format/units'
 import { parseNonNegative, parseWholeNumber } from './runFormMapping'
 import { RACE_CATEGORIES, SURFACES, rulesOf, type RunFormValues, type RunTypeDto } from './runFormTypes'
 
+// The production CSP has no 'unsafe-eval' (ADR 0029), and zod's JIT probes `new Function('')`. This is the only module
+// that imports zod, so switching to the interpreter here keeps zod in its lazy chunk.
+z.config({ jitless: true })
+
 /**
  * Client-side mirror of the API's run rules (ADR 0018 §2, docs/api-contract.md "Domain rules", data-model limits).
  * Instant feedback only: the server stays authoritative, and a drift degrades to a server field error. Messages are

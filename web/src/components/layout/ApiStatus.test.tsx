@@ -35,4 +35,13 @@ describe('ApiStatus', () => {
 
     expect(await screen.findByText('API unavailable')).toBeInTheDocument()
   })
+
+  it('does not call /api/health before a session exists (anonymous visits must not wake SQL)', async () => {
+    renderRoute('/insights', { session: 'none' })
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'API status' })).not.toBeInTheDocument()
+    const paths = vi.mocked(fetch).mock.calls.map(([input]) => new URL((input as Request).url).pathname)
+    expect(paths).not.toContain('/api/health')
+  })
 })

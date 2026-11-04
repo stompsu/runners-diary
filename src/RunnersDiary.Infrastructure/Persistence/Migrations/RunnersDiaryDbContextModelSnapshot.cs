@@ -706,6 +706,19 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RunnersDiary.Infrastructure.Maps.GeocodeUsage", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.HasKey("Day");
+
+                    b.ToTable("GeocodeUsage", (string)null);
+                });
+
             modelBuilder.Entity("RunnersDiary.Domain.Ai.AiSummary", b =>
                 {
                     b.HasOne("RunnersDiary.Domain.Users.User", null)

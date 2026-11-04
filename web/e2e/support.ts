@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import { expect, test as base, type Page } from '@playwright/test'
 import {
   createFakeApi,
   DEMO_REPORT_TODAY,
@@ -10,6 +10,46 @@ import {
   type SummaryPostOutcome,
   type SummaryScenario,
 } from '../src/test/fakeApi/index.ts'
+
+interface CspWindow {
+  rdCspViolations?: string[]
+}
+
+/**
+ * `test` with a CSP guard (ADR 0029, plan M7 AC3): every test fails if the page reports a Content-Security-Policy
+ * violation, either as a `securitypolicyviolation` event or as the browser's "Refused to ..." console error.
+ * Against `vite preview` (no CSP header) nothing can fire, so the guard is a no-op there; against the nginx image
+ * (PLAYWRIGHT_BASE_URL) it proves that the shipped policy does not break the app.
+ */
+export const test = base.extend<{ cspGuard: void }>({
+  cspGuard: [
+    async ({ page }, use) => {
+      await page.addInitScript(() => {
+        const store: string[] = []
+        ;(window as CspWindow).rdCspViolations = store
+        document.addEventListener('securitypolicyviolation', (event) => {
+          store.push(
+            `${event.violatedDirective} blocked ${event.blockedURI || 'inline'} (${event.sourceFile}:${event.lineNumber})`,
+          )
+        })
+      })
+      const reported: string[] = []
+      page.on('console', (message) => {
+        if (
+          message.type() === 'error' &&
+          /Content Security Policy|Refused to (load|connect|apply|execute|create)/i.test(message.text())
+        ) {
+          reported.push(message.text())
+        }
+      })
+      await use()
+      // The page may already be closed or mid-navigation; the console listener above still has what it saw.
+      const inPage = await page.evaluate(() => (window as CspWindow).rdCspViolations ?? []).catch(() => [])
+      expect([...reported, ...inPage], 'Content-Security-Policy violations').toEqual([])
+    },
+    { auto: true },
+  ],
+})
 
 /** The fixed "today" of every mocked journey (also `me.today`). */
 export const TODAY = '2026-11-03'

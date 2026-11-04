@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
-import { seriousViolations, stubMapNetwork } from './support.ts'
+import { expect } from '@playwright/test'
+import { seriousViolations, stubMapNetwork, test } from './support.ts'
 
 // 360x640 touch viewport (project phone-la): the track viewer on its test-only page. Plan AC15 for the viewer part.
 test('the track viewer fits a phone: map at least 240 px tall, profile visible, splits collapsed, no sideways scroll', async ({

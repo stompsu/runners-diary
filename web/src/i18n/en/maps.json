@@ -51,6 +51,11 @@
     "found_other": "{{count}} places found.",
     "unavailable": "Place search is not available right now.",
     "failed": "The search failed. Please try again.",
-    "results": "Search results"
+    "results": "Search results",
+    "budget": "Place search has reached its daily limit. Try again tomorrow, or click the map or type the coordinates instead."
+  },
+  "privacy": {
+    "tiles": "The map loads its tiles from {{host}}, which can see the area you are viewing. No account details are sent.",
+    "azureMaps": "The map loads its tiles from Microsoft Azure Maps, which can see the area you are viewing. No account details are sent."
   }
 }

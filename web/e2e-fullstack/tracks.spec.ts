@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+// Same test with the CSP guard (fails on Content-Security-Policy violations when the web image serves the page)
+import { test } from '../e2e/support.ts'
 
 // Full-stack GPX journeys (M4 step 7): nothing is mocked except the map STYLE/tiles host (CI must not depend on an
 // external tile server, ADR 0022). Multipart upload, 201 + Location, 400 invalid-gpx and the localized messages run

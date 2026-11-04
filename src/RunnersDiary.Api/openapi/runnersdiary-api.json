@@ -5,6 +5,27 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/client-config": {
+      "get": {
+        "tags": [
+          "ClientConfig"
+        ],
+        "summary": "Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable; map settings).",
+        "operationId": "getClientConfig",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -29,27 +50,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiHealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/client-config": {
-      "get": {
-        "tags": [
-          "ClientConfig"
-        ],
-        "summary": "Runtime configuration for the SPA (Entra sign-in values, or null when sign-in is unavailable; map settings).",
-        "operationId": "getClientConfig",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ClientConfigResponse"
                 }
               }
             }
@@ -502,7 +502,7 @@
         "tags": [
           "Geocoding"
         ],
-        "summary": "Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured.",
+        "summary": "Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent.",
         "operationId": "searchPlaces",
         "parameters": [
           {
@@ -576,6 +576,72 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/maps/token": {
+      "get": {
+        "tags": [
+          "Maps"
+        ],
+        "summary": "Issues a short-lived Azure Maps SAS token for the browser SDK. 503 feature-unavailable unless Azure Maps display is enabled, or when the token cannot be issued.",
+        "operationId": "getMapsToken",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapsTokenResponse"
                 }
               }
             }
@@ -2752,7 +2818,8 @@
         "required": [
           "provider",
           "mapLibreStyleUrl",
-          "geocodingEnabled"
+          "geocodingEnabled",
+          "azureMapsDomain"
         ],
         "type": "object",
         "properties": {
@@ -2767,6 +2834,29 @@
           },
           "geocodingEnabled": {
             "type": "boolean"
+          },
+          "azureMapsDomain": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MapsTokenResponse": {
+        "required": [
+          "token",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -4415,10 +4505,10 @@
   },
   "tags": [
     {
-      "name": "Health"
+      "name": "ClientConfig"
     },
     {
-      "name": "ClientConfig"
+      "name": "Health"
     },
     {
       "name": "GuestSessions"
@@ -4437,6 +4527,9 @@
     },
     {
       "name": "Geocoding"
+    },
+    {
+      "name": "Maps"
     },
     {
       "name": "Runs"

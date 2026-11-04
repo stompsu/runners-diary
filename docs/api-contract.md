@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2–M5 implemented (merged); M6 adds `GET`/`POST /api/insights/summary` and `client-config.ai` (implemented, awaiting CI + approval)**.
+Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**.
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -23,11 +23,11 @@ Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.A
 | 409 | Track cap per account reached (M4) | `urn:runnersdiary:problem:track-limit` |
 | 413 | Request body > `RequestLimits:MaxBodyBytes` (default 64 KB), any `/api` route incl. `POST /api/guest-sessions`; the GPX upload has its own limit (see M4) | default |
 | 415 | GPX upload body is not `multipart/form-data` (M4) | default |
-| 429 | Rate limit; `Retry-After` header | `urn:runnersdiary:problem:rate-limited` |
+| 429 | Rate limit; `Retry-After` header. M7: the shared daily geocode budget answers with the same type plus extension `code: "geocode-budget"` | `urn:runnersdiary:problem:rate-limited` |
 | 503 | Guest capacity reached / seeding busy / seeding failed; `Retry-After` | `urn:runnersdiary:problem:guest-capacity` |
 | 503 | GPX processing slots full; `Retry-After: 10` (M4) | `urn:runnersdiary:problem:processing-busy` |
 | 503 | Blob storage failed on track upload/delete or run delete; nothing changed; `Retry-After: 5` (M4) | `urn:runnersdiary:problem:storage-unavailable` |
-| 503 | Optional feature not configured or its provider failed (geocoding, M4; AI summary generation not configured, switched off or not authenticated, M6) | `urn:runnersdiary:problem:feature-unavailable` |
+| 503 | Optional feature not configured or its provider failed (geocoding, M4; AI summary generation not configured, switched off or not authenticated, M6; Azure Maps token when display is off or issuing failed, M7) | `urn:runnersdiary:problem:feature-unavailable` |
 | 409 | An AI summary generation of this account is already running (M6) | `urn:runnersdiary:problem:summary-in-progress` |
 | 429 | AI summary quota reached (M6); extensions `scope`, `limit`, `resetsAt` | `urn:runnersdiary:problem:ai-quota` |
 | 502 | AI summary could not be generated (M6); extension `reason` | `urn:runnersdiary:problem:summary-failed` |
@@ -43,7 +43,7 @@ Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.A
 | Method & path | operationId | Policy | Success | Errors |
 |---|---|---|---|---|
 | `GET /alive`, `GET /health` | — (not in OpenAPI) | Anon | 200/503 text | — |
-| `GET /api/health` | `getApiHealth` | Anon | 200 `ApiHealthResponse` | 503 |
+| `GET /api/health` | `getApiHealth` | Anon (token optional; M7: rate policy `health`, see *Added in M7*) | 200 `ApiHealthResponse` | 429 (M7), 503 |
 | `POST /api/guest-sessions` | `createGuestSession` | Anon, rate policy `guest-create` + global window | 201 `GuestSessionResponse` (`Cache-Control: no-store`) | 413, 429, 503 |
 | `GET /api/me` | `getMe` | Auth | 200 `MeResponse` | 401 |
 | `PUT /api/me` | `updateMe` | Auth | 200 `MeResponse` | 400, 401 |
@@ -55,7 +55,7 @@ Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.A
 | `DELETE /api/runs/{id}` | `deleteRun` | Auth | 204 (M4: track blobs deleted first, then the run; rows cascade) | 401, 404, 503 `storage-unavailable` (M4: nothing removed) |
 | `GET /api/calendar/months/{year}/{month}` | `getCalendarMonth` | Auth | 200 `CalendarMonthResponse` | 400 (year ∉ 1950–2100, month ∉ 1–12), 401 |
 
-All `/api` endpoints except the Anon ones (these two and, since M3, `GET /api/client-config`) also pass the general per-caller rate limiter (429). Exception (M4): `uploadTrack` and `searchPlaces` use their own policy (`gpx-upload`, `geocode`) **instead of** the general one — ASP.NET Core applies the most specific policy per endpoint. Every `/api` route (Anon included) may answer 413.
+All `/api` endpoints except the Anon ones (these two and, since M3, `GET /api/client-config`) also pass the general per-caller rate limiter (429). Exception (M4): `uploadTrack` and `searchPlaces` use their own policy (`gpx-upload`, `geocode`) **instead of** the general one (likewise M6 `ai-summary`, M7 `maps-token`; M7 also gives the anonymous `getApiHealth` its own `health` policy) — ASP.NET Core applies the most specific policy per endpoint. Every `/api` route (Anon included) may answer 413.
 
 ### Limits (configuration, defaults in `appsettings.json`)
 
@@ -152,7 +152,7 @@ Totals = { runCount: number; distanceMeters: number; durationSeconds: number /* 
 
 | Method & path | operationId | Policy | Success | Errors |
 |---|---|---|---|---|
-| `GET /api/client-config` | `getClientConfig` | Anon (anonymous group shared with health: no rate limiting, no DB; response built once at startup) | 200 `ClientConfigResponse`, `Cache-Control: public, max-age=300` | — |
+| `GET /api/client-config` | `getClientConfig` | Anon (no rate limiting, no DB; response built once at startup. Until M7 it shared the anonymous group with health; health is rate-limited since M7) | 200 `ClientConfigResponse`, `Cache-Control: public, max-age=300` | — |
 
 ```ts
 ClientConfigResponse = {
@@ -180,7 +180,7 @@ All track routes are **Auth**, under `/api/runs/{runId}/tracks`, and answer **40
 | `GET /api/geocoding/search?q&lat&lon` | `searchPlaces` | Auth, rate policy `geocode` (replaces the general one) | 200 `PlaceSearchResponse` (≤ 5) | 400 (`q` 2–100 chars after trim; `lat`/`lon` together, −90…90 / −180…180), 401, 429, 503 `feature-unavailable` |
 | `GET /api/client-config` (changed) | `getClientConfig` | Anon (unchanged) | 200 + `maps`, `gpx` | — |
 
-There is no `listTracks` route: a run's tracks are in `RunDto.tracks[]`. `GET /api/maps/token` (Azure Maps SAS) is **not implemented**; its contract stays in ADR 0022 §3 for M7.
+There is no `listTracks` route: a run's tracks are in `RunDto.tracks[]`. `GET /api/maps/token` (Azure Maps SAS) was not implemented in M4; it is added in M7 (see *Added in M7*).
 
 ### Upload (`uploadTrack`)
 
@@ -239,11 +239,12 @@ TrackGeoJson = {              // RFC 7946 FeatureCollection + foreign members (A
 
 PlaceSearchResponse = { results: { name: string; latitude: number; longitude: number; type: string | null }[] }   // ≤ 5
 
-ClientConfigResponse.maps = { provider: "MapLibre" | "AzureMaps"; mapLibreStyleUrl: string | null; geocodingEnabled: boolean }
+ClientConfigResponse.maps = { provider: "MapLibre" | "AzureMaps"; mapLibreStyleUrl: string | null; geocodingEnabled: boolean;
+                              azureMapsDomain: string | null /* M7 */ }
 ClientConfigResponse.gpx  = { maxFileBytesUser: number; maxFileBytesGuest: number }   // both: the endpoint is anonymous
 ```
 
-`ETag` of `getTrackGeoJson` is `"{hex of the first 8 bytes of the file's SHA-256}-v{processorVersion}"` (a track id's content never changes; a replace creates a new id). `client-config.maps.provider` is always `MapLibre` in M4 (another value fails API startup); `mapLibreStyleUrl` comes from `Maps:MapLibre:StyleUrl` (absolute https, default `https://tiles.openfreemap.org/styles/liberty`); `geocodingEnabled` is `false` while `Maps:Geocoding:Provider = None`.
+`ETag` of `getTrackGeoJson` is `"{hex of the first 8 bytes of the file's SHA-256}-v{processorVersion}"` (a track id's content never changes; a replace creates a new id). `client-config.maps.provider` was always `MapLibre` in M4 (M7 accepts `AzureMaps` with validated settings, see *Added in M7*); `mapLibreStyleUrl` comes from `Maps:MapLibre:StyleUrl` (absolute https, default `https://tiles.openfreemap.org/styles/liberty`); `geocodingEnabled` is `false` while `Maps:Geocoding:Provider = None`.
 
 ## Added in M5 (Insights)
 
@@ -426,6 +427,40 @@ A client abort cancels the model call; a ledger row (`Cancelled`) is still writt
 | Attempts per generation; timeout per attempt | 2; 30 s | `Ai:MaxAttempts`, `Ai:AttemptTimeout` | 502 `summary-failed` |
 | Stored summaries per account | users 1 000, guests 20 (oldest dropped) | code constants | — |
 
+## Added in M7 (Azure deployment, Part A; [plan](plans/M7-azure-deployment.md), ADRs [0033](adr/0033-production-maps-and-azure-maps.md), [0034](adr/0034-cost-guardrails-and-observability.md))
+
+| Method & path | operationId | Policy | Success | Errors |
+|---|---|---|---|---|
+| `GET /api/maps/token` | `getMapsToken` | Auth, rate policy **`maps-token`** (replaces the general one) | 200 `MapsTokenResponse`, `Cache-Control: private, no-store` (also on errors) | 401, 429 `rate-limited`, 503 `feature-unavailable` (display off: `Maps:Provider` ≠ `AzureMaps`; or the token cannot be issued — no provider detail leaks) |
+| `GET /api/geocoding/search` (changed) | `searchPlaces` | unchanged (`geocode`) + **global daily budget** | unchanged | + 429 `rate-limited` with `code: "geocode-budget"` and `Retry-After` = seconds until 00:00 UTC |
+| `GET /api/client-config` (changed) | `getClientConfig` | Anon (unchanged) | 200; `maps` gains `azureMapsDomain` | — |
+| `GET /api/health` (changed) | `getApiHealth` | Anon, token optional; rate policy **`health`** | 200 `ApiHealthResponse` (shape unchanged) | 429, 503 |
+
+```ts
+MapsTokenResponse = { token: string /* Azure Maps SAS; a bearer credential, keep in memory only */; expiresAt: string /* UTC */ }
+ClientConfigResponse.maps.azureMapsDomain: string | null   // e.g. "eu.atlas.microsoft.com"; null unless maps.provider = "AzureMaps"
+```
+
+- **Maps token.** One shared, server-cached SAS token for all callers (no user data in it): rate cap per Azure location, allowed regions, ≈ 2 h lifetime, renewed by the server when < 30 min remain. The SPA requests it only when `maps.provider = "AzureMaps"`, keeps it in memory, and falls back to MapLibre for the session on any error.
+- **Geocode budget.** Checked **after** request validation (a 400 never spends it) and **before** the provider call. Durable in SQL (`GeocodeUsage`), so it is global across replicas and restarts. The per-caller `geocode` 429 has **no** `code`; the budget 429 has `code: "geocode-budget"`, so the SPA can show "place search is used up for today".
+- **`client-config.maps.provider = "AzureMaps"`** is accepted when the Azure Maps settings validate (account client id, account resource id, SAS principal id, an `*.atlas.microsoft.com` domain, rate 1–500, lifetime ≤ 24 h); otherwise API startup fails with the key names. `geocodingEnabled` is `true` with `Maps:Geocoding:Provider = AzureMaps`.
+- **Health.** Outside Development:
+  - without a valid bearer token (none, invalid or expired): only the `live` checks run (no SQL, no Blob), so anonymous traffic can never wake the serverless database;
+  - with a valid user or guest token: the full report including SQL, cached 5 min per replica;
+  - in Development the full report is always returned.
+  
+  The SPA's `ApiStatus` calls `/api/health` **without a token** (it is in the anonymous list of `client.ts`), only once a session exists, and once per page load (no polling, no refetch on focus). In Azure the badge therefore reflects the `live` checks only; the authenticated full report is used by `infra/scripts/smoke.sh`. `/alive` and `/health` (probes, not in OpenAPI) are unchanged.
+
+### Limits (M7)
+
+| Limit | Default | Config key | Response |
+|---|---|---|---|
+| Maps token requests per caller, sliding window (policy `maps-token`) | users 30 / h, guests 10 / h | `RateLimiting:MapsToken:UserPermitLimit`, `GuestPermitLimit`, `Window` | 429 `rate-limited` + `Retry-After` |
+| Provider geocode calls, all callers, per UTC day (durable) | 75 | `Maps:Geocoding:GlobalDailyLimit` | 429 `rate-limited`, `code: geocode-budget`, `Retry-After` |
+| `GET /api/health` per caller (user id, else client IP), sliding window (policy `health`) | 30 / min | `RateLimiting:Health:UserPermitLimit`, `GuestPermitLimit`, `Window` | 429 `rate-limited` + `Retry-After` |
+
+**Job CLI (not HTTP):** `dotnet RunnersDiary.Api.dll --job guest-cleanup` → exit 0 on success, 1 on failure (any other `--job` value is a failure). Used by the Container Apps job `job-guest-cleanup` (ADR 0032).
+
 ## Planned for later milestones
 
-Azure Maps SAS token endpoint and Azure geocoder (M7, ADR 0022). A real Foundry deployment for AI summaries (M7, ADR 0027).
+None in the MVP. A real Foundry deployment (M7 Part B, gate G7) changes no contract.

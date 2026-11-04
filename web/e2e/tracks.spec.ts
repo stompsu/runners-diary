@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { sampleGpx, typeId, type FakeApi, type RunWriteRequest } from '../src/test/fakeApi/index.ts'
 import {
   mockApi,
@@ -8,6 +8,7 @@ import {
   seriousViolations,
   seriousViolationsIn,
   stubMapNetwork,
+  test,
 } from './support.ts'
 
 // Mocked journeys for GPX tracks (M4 steps 5-6, AC8/AC9): the in-memory fake API answers /api, real MapLibre GL runs in

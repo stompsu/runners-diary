@@ -354,4 +354,20 @@ describe('place search', () => {
     await user.type(input, 'katowice{Enter}')
     expect(await within(form).findByText(/try again in 20 s/)).toBeInTheDocument()
   })
+
+  it('explains the shared daily budget instead of a countdown when the API reports geocode-budget', async () => {
+    const { user, form } = await openEdit(undefined, { geocoding: true })
+    getFakeApi().addFault(
+      faults.problem({ path: '/api/geocoding/search' }, 429, 'urn:runnersdiary:problem:rate-limited', {
+        retryAfterSeconds: 40000,
+        members: { code: 'geocode-budget' },
+        times: 1,
+      }),
+    )
+
+    await user.type(await within(form).findByLabelText('Search for a place'), 'gliwice{Enter}')
+
+    expect(await within(form).findByText(/reached its daily limit/)).toBeInTheDocument()
+    expect(within(form).queryByText(/try again in/)).not.toBeInTheDocument()
+  })
 })

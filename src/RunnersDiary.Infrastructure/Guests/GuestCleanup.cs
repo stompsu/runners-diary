@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using RunnersDiary.Domain.Users;
 using RunnersDiary.Infrastructure.Ai;
 using RunnersDiary.Infrastructure.Identity;
+using RunnersDiary.Infrastructure.Maps;
 using RunnersDiary.Infrastructure.Persistence;
 using RunnersDiary.Infrastructure.Storage;
 using RunnersDiary.Infrastructure.Users;
@@ -25,7 +26,7 @@ public sealed partial class GuestCleanup(
     IBlobStore blobs,
     TimeProvider clock,
     IOptions<GuestOptions> options,
-    ILogger<GuestCleanup> logger)
+    ILogger<GuestCleanup> logger) : IGuestCleanupPass
 {
     private long _lastOpportunisticTicks;
 
@@ -74,6 +75,7 @@ public sealed partial class GuestCleanup(
         }
 
         await PurgeAiLedgerAsync(db, cancellationToken);
+        await PurgeGeocodeUsageAsync(db, cancellationToken);
 
         return removed;
     }
@@ -97,6 +99,19 @@ public sealed partial class GuestCleanup(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogLedgerPurgeFailed(ex);
+        }
+    }
+
+    /// <summary>Drops geocode budget rows past their retention in the same run; a failure is logged and the next run retries.</summary>
+    private async Task PurgeGeocodeUsageAsync(RunnersDiaryDbContext db, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await GeocodeBudget.PurgeOlderThanAsync(db, clock.GetUtcNow(), cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogGeocodePurgeFailed(ex);
         }
     }
 
@@ -149,6 +164,9 @@ public sealed partial class GuestCleanup(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not purge the AI usage ledger; it will be retried.")]
     private partial void LogLedgerPurgeFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not purge the geocode usage table; it will be retried.")]
+    private partial void LogGeocodePurgeFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not delete the blobs of expired guest {UserId}; the user row is kept and cleanup will retry.")]
     private partial void LogBlobDeleteFailed(Exception exception, Guid userId);

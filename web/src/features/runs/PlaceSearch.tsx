@@ -10,6 +10,12 @@ import { classifyTrackProblem } from '@/features/tracks/trackProblem'
 import type { PlaceDto } from '@/features/tracks/trackTypes'
 import '@/i18n/lazyBundles'
 
+/** `code` of the 429 that the API's shared daily geocode budget answers with (the per-caller limiter has none). */
+const GEOCODE_BUDGET_CODE = 'geocode-budget'
+
+const isGeocodeBudget = (error: unknown) =>
+  typeof error === 'object' && error !== null && (error as { code?: unknown }).code === GEOCODE_BUDGET_CODE
+
 const MIN_QUERY = 2
 const MAX_QUERY = 100
 const TEN_MINUTES_MS = 10 * 60 * 1000
@@ -56,8 +62,9 @@ export function PlaceSearch({ onSelect, near }: PlaceSearchProps) {
     if (search.isFetching) status = t('search.searching')
     else if (search.isError) {
       const problem = classifyTrackProblem(search.error)
-      status =
-        problem.kind === 'featureUnavailable'
+      status = isGeocodeBudget(search.error)
+        ? t('search.budget')
+        : problem.kind === 'featureUnavailable'
           ? t('search.unavailable')
           : problem.kind === 'other'
             ? problem.problem.kind === 'validation'

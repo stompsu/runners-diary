@@ -33,6 +33,7 @@ export function LocationSummary({ location }: { location: NonNullable<RunDto['lo
           fitTo="marker"
           provider={maps?.provider}
           styleUrl={maps?.mapLibreStyleUrl}
+          azureMapsDomain={maps?.azureMapsDomain}
           className="h-40 w-full"
         />
       </Suspense>

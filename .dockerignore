@@ -1,0 +1,18 @@
+# Build context for the API and migrate images is the repo root. Keep it small and free of local state.
+**/.git
+**/bin
+**/obj
+**/node_modules
+**/.vs
+**/.idea
+.azure
+.claude
+.github
+TestResults
+docs
+tests
+web
+infra/modules
+infra/main.bicep
+**/*.user
+**/.DS_Store

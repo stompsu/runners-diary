@@ -22,3 +22,16 @@ updates:
         patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
       tanstack:
         patterns: ['@tanstack/*']
+  # Base images are pinned by digest in the Dockerfiles (ADR 0030 §5); Dependabot bumps tag and digest together.
+  - package-ecosystem: docker
+    directory: /src/RunnersDiary.Api
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /web
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /infra/docker
+    schedule:
+      interval: weekly

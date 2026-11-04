@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './support.ts'
 import { createFakeApi } from '../src/test/fakeApi/index.ts'
 
 // Calendar and run-type reads are answered by the in-memory fake API; everything else is mocked per test below.

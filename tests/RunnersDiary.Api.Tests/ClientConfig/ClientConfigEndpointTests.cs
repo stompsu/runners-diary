@@ -107,14 +107,84 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
         Assert.True(maps.GeocodingEnabled);
     }
 
+    private const string AccountResourceId = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg/providers/Microsoft.Maps/accounts/map-rd-prod";
+
+    private static void AzureMapsSettings(Microsoft.AspNetCore.Hosting.IWebHostBuilder b, bool display, bool geocoding)
+    {
+        if (display)
+        {
+            b.UseSetting("Maps:Provider", "AzureMaps");
+            b.UseSetting("Maps:AzureMaps:AccountResourceId", AccountResourceId);
+            b.UseSetting("Maps:AzureMaps:SasPrincipalId", "11111111-2222-3333-4444-555555555555");
+        }
+
+        if (geocoding)
+        {
+            b.UseSetting("Maps:Geocoding:Provider", "AzureMaps");
+        }
+
+        b.UseSetting("Maps:AzureMaps:AccountClientId", "account-unique-id");
+        b.UseSetting("Maps:AzureMaps:Domain", "eu.atlas.microsoft.com");
+    }
+
     [Fact]
-    public void An_unavailable_map_or_geocoding_provider_fails_at_startup()
+    public void An_incomplete_azure_maps_setup_fails_at_startup_naming_the_keys()
     {
         using var azureMaps = factory.WithWebHostBuilder(b => b.UseSetting("Maps:Provider", "AzureMaps"));
         using var azureGeocoding = factory.WithWebHostBuilder(b => b.UseSetting("Maps:Geocoding:Provider", "AzureMaps"));
+        using var badDomain = factory.WithWebHostBuilder(b =>
+        {
+            AzureMapsSettings(b, display: true, geocoding: false);
+            b.UseSetting("Maps:AzureMaps:Domain", "evil.example.com");
+        });
 
-        Assert.Throws<InvalidOperationException>(() => azureMaps.CreateClient());
-        Assert.Throws<InvalidOperationException>(() => azureGeocoding.CreateClient());
+        var display = Assert.Throws<InvalidOperationException>(() => azureMaps.CreateClient());
+        var geocode = Assert.Throws<InvalidOperationException>(() => azureGeocoding.CreateClient());
+        var domain = Assert.Throws<InvalidOperationException>(() => badDomain.CreateClient());
+
+        Assert.Contains("Maps:AzureMaps:AccountResourceId", display.Message, StringComparison.Ordinal);
+        Assert.Contains("Maps:AzureMaps:AccountClientId", geocode.Message, StringComparison.Ordinal);
+        Assert.Contains("Maps:AzureMaps:Domain", domain.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Azure_maps_display_hands_the_domain_to_the_browser_and_keeps_the_maplibre_style_as_the_fallback()
+    {
+        using var configured = factory.WithWebHostBuilder(b => AzureMapsSettings(b, display: true, geocoding: false));
+
+        var raw = await configured.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
+        var maps = (await configured.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken))!.Maps;
+
+        Assert.Equal(RunnersDiary.Infrastructure.Maps.MapProvider.AzureMaps, maps.Provider);
+        Assert.Equal("eu.atlas.microsoft.com", maps.AzureMapsDomain);
+        Assert.Equal("https://tiles.openfreemap.org/styles/liberty", maps.MapLibreStyleUrl);
+        Assert.False(maps.GeocodingEnabled);
+        // Only non-secret values reach the browser: no account ids, principal ids or resource ids.
+        Assert.DoesNotContain("account-unique-id", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("11111111", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("subscriptions", raw, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Azure_maps_geocoding_enables_search_without_changing_the_maplibre_display()
+    {
+        using var configured = factory.WithWebHostBuilder(b => AzureMapsSettings(b, display: false, geocoding: true));
+
+        var raw = await configured.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
+        var maps = (await configured.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken))!.Maps;
+
+        Assert.Equal(RunnersDiary.Infrastructure.Maps.MapProvider.MapLibre, maps.Provider);
+        Assert.Null(maps.AzureMapsDomain);
+        Assert.True(maps.GeocodingEnabled);
+        Assert.Contains("\"azureMapsDomain\":null", raw, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_default_maplibre_config_has_no_azure_maps_domain()
+    {
+        var maps = (await factory.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken))!.Maps;
+
+        Assert.Null(maps.AzureMapsDomain);
     }
 
     [Fact]

@@ -72,6 +72,7 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
     {
         ["POST /api/runs/{runId:guid}/tracks"] = "gpx-upload",
         ["GET /api/geocoding/search"] = "geocode",
+        ["GET /api/maps/token"] = "maps-token",
         ["POST /api/insights/summary"] = "ai-summary",
     };
 

@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import type { SummaryPostOutcome, SummaryScenario } from '../src/test/fakeApi/index.ts'
-import { openSummary, seriousViolations } from './support.ts'
+import { openSummary, seriousViolations, test } from './support.ts'
 
 // Smoke coverage for the AI summary card (M6 step 4): the states of the plan's UI table, the explicit-click flow, Cancel
 // and axe. The fake API answers (ADR 0019); QA extends the matrix. Phone: insights.summary.phone.spec.ts.
