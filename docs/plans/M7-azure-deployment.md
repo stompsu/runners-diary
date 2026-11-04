@@ -4,7 +4,7 @@
 
 **Builds on:**
 - M1–M6 (all merged or awaiting merge);
-- ADR 0004 (API never public), 0006 (SQL free offer), 0009/0014/0015 (Entra, SPA config), 0011 (guests), 0013 §7 (no startup migrations in Azure), 0020–0023 (GPX/Blob), 0022 (Azure Maps deferred), 0026–0028 (AI, ≥ 30k TPM, $3.18–6.37/day ceiling).
+- ADR 0004 (API never public), 0006 (SQL free offer), 0009/0014/0015 (Entra, SPA config), 0011 (guests), 0013 §7 (no startup migrations in Azure), 0020–0023 (GPX/Blob), 0022 (Azure Maps deferred), 0026–0028 (AI, ≥ 30k TPM, $3.18–6.37/day ceiling; $2.89–5.79/day at Global Standard prices since 2026-11-04, §12 D-AI).
 
 **New ADRs (proposed):**
 - [0029](../adr/0029-web-tier-nginx-container.md) web tier = nginx (supersedes 0004);
@@ -73,7 +73,7 @@ The milestone has two halves.
                     │ api  (internal ingress, 0–2)    │──── id-rd-api ──┬─▶ Azure SQL (free offer, Entra-only): db_datareader/writer
                     │ ASP.NET Core 10, /alive probes  │                 ├─▶ Storage blob `gpx` (shared key off): Blob Data Contributor
                     └─────────────────────────────────┘                 ├─▶ Key Vault: Secrets User (guest-token-signing-key only)
-   job-guest-cleanup (cron weekly, API image, id-rd-api) ───────────────┤─▶ Foundry AIServices (local auth off), gpt-5.4-mini DZ EU 30k TPM
+   job-guest-cleanup (cron weekly, API image, id-rd-api) ───────────────┤─▶ Foundry AIServices (local auth off), gpt-5.4-mini Global Std 30k TPM
    job-migrate (manual, efbundle + sqlcmd, id-rd-migrator = SQL admin)  └─▶ Azure Maps Gen2 (westeurope): Search via Entra (server-side)
                                                                        [opt. G9: SAS for display via id-rd-maps-sas]
    Log Analytics (cap 0.15 GB/day, 30 d) ◀── App Insights (OTel, Azure Monitor exporter) ◀── api, jobs; ACA console/system logs
@@ -145,7 +145,7 @@ web/src/components/layout/ApiStatus.tsx      # verify: no /api/health call befor
 ### ai-insights
 - Live eval runbook (§9.3) and the result record in §12.
 - Verifies the Foundry token metric names for the daily alert (ADR 0034).
-- Confirms the TPM unit (1 capacity = 1k TPM) for Data Zone Standard.
+- Confirms the TPM unit (1 capacity = 1k TPM) for Data Zone Standard (→ Global Standard since 2026-11-04, §12 D-AI; resolved by the Learn check below).
 
 ### qa-tester
 - Fills test gaps for Part A.
@@ -177,17 +177,17 @@ Assumptions:
 | Container Registry | Basic | 5.07 | 5.07 | 5.07 | $0.1666/day; 10 GB included |
 | Container Apps (`api` 0.5 vCPU/1 GiB, `web` 0.25/0.5, jobs) | Consumption, min 0 / max 2 | 0 | 0 | ≈ 113 + 3 | Free per month: 180k vCPU-s, 360k GiB-s, 2 M requests (≈ 66 h of both apps awake). Active $0.000024/vCPU-s, $0.000003/GiB-s, $0.40 per 1 M requests |
 | Azure SQL Database | GP serverless **free offer**, 0.5–2 vCores, `AutoPause` | 0 | 0 | **0** (the DB pauses until month end: an outage, not a bill) | 100k vCore-s, 32 GB data, 32 GB backup |
-| Foundry gpt-5.4-mini | Data Zone Standard EU, 30k TPM | 0 | ≈ 0.2–1 | ≈ 97 (203 calls/day) – 194 (with transport retries) | $0.825 / $4.95 per 1 M tokens; no fixed fee (pay-per-token, [deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types)) |
+| Foundry gpt-5.4-mini | **Global Standard**, 30k TPM (was Data Zone Standard EU; §12 D-AI) | 0 | ≈ 0.2–1 | ≈ 88 (203 calls/day) – 176 (with transport retries) (was 97–194) | $0.75 / $4.50 per 1 M tokens (Global Standard prices since 2026-11-04; Data Zone was $0.825 / $4.95); no fixed fee (pay-per-token, [deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types)) |
 | Azure Maps | Gen2, `westeurope`; geocoding only | 0 | 0 | **0** (≤ 2,325 searches: 75/day, durable and global across replicas and restarts, < 5,000 free; corrected in §12) | $4.50 per 1 K beyond 5 K free (search and base-map tiles) |
 | Log Analytics + App Insights | PerGB2018, cap 0.15 GB/day, 30 d | 0 | 0 | ≈ 0–2 | 5 GB/month free, then $2.99/GB |
 | Storage | StorageV2, Hot LRS | < 0.05 | < 0.10 | ≈ 1 | $0.0184/GB-month; ops $0.05 per 10 K writes |
 | Key Vault | Standard, 1 secret | < 0.01 | < 0.01 | < 0.05 | $0.03 per 10 K operations |
 | Monitor | 3–4 metric alerts, action group (e-mail) | ≈ 0.3–0.4 | ≈ 0.4 | ≈ 0.4 | ⚠ $0.10 per alert rule per month (not re-verified) |
 | Budget, Entra External ID | — | 0 | 0 | 0 | budgets free; External ID free < 50 k MAU (email OTP add-on price ⚠) |
-| **Total** | | **≈ $5.5** | **≈ $6–7** | **≈ $220 – $320** | |
+| **Total** | | **≈ $5.5** | **≈ $6–7** | **≈ $211 – $300** (was $220 – $320) | |
 
 **One-off costs:**
-- live AI eval ≤ $0.75 (48 calls × $0.0157 at the cap; typically about $0.20);
+- live AI eval ≤ ~$0.68 (48 calls × $0.0143 at the cap; typically about $0.18) (was ≤ $0.75 / $0.0157 / $0.20 at Data Zone prices);
 - each deploy: about 2 min of migration-job compute (free grant) and one SQL wake.
 
 **Azure Maps display (G9, off by default):**
@@ -214,7 +214,7 @@ Names use `<token>` = `uniqueString(subscription().id, env, location)`. All reso
 | Key Vault | `kv-rd-<token>` | RBAC, soft delete 7 d, purge protection off; secret `guest-token-signing-key` (hook) |
 | Storage | `strd<token>` | StorageV2 Hot LRS, shared key off, public blob off, TLS 1.2, container `gpx`, soft delete 7 d |
 | SQL server / DB | `sql-rd-<token>` / `runnersdiary` | Entra-only, admin `id-rd-migrator`, *Allow Azure services*; GP_S_Gen5_2, min 0.5, `useFreeLimit: true`, `freeLimitExhaustionBehavior: AutoPause` |
-| Foundry | `ais-rd-<token>` (custom subdomain) | kind `AIServices`, S0, `disableLocalAuth: true`; deployment `gpt-54-mini`: model `gpt-5.4-mini` `2026-03-17`, sku `DataZoneStandard`, capacity `${AI_CAPACITY_KTPM}` = 30 (⚠ unit = 1k TPM) |
+| Foundry | `ais-rd-<token>` (custom subdomain) | kind `AIServices`, S0, `disableLocalAuth: true`; deployment `gpt-54-mini`: model `gpt-5.4-mini` `2026-03-17`, sku **`GlobalStandard`** (was `DataZoneStandard`; §12 D-AI), capacity `${AI_CAPACITY_KTPM}` = 30 (unit = 1k TPM, confirmed) |
 | Azure Maps | `map-rd-prod` (`westeurope`) | Gen2 `G2`; `disableLocalAuth: true` unless G9; CORS = web origin |
 | ACA environment | `cae-rd-prod` | Consumption, logs → `log-rd-prod`, no VNet |
 | `web` | container app | external, target port 8080, 0.25/0.5, min 0 / max 2, HTTP scale 20 concurrent |
@@ -339,8 +339,8 @@ Headers, routing, timeouts and client-IP handling: [ADR 0029](../adr/0029-web-ti
 | **G3** | User: GitHub environment `prod` (reviewer, `main` only), 3 secrets, variables, `DEPLOY_ENABLED=true` | GitHub settings only | $0 |
 | **G4** | User: run `deploy.yml` (dispatch) and **approve** it | pushes 3 images (≈ 0.5 GB of the 10 GB ACR quota), runs the migration job (schema + API DB user), deploys apps and jobs | ≈ $0 (free grants) |
 | **G5** | User + qa-tester: go-live checklist §7.3, incl. the XFF test (6 guest creations) | app data only (guests expire) | $0 |
-| **G6** | User: live AI eval from the laptop (§9.3), with AI still disabled in prod | none | ≤ $0.75 |
-| **G7** | `azd env set AI_ENABLED true` + `azd provision` (new `api` revision) | AI generation on in prod | usage; ceiling $97–194/month |
+| **G6** | User: live AI eval from the laptop (§9.3), with AI still disabled in prod | none | ≤ ~$0.68 (was ≤ $0.75) |
+| **G7** | `azd env set AI_ENABLED true` + `azd provision` (new `api` revision) | AI generation on in prod | usage; ceiling $88–176/month (was $97–194; Global Standard prices since 2026-11-04) |
 | **G8** | User registers the redirect URIs (§5.6) in their tenant, then `azd env set ENTRA_*` + `azd provision` | Entra sign-in on | $0 (< 50 k MAU) |
 | G9 *(optional)* | `azd env set MAPS_DISPLAY true` + `azd provision` | SAS identity, custom roles, Maps local auth on, `Maps__Provider=AzureMaps` | free ≤ 75 k tiles/month; risk per §4 |
 | G10 *(recurring)* | every later deploy = GitHub approval; every Bicep change = G1 + G2 again | — | — |
@@ -403,8 +403,10 @@ Each run creates one guest.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | SQL free allowance exhausted by wakes (≈ 220 wake cycles/month) | DB paused until next month: **app down** | Probes `/alive` only; cleanup idle-skip; weekly job; anonymous endpoints without SQL (`client-config`, and `ApiStatus` only after sign-in); `robots.txt`; free-amount alert at 10 %; Q10 (`BillOverUsage` is irreversible). |
-| No Data Zone quota for gpt-5.4-mini in `swedencentral`, or < 30k TPM | G2 fails at the deployment | Read the quota before G1 (§10 step 3); `AI_CAPACITY_KTPM` param; fallback region from ADR 0027's EU list (polandcentral, germanywestcentral); AI is off until G7 anyway. |
-| ⚠ The capacity unit for `DataZoneStandard` is not 1k TPM | Wrong throughput | ai-insights confirms with `az cognitiveservices usage list` (read) before G1. |
+| No Data Zone quota for gpt-5.4-mini in `swedencentral`, or < 30k TPM | G2 fails at the deployment | Read the quota before G1 (§10 step 3); `AI_CAPACITY_KTPM` param; fallback region from ADR 0027's EU list (polandcentral, germanywestcentral); AI is off until G7 anyway. **Materialized 2026-11-04:** Data Zone quota 0 in all five EU regions checked → Global Standard (§12 D-AI). |
+| `GlobalStandard` quota is a subscription-wide pool shared with the user's other deployments (1 000k TPM, 700k used) | If other deployments grow past 970k, G2 fails, or a later re-provision does | Re-read the free quota (≥ 30k) right before G1 and any later G2; `AI_CAPACITY_KTPM` can go lower (more 503 `ai-busy`). |
+| ~~⚠ The capacity unit for `DataZoneStandard` is not 1k TPM~~ | Wrong throughput | Resolved: 1 capacity = 1k TPM (Learn check below). |
+| AI prompts processed outside the EU (Global Standard) | Data-residency expectation | Only the metrics-only fact sheet is sent (ADR 0026 amendment); user accepted 2026-11-04; switch back to `DataZoneStandard` if EU quota is granted. |
 | XFF chain differs from the design (extra hop) | All guests share one bucket, or spoofing | nginx overwrites to a single value; `ForwardLimit` and `KnownIPNetworks` are config; AC9 before announcing the URL. |
 | CSP or COOP breaks MSAL or MapLibre | Sign-in or map fails | CI runs the full Playwright suite on the image with CSP; COOP off for `redirect.html`; real-tenant check at G8; header tweaks need only a web redeploy. |
 | Container Apps "Environment Management Hour" ($0.10/h, new meter 2026-11-01) applies to Consumption environments | +$73/month | Learn says management fees apply only to Dedicated profiles, private endpoints and planned maintenance (none used); checked in Cost analysis 48 h after G2; if charged, stop and reassess (Q14). |
@@ -464,7 +466,7 @@ Below 90 %: prompt v2 or a model change (a Bicep param, G1 + G2) before G7.
    - `azd auth login`;
    - `az login` (2.91.0 is fine);
    - `az account set -s <id>`.
-3. **Quota check (read-only):** in the Foundry portal or `az cognitiveservices usage list -l swedencentral`, check the **Data Zone Standard** quota for **gpt-5.4-mini** (need ≥ 30k TPM).
+3. **Quota check (read-only):** in the Foundry portal or `az cognitiveservices usage list -l swedencentral`, check **`OpenAI.GlobalStandard.gpt-5.4-mini`**: limit minus current usage must be **≥ 30** (k TPM). (Changed 2026-11-04 from the Data Zone Standard quota, which is 0 on this subscription; §12 D-AI. Done once on 2026-11-04: 1 000 limit, 700 used, 300 free. Re-read right before G1, because the pool is shared with your other deployments.)
 4. **Answer §11.** Optionally create the Entra external tenant now (M2 §10); otherwise production starts guests-only.
 5. **G1:** review the what-if output. **G2:** provision. Send me the printed web FQDN.
 6. **G3:** in GitHub, create the environment `prod` with yourself as required reviewer and branch `main`; add the 3 secrets and the variables printed by the hook; set `DEPLOY_ENABLED=true`. Optionally add the new CI job to branch protection.
@@ -476,7 +478,7 @@ Below 90 %: prompt v2 or a model change (a Bicep param, G1 + G2) before G7.
 ## 11. Open questions (recommended defaults in bold)
 
 1. **Environments:** **one `prod`** (local Aspire = dev), or `prod` + a cloud `dev` (≈ +$0–5/month, doubled gates).
-2. **Region:** **`swedencentral`** (Maps in `westeurope`), or `polandcentral` (closest; also in the gpt-5.4-mini Data Zone table).
+2. **Region:** **`swedencentral`** (Maps in `westeurope`), or `polandcentral` (closest; also in the gpt-5.4-mini Data Zone table). (2026-11-04: both are also in the Global Standard table; the Data Zone quota is 0 in both, so this no longer favours either. §12 D-AI.)
 3. **Registry:** **ACR Basic ($5.07/month, MI pull)**, or GHCR (free; private images need a PAT stored as an ACA secret, which breaks "MI everywhere", or public images).
 4. **Map display in production:** **MapLibre + OpenFreeMap, with Azure Maps geocoding (capped under the free tier); Azure Maps display built but off (G9)**, or Azure Maps display from day one (brief literal; open-ended worst case).
 5. **Guest cleanup job:** **weekly (Mon 03:15 UTC)**, or daily (brief literal; ≈ 14–27 % of the SQL free allowance), or none (hosted service only).
@@ -501,7 +503,7 @@ Below 90 %: prompt v2 or a model change (a Bicep param, G1 + G2) before G7.
 - Q8 deploy after green CI on `main` + manual dispatch, always approved.
 - Q9 default FQDN.
 - Q10 `AutoPause`.
-- Q11 30k TPM.
+- Q11 30k TPM. (2026-11-04: on a **Global Standard** deployment; 300k TPM free in the subscription's global pool. §12 D-AI.)
 - Q12 guests-only until G8.
 - Q13 LA cap 0.15 GB/day, 30 days, 5 traces/s.
 - Q14 resolved by the Learn check: the management meter applies only to features not used here.
@@ -555,6 +557,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 | D14 | Budgets API `2024-08-01` | `2026-06-01` (and KV `2026-02-01`, SQL `2025-01-01`, Maps `2023-06-01`, `metricAlerts` `2026-01-01`) | `use-recent-api-versions` as error. ADR 0030 amend. §2 |
 | D15 | Metric names ⚠ | `TokenTransaction` (Total), `free_amount_remaining` (Minimum), `requests/failed` (Count), Maps `Usage` (Count) | Resolved at implementation. ADR 0034 amend. §4 |
 | D16 | — | API startup failure → `Startup failed (<Type>)`, exit 1 | QA finding Q1 below. ADR 0032 amend. §6 |
+| **D-AI** | Foundry gpt-5.4-mini **Data Zone Standard EU** (ADR 0027 §5, §5.1, §4) | **Global Standard**: `infra/modules/foundry.bicep` `sku: { name: 'GlobalStandard', capacity: capacityKtpm }` (30k TPM, `swedencentral`); live-eval cost in `tests/RunnersDiary.Ai.Tests/Evals/EvalRunner.cs` at Global prices 0.75 / 4.50 USD per 1M | User decision 2026-11-04. Read-only quota check: `OpenAI.DataZoneStandard.gpt-5.4-mini` = **0** in westeurope, swedencentral, polandcentral, germanywestcentral, francecentral; `OpenAI.GlobalStandard.gpt-5.4-mini` = 1 000k TPM, 700k used, **300k free** (30k needed). Data at rest stays in `swedencentral`; prompts may be processed in any Azure region, accepted because the model sees only the metrics-only fact sheet. Costs × ≈ 0.909 (§4). Data Zone stays preferred if EU quota is granted (one Bicep value + G1/G2); EU-quota alternatives for G6: gpt-6-luna (100), gpt-5-mini (300). ADR 0027 amend. "deployment type", 0026, 0028, 0030, 0034 amend. |
 
 ### 12.3 Review findings and resolutions
 
@@ -593,7 +596,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 | `CREATE USER … WITH SID … TYPE = E` and the UAMI admin `sid` (client id) on the first migrate run | G4 |
 | go-sqlcmd managed-identity flags against Azure SQL | G4 |
 | azd parameter defaults `${VAR=default}` and `SERVICE_API_RESOURCE_EXISTS` (fetch-image pattern) | G1 |
-| Foundry endpoint property used for `Ai__Foundry__Endpoint`; `DataZoneStandard` quota for gpt-5.4-mini | G0/G1 |
+| Foundry endpoint property used for `Ai__Foundry__Endpoint`; `GlobalStandard` free quota for gpt-5.4-mini still ≥ 30k right before G1 (was `DataZoneStandard`, found to be 0; D-AI) | G0/G1 |
 | Azure Maps Web SDK under the real CSP; narrow `listSas` role vs documented Contributor | G9 |
 | OpenTelemetry `url.full` query-string redaction (geocode `query=` is personal data) | G5 (App Insights dependencies) |
 | MSAL silent renewal under the CSP (`frame-src`, `frame-ancestors` on `/redirect.html`) | G8 |
@@ -633,7 +636,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
   - authentication (`disableLocalAuth` disables SAS; SAS, CORS; updated 2026-09-15): https://learn.microsoft.com/azure/azure-maps/azure-maps-authentication
   - transactions (15 tiles = 1; free 5 K; updated 2026-09-15): https://learn.microsoft.com/azure/azure-maps/understanding-azure-maps-transactions
   - geographic scope: https://learn.microsoft.com/azure/azure-maps/geographic-scope
-- Foundry deployment types (`DataZoneStandard`, pay-per-token, EU Data Boundary; updated 2026-08-12): https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types · deployments template: https://learn.microsoft.com/azure/templates/microsoft.cognitiveservices/accounts/deployments
+- Foundry deployment types (`DataZoneStandard`, `GlobalStandard` "may be processed in any Azure region", data at rest in the geography, pay-per-token, EU Data Boundary; updated 2026-08-12, re-read 2026-11-04 for D-AI) · region availability (gpt-5.4-mini Global Standard in all European regions incl. `swedencentral`; updated 2026-10-19): https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability · https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types · deployments template: https://learn.microsoft.com/azure/templates/microsoft.cognitiveservices/accounts/deployments
 - Log Analytics daily cap (updated 2026-01-09): https://learn.microsoft.com/azure/azure-monitor/logs/daily-cap · budgets template: https://learn.microsoft.com/azure/templates/microsoft.consumption/budgets
 - Entra External ID pricing (core free < 50 K MAU): https://learn.microsoft.com/entra/external-id/external-identities-pricing
 - NuGet `Azure.Monitor.OpenTelemetry.AspNetCore` 1.6.0: https://www.nuget.org/packages/Azure.Monitor.OpenTelemetry.AspNetCore
@@ -642,6 +645,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 **Checked against Microsoft Learn (MCP server, 2026-11-04, main agent):**
 - **Foundry capacity:** a `capacity` of 1 = 1,000 TPM ([automate quota deployments](https://learn.microsoft.com/azure/foundry/openai/how-to/automate-quota-deployments)), so `AI_CAPACITY_KTPM` = 30 → 30k TPM. Resolved.
 - **New risk, Data Zone quota for gpt-5.4-mini:** the [quota tier tables](https://learn.microsoft.com/azure/foundry/openai/quotas-limits) list `gpt-5.4-mini` only as `GlobalStandard`, while `gpt-5.4-nano` and other models have `DataZoneStandard` rows. The model is in the Data Zone Standard EU *region* table (ADR 0027), but subscription quota may be missing or need a request. The read-only quota check at G0 (`az cognitiveservices usage list -l swedencentral` and the model capacities API) must confirm `OpenAI.DataZoneStandard.gpt-5.4-mini` > 0 before G1. If it is 0, the options are a quota request, `GlobalStandard` (EU data at rest, processing global; the user decides), or `gpt-5.4-nano` `DataZoneStandard` after the live eval.
+  - **Result (2026-11-04, read-only check on the user's subscription):** `OpenAI.DataZoneStandard.gpt-5.4-mini` limit **0** in westeurope, swedencentral, polandcentral, germanywestcentral and francecentral (other models do have EU Data Zone quota, e.g. gpt-6-luna 100, gpt-5-mini 300, gpt-5.4 100). `OpenAI.GlobalStandard.gpt-5.4-mini` limit 1 000k TPM, 700k used by the user's other deployments, **300k free**. **Decision (user): `GlobalStandard`** (§12 D-AI, ADR 0027 amendment "deployment type").
 - **SQL identities:** `CREATE USER … WITH SID = …, TYPE = E` is documented in the English [CREATE USER reference](https://learn.microsoft.com/sql/t-sql/statements/create-user-transact-sql) for Azure SQL Database. `TYPE = E` covers users and service principals/managed identities, and for a service principal or managed identity the SID is the **application/client id**. A service principal issuing `CREATE USER … FROM EXTERNAL PROVIDER` would need Directory Readers on the server identity, so the `WITH SID` form is the right choice. The UAMI **admin `sid` is likewise the client id** ([set Entra admin](https://learn.microsoft.com/azure/azure-sql/database/authentication-aad-configure): "for applications (service principals), the Application ID is displayed"). ADR 0031 is corrected; ADR 0032 already used the client id.
 - **Container Apps management meter:** [billing](https://learn.microsoft.com/azure/container-apps/billing) says the Dedicated Plan Management charge applies to features such as private endpoints and planned maintenance, regardless of plan. This plan uses neither, so it is $0. Open question 14 is resolved; the 48 h cost-by-meter check stays as a safety net.
 - **Azure Maps SAS:** [authentication](https://learn.microsoft.com/azure/azure-maps/azure-maps-authentication) states that creating SAS tokens needs **Contributor** on the Maps account and the user-assigned identities. A narrower custom `listSas` role is still unconfirmed and only matters for the optional G9. Rates above a token's `maxRatePerSecond` are not billed (they get 429), and limits are enforced per Azure location.

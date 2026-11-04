@@ -1,4 +1,4 @@
-// Foundry (AIServices) account with one Data Zone Standard model deployment, keyless (ADR 0027, 0031).
+// Foundry (AIServices) account with one Global Standard model deployment, keyless (ADR 0027 amended 2026-11-04, 0031).
 param location string
 param tags object
 param token string
@@ -31,7 +31,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 resource model 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   parent: account
   name: deploymentName
-  sku: { name: 'DataZoneStandard', capacity: capacityKtpm }
+  sku: { name: 'GlobalStandard', capacity: capacityKtpm }
   properties: {
     model: { format: 'OpenAI', name: modelName, version: modelVersion }
     versionUpgradeOption: 'NoAutoUpgrade'

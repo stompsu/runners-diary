@@ -1,12 +1,12 @@
 # 0034 – Cost guardrails and observability in Azure
 
-**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, see the end)
+**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, and 2026-11-04 for the AI deployment type, see the end)
 **Date:** 2026-11-04
 
 ## Context
 
 - The brief requires that the app be cost-conscious, with consumption-based, free-tier and scale-to-zero choices, and asks for App Insights + Log Analytics via OpenTelemetry.
-- The AI spend ceiling is bounded by durable quotas at about **$3.18–6.37 a day** (ADR 0028 amendment), and the deployment needs at least 30k TPM (0027 amendment).
+- The AI spend ceiling is bounded by durable quotas at about **$3.18–6.37 a day** (ADR 0028 amendment), and the deployment needs at least 30k TPM (0027 amendment). (→ **$2.89–5.79 a day** at Global Standard prices since 2026-11-04, see the amendment "AI deployment type" at the end.)
 - ServiceDefaults already emits OpenTelemetry (OTLP to the Aspire dashboard locally). It contains a commented-out `UseAzureMonitor()`. The meter and activity source `RunnersDiary.Ai` exist, and no prompt or answer content is recorded.
 
 Verified on 2026-11-04:
@@ -35,7 +35,7 @@ Verified on 2026-11-04:
 
    | Alert | Signal | Threshold |
    |---|---|---|
-   | AI spend per day | Foundry account token metrics, input + output over 24 h (⚠ exact metric names verified at implementation) | > 400k tokens per 24 h (≈ $1–2, between the typical and the ceiling) |
+   | AI spend per day | Foundry account token metrics, input + output over 24 h (⚠ exact metric names verified at implementation) | > 400k tokens per 24 h (≈ $1–2, between the typical and the ceiling) (→ ≈ $0.5, corrected in the amendment "AI deployment type") |
    | SQL free allowance | `free_amount_remaining` (database) | < 10,000 vCore-s |
    | API failures | App Insights `requests/failed` | > 20 in 15 min |
    | Maps usage *(only with display enabled)* | Maps account `Usage` | > 4,000 per 24 h |
@@ -88,6 +88,13 @@ Verified on 2026-11-04:
 6. **API versions** satisfy the `use-recent-api-versions` linter rule (730 days), see [ADR 0030 amendment](0030-azure-topology-iac-and-deployment.md) §2.
 
 **Still unverified (⚠):** whether the `url.full` attribute that the HTTP client instrumentation exports redacts query strings (the geocoder's `query=` is personal data; check App Insights dependencies at G5); the canary search for prompt text (AC11).
+
+## Amendment (2026-11-04, AI deployment type)
+
+The Foundry deployment is **Global Standard** ([ADR 0027 amendment "deployment type"](0027-ai-model-provider-foundry-and-local-dev.md#amended-2026-11-04-deployment-type)); gpt-5.4-mini costs $0.75 in / $4.50 out per 1M tokens (was $0.825 / $4.95). Global Standard prices since 2026-11-04:
+- **AI ceiling (Context):** ≈ **$2.89–5.79 a day** (was $3.18–6.37), i.e. ≈ $88–176 a month at 30.4 days (M7 plan §4), from 203–406 calls × ≈ $0.0143 ([ADR 0028 amendment "deployment type"](0028-summary-cache-quotas-and-demo-summaries.md)).
+- **AI token alert stays at > 400k tokens per 24 h** (`alert-rd-ai-tokens`, `TokenTransaction`); it is token-based, so the price change does not move it. Its dollar annotation in §4 ("≈ $1–2") did not follow from its own inputs: at the cap's token mix (≈ 10k in / 1.5k out per call) 400k tokens are ≈ 35 calls ≈ **$0.5** (≈ $0.55 at Data Zone prices). It still sits between typical use and the ceiling (≈ 203 × 11.5k ≈ 2.3M tokens/day).
+- The $25 RG budget and its thresholds are unchanged.
 
 ## References (checked 2026-11-04)
 

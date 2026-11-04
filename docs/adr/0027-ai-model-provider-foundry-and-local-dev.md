@@ -1,6 +1,6 @@
 # 0027 – AI model provider: Foundry deployment over the OpenAI v1 endpoint, keyless auth, no cloud before M7
 
-**Status:** Accepted (M6 plan approved 2026-11-04; verified against Microsoft Learn) · Amended 2026-11-04 (implementation, see the end)
+**Status:** Accepted (M6 plan approved 2026-11-04; verified against Microsoft Learn) · Amended 2026-11-04 (implementation, see the end) · Amended 2026-11-04 (deployment type: Global Standard, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -54,13 +54,13 @@ Current facts (verified 2026-11-04):
    - **No `Aspire.Hosting.Foundry`.** It is preview, and in run mode it provisions Azure resources and needs subscription config. Starting the AppHost could otherwise create billable resources.
    - Same pattern as Entra (M2 §10): the AppHost reads its user-secrets `Ai:Endpoint` and `Ai:Deployment` (non-secret ids, never committed) and forwards `Ai__Provider=Foundry`, `Ai__Foundry__Endpoint` and `Ai__Foundry__Deployment` only when both are present.
    - `Ai:UseFake=true` forwards `Ai__Provider=Fake`. Otherwise it forwards `Ai__Provider=None`.
-5. **Default model: `gpt-5.4-mini`**, **Data Zone Standard (EU)**, `reasoning_effort: low`, `MaxOutputTokens` 1 500 (reasoning included). The deployment name is configuration (`Ai:Foundry:Deployment`), and the model label stored with summaries is the response's `ModelId`.
+5. **Default model: `gpt-5.4-mini`**, **Data Zone Standard (EU)** (→ superseded by the 2026-11-04 amendment "deployment type": **Global Standard**), `reasoning_effort: low`, `MaxOutputTokens` 1 500 (reasoning included). The deployment name is configuration (`Ai:Foundry:Deployment`), and the model label stored with summaries is the response's `ModelId`.
    - **Why mini:** strict placeholder and schema compliance matters more than per-token price at this volume.
-   - **Why Data Zone EU:** training data stays processed in the EU for +10 %, cents per month.
+   - **Why Data Zone EU:** training data stays processed in the EU for +10 %, cents per month. (→ superseded by the 2026-11-04 amendment "deployment type": the subscription has no Data Zone quota for gpt-5.4-mini.)
    - gpt-5.4-nano and gpt-6-luna are cheaper candidates. They are judged by the live eval in M7, before deployment (plan §9 Q2).
 6. **Cost per summary** (gpt-5.4-mini, Data Zone EU): about 6k input tokens (prompt ≈ 2k + fact sheet ≤ 4k) and ≤ 1.5k output (visible ≈ 600 + low reasoning). That is ≈ 6 000 × 0.825 / 10⁶ + 1 500 × 4.95 / 10⁶ ≈ **$0.0124**, ≤ $0.025 with the one retry. The ceiling with the default quotas (ADR 0028) is 200 generations per day ≈ $2.5/day ≈ **$75/month** worst case; one active user at 2/day ≈ $0.75/month. Standard deployments have no fixed monthly fee (⚠ re-check in the M7 cost estimate). **Superseded by the amendment at the end** (per-call cost at the cap, attempt-based ceiling).
 7. **M7 (azure-infra; only with the user's confirmation):**
-   - a Foundry resource (`Microsoft.CognitiveServices/accounts`, kind `AIServices`, `disableLocalAuth: true`) in an EU region that offers the Data Zone deployment;
+   - a Foundry resource (`Microsoft.CognitiveServices/accounts`, kind `AIServices`, `disableLocalAuth: true`) in an EU region that offers the Data Zone deployment (→ since the 2026-11-04 amendment: an EU region that offers the Global Standard deployment, `swedencentral`);
    - the model deployment with a small TPM capacity;
    - **Cognitive Services User** for the API's user-assigned identity;
    - a budget alert;
@@ -75,7 +75,7 @@ Current facts (verified 2026-11-04):
   - The REST reference and the endpoint-switching guide also show the scope `https://cognitiveservices.azure.com/.default`.
   - The token for the scope used must be accepted; the 401 troubleshooting row names `https://ai.azure.com/.default`.
 - **Confirmed:** RBAC: **Cognitive Services User** on the Foundry resource. Cognitive Services OpenAI User covers OpenAI models only; Owner and Contributor grant no inference. Allow 5 minutes for propagation ([keyless auth troubleshooting](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/configure-entra-id)).
-- **Confirmed:** gpt-5.4-mini (2026-03-17) is offered as **Data Zone Standard in Europe**: francecentral, germanywestcentral, italynorth, norwayeast, polandcentral, spaincentral, **swedencentral**, switzerlandnorth and westeurope. It is not offered in northeurope. Source: [region availability](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability). An older Q&A answer saying "US only" is superseded by this table.
+- **Confirmed:** gpt-5.4-mini (2026-03-17) is offered as **Data Zone Standard in Europe**: francecentral, germanywestcentral, italynorth, norwayeast, polandcentral, spaincentral, **swedencentral**, switzerlandnorth and westeurope. It is not offered in northeurope. Source: [region availability](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability). An older Q&A answer saying "US only" is superseded by this table. (→ Region availability is not subscription quota: the user's subscription has a Data Zone quota of 0 for this model, see the 2026-11-04 amendment "deployment type".)
 - **Confirmed:** reasoning models use `max_completion_tokens` (includes reasoning tokens) on Chat Completions. `temperature`, `top_p`, penalties, `logprobs` and `max_tokens` are unsupported ([reasoning models](https://learn.microsoft.com/azure/foundry/openai/how-to/reasoning)).
 - **Note:** Learn recommends the Responses API for new applications, with Chat Completions "when you need its message-based interface". Chat Completions stays here, for the reasons in Decision 1: no hosted tools and no server-side state. The `IChatClient` seam keeps a switch cheap.
 - **Not on Learn:** the Aspire Foundry hosting specifics (preview package, run-mode provisioning) are documented on aspire.dev only. Learn confirms the general rule that Aspire Azure hosting integrations provision resources at AppHost start unless `AsExisting`/publish-only is used.
@@ -118,7 +118,7 @@ Details: [M6 plan §12](../plans/M6-ai-summary.md#12-implementation-notes--devia
 
 ### Cost per call (replaces Decision 6's figures)
 
-Prices are unchanged: gpt-5.4-mini Data Zone EU, $0.825 in / $4.95 out per 1M tokens.
+Prices are unchanged: gpt-5.4-mini Data Zone EU, $0.825 in / $4.95 out per 1M tokens. (→ superseded by the 2026-11-04 amendment "deployment type": Global Standard prices and recomputed figures below.)
 
 | Case | Input tokens | Output tokens | Cost per HTTP call |
 |---|---|---|---|
@@ -148,3 +148,47 @@ Azure counts **prompt tokens + `max_completion_tokens`** of each request toward 
 ### Verified on the wire
 
 `FoundryWireTests` (ADR 0026 amendment) checks the exact request: the v1 path, the bearer token for `https://ai.azure.com/.default`, `max_completion_tokens`, `reasoning_effort: low`, strict `json_schema`, and no `temperature`/`max_tokens`. The real endpoint is still unexercised (live check in M7, plan §9 Q9).
+
+## Amended 2026-11-04 (deployment type)
+
+User decision, 2026-11-04 (M7 plan §12 deviation **D-AI**). Replaces the deployment type in Decision 5 and the prices in Decision 6 and in the implementation amendment above.
+
+### Why the change
+
+A read-only quota check (`az cognitiveservices usage list`) on the user's subscription ("Visual Studio Ultimate z subskrypcją MSDN"):
+
+| Quota | Regions checked | Limit | Used | Free |
+|---|---|---|---|---|
+| `OpenAI.DataZoneStandard.gpt-5.4-mini` | westeurope, swedencentral, polandcentral, germanywestcentral, francecentral | **0** | — | **0** |
+| `OpenAI.GlobalStandard.gpt-5.4-mini` | subscription-wide global pool | 1 000k TPM | 700k (the user's other deployments) | **300k** (the app needs 30k) |
+
+Other models do have EU Data Zone quota on this subscription, e.g. gpt-6-luna 100, gpt-5-mini 300, gpt-5.4 100. This confirms the risk recorded in the M7 plan ("Checked against Microsoft Learn"): the region table listing a model under Data Zone does not mean the subscription has quota for it.
+
+### Decision
+
+1. **Decision 5 now reads: `gpt-5.4-mini`, Global Standard** (Bicep `sku: { name: 'GlobalStandard', capacity: capacityKtpm }`, 30k TPM). Everything else in Decision 5 is unchanged (`reasoning_effort: low`, `MaxOutputTokens` 1 500, deployment name as configuration).
+2. **Data residency:**
+   - **Data at rest** stays in the resource's region, `swedencentral` (EU).
+   - **Prompts and responses may be processed in any Azure region worldwide** ([deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types): "Global types: May be processed in any Azure region"; page updated 2026-08-12).
+   - The user accepts global processing because the model sees only the **fact sheet**: numeric training metrics, dates and run-type codes. No free text, names, notes, location, heart rate or ids reach the model (ADR 0026 §1). ADR 0026 is amended to make that rule the data-residency safeguard.
+3. **Region:** gpt-5.4-mini is offered as Global Standard in `swedencentral` (and in every other European region of the table) ([region availability](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability), Global Standard → Europe; page updated 2026-10-19). The region choice (ADR 0030 §3) does not change.
+4. **Data Zone stays the preferred option.** If EU Data Zone quota for gpt-5.4-mini is granted later (quota request), switching back is one Bicep value (`sku.name: 'DataZoneStandard'`) plus a re-provision (M7 gates G1 + G2; ⚠ whether Azure changes the SKU of an existing deployment in place or needs it deleted and re-created is checked at that time). Cost goes up by 10 %. The model is the same, and cached summaries stay fresh as long as the deployment name is kept (ADR 0028's validity tuple includes the configured deployment, not the SKU).
+5. **EU-quota alternatives for the G6 live eval** (if the user prefers EU processing over gpt-5.4-mini): **gpt-6-luna** (Data Zone quota 100; cheapest, ⚠ lifecycle not yet published) and **gpt-5-mini** (Data Zone quota 300; a 2025 model, check its retirement date first). Either one is a Bicep model/version change plus the live eval; the agent and prompt need no change if the model passes the same eval.
+
+### Cost (replaces Decision 6 and the implementation amendment's per-call table)
+
+Global Standard prices since 2026-11-04 (Azure retail, already in the Context table): gpt-5.4-mini **$0.75 in / $0.075 cached in / $4.50 out per 1M tokens**. Every AI cost figure scales by 0.75 / 0.825 = 4.50 / 4.95 ≈ **0.909**.
+
+| Case | Input tokens | Output tokens | Cost per HTTP call (Data Zone → Global) |
+|---|---|---|---|
+| **Worst case:** fact sheet at the 24 000-character cap + prompt | ≈ 10 000 | 1 500 (cap) | 10 000 × 0.75 / 10⁶ + 1 500 × 4.50 / 10⁶ = 0.0075 + 0.00675 ≈ **$0.0143** (was $0.0157) |
+| **Typical:** demo-sized sheet (≈ 16.2k chars) and a short answer | — | — | ≈ **$0.0064** (was $0.007) |
+
+- Cached input ($0.075) is not counted: the fact sheet changes per request and the prompt prefix may or may not hit the cache, so the figures stay an upper bound.
+- The daily and monthly ceilings are recomputed in ADR 0028's amendment "deployment type" ($2.89–5.79/day). The 30k TPM sizing and the 400k-tokens/24 h alert (ADR 0034) are token-based and do not change.
+
+### References (checked 2026-11-04)
+
+- Deployment types, data processing per type: https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types
+- Region availability, Global Standard and Data Zone Standard tables: https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability
+- Quota tiers (gpt-5.4-mini listed under `GlobalStandard`): https://learn.microsoft.com/azure/foundry/openai/quotas-limits

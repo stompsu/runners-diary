@@ -85,7 +85,7 @@ The topology is one `prod` environment in `swedencentral`, with the Azure Maps a
 - Azure SQL free offer: Entra-only, `AutoPause` at the free limit;
 - Storage: shared key off;
 - Key Vault: only the guest signing key;
-- Foundry: gpt-5.4-mini, Data Zone EU, 30k TPM, local auth off;
+- Foundry: gpt-5.4-mini, Global Standard, 30k TPM, local auth off (data at rest in `swedencentral`; prompts, which carry only the metrics-only fact sheet, may be processed in any Azure region: [ADR 0027](adr/0027-ai-model-provider-foundry-and-local-dev.md) amendment "deployment type", [ADR 0026](adr/0026-training-insights-agent-and-grounding.md) amendment);
 - Azure Maps Gen2: server-side geocoding (Entra MI) capped by a **durable global** budget of 75 calls/day (≤ 2,325/month, under the free 5,000); SAS display built but off by default ([ADR 0033](adr/0033-production-maps-and-azure-maps.md) + amendment);
 - Log Analytics + App Insights: OpenTelemetry via the Azure Monitor exporter (only with a connection string; 5 traces/s).
 
@@ -96,7 +96,7 @@ The topology is one `prod` environment in `swedencentral`, with the Azure Maps a
 - Three digest-pinned images: `api` (≈ 101 MB), `web` (≈ 27 MB), `migrate` (≈ 116 MB), tagged `sha-<sha>`. ACR Basic has no retention policy; old tags are pruned by hand.
 - CI deploys (`deploy.yml`, OIDC, off until `DEPLOY_ENABLED=true`) in a fixed order: images, then the migration job, then the apps, then `smoke.sh`, with automatic rollback when the update started and the smoke test did not pass (including partial failure and cancellation), all behind the GitHub environment `prod` approval. Dispatched refs must be ancestors of `origin/main`.
 
-**Cost** ([ADR 0034](adr/0034-cost-guardrails-and-observability.md) + amendment): about $5.5/month idle, about $220–320 in the guarded worst case. Guardrails: an RG budget of $25 (Actual 40/80/100 %, Forecasted 100 %), alerts on Foundry `TokenTransaction`, SQL `free_amount_remaining`, App Insights failed requests and Maps `Usage` (> 200/day), a Log Analytics cap of 0.15 GB/day, and no SQL wake from probes, anonymous health calls or idle cleanup ticks.
+**Cost** ([ADR 0034](adr/0034-cost-guardrails-and-observability.md) + amendment): about $5.5/month idle, about $211–300 in the guarded worst case (Global Standard AI prices since 2026-11-04). Guardrails: an RG budget of $25 (Actual 40/80/100 %, Forecasted 100 %), alerts on Foundry `TokenTransaction`, SQL `free_amount_remaining`, App Insights failed requests and Maps `Usage` (> 200/day), a Log Analytics cap of 0.15 GB/day, and no SQL wake from probes, anonymous health calls or idle cleanup ticks.
 
 ## 7. CI
 

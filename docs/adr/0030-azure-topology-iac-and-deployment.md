@@ -1,6 +1,6 @@
 # 0030 – Azure topology, IaC (Bicep + azd) and the deploy pipeline
 
-**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, see the end)
+**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, and 2026-11-04 for the Foundry deployment type, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -23,7 +23,7 @@ Verified on 2026-11-04:
 - The pieces this project needs are hand-tuned settings that Aspire's ACA output does not cover:
   - SQL free offer flags and Entra-only admin;
   - Maps CORS;
-  - a Foundry Data Zone deployment;
+  - a Foundry Data Zone deployment (→ Global Standard since 2026-11-04, see the amendment "Foundry deployment type" at the end);
   - budgets, alerts and Log Analytics caps;
   - jobs, probes and nginx;
   - a GitHub federated credential.
@@ -47,9 +47,11 @@ Verified on 2026-11-04:
    - it offers gpt-5.4-mini Data Zone Standard EU (ADR 0027 §Verification), Container Apps, the SQL free offer, Key Vault and Storage;
    - processing stays in the EU.
 
+   (→ 2026-11-04: the model deployment is Global Standard, so AI prompts may be processed outside the EU; the region choice stands, see the amendment "Foundry deployment type" at the end.)
+
    The **Maps account goes to `westeurope`**. A Maps account in location `global` cannot use managed identities ([Maps auth](https://learn.microsoft.com/azure/azure-maps/azure-maps-authentication)), and West/North Europe sit behind `eu.atlas.microsoft.com`.
 
-   `polandcentral` (closest to Gliwice, also in the Data Zone table) is an alternative (plan Q2); latency is not a deciding factor here.
+   `polandcentral` (closest to Gliwice, also in the Data Zone table) is an alternative (plan Q2); latency is not a deciding factor here. (→ it is also in the Global Standard table; the Data Zone quota there is 0 as well, see the amendment at the end.)
 4. **Topology:**
    - **Container Apps environment:** Consumption plan, no VNet, no private endpoints, no planned-maintenance configuration (each would trigger the per-environment management meter).
    - **Apps and jobs:**
@@ -144,6 +146,15 @@ Nothing exists in Azure. Everything below is verified offline (CI) only.
 - role-assignment propagation on the first provision (apps may fail to pull or read the vault for a few minutes);
 - whether built-in **Container Apps Contributor** is enough for `az containerapp update`/`job update`/`job start` (the reviewer believes `Microsoft.App/containerApps/*` covers write) and the **Container Apps Jobs Contributor** GUID `4e3d2b60-…` (G2/G4);
 - the budget `startDate` semantics with a first-of-month date set on a later day of the month (G1/G2).
+
+## Amendment (2026-11-04, Foundry deployment type)
+
+User decision 2026-11-04 (M7 plan §12 deviation **D-AI**; normative detail in the [ADR 0027 amendment "deployment type"](0027-ai-model-provider-foundry-and-local-dev.md#amended-2026-11-04-deployment-type)).
+
+- **Foundry deployment:** gpt-5.4-mini **Global Standard** (`infra/modules/foundry.bicep`: `sku: { name: 'GlobalStandard', capacity: capacityKtpm }`, 30k TPM), not Data Zone Standard. The read-only quota check found `OpenAI.DataZoneStandard.gpt-5.4-mini` = 0 in westeurope, swedencentral, polandcentral, germanywestcentral and francecentral, and `OpenAI.GlobalStandard.gpt-5.4-mini` = 1 000k TPM with 700k used (300k free).
+- **Region (§3) unchanged: `swedencentral`.** It still offers gpt-5.4-mini as Global Standard ([region availability](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability), Global Standard → Europe, page updated 2026-10-19), plus Container Apps, the SQL free offer, Key Vault and Storage. `polandcentral` is no longer an advantage for AI quota (Data Zone is 0 there too).
+- **§3 "processing stays in the EU" is narrowed:** all resources and data at rest stay in the EU (Foundry included), but **AI prompts and responses may be processed in any Azure region** ([deployment types](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types)). Only the metrics-only fact sheet is sent ([ADR 0026 amendment](0026-training-insights-agent-and-grounding.md)).
+- Switching back to Data Zone if EU quota is granted: one Bicep value + G1 + G2.
 
 ## References (checked 2026-11-04)
 

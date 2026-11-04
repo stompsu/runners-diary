@@ -350,7 +350,7 @@ The fact sheet (excerpt, demo 12-week view, values illustrative):
 | Fixture predicates drift from the demo data | The demo summary vanishes or lies | Every-today-for-a-year test + startup validation; the predicates make lying impossible (worst case: hidden). |
 | Model retirement / new-customer block (12 months) | M7 cannot deploy the chosen model | Deployment name is config; re-check in M7; candidates listed in ADR 0027. |
 | Long synchronous request (≤ ~65 s) behind the proxies | Proxy timeout | 30 s per attempt; Vite and ACA ingress allow ≥ 240 s ⚠ (verify the ACA web tier in M7); Cancel button. |
-| Personal data sent to a model provider | Privacy | No free text, no HR (Q6), no ids; Data Zone EU (Q8); the card's "what the model sees" note. |
+| Personal data sent to a model provider | Privacy | No free text, no HR (Q6), no ids; Data Zone EU (Q8; superseded 2026-11-04: Global Standard, so the metrics-only fact sheet is the residency safeguard, ADR 0026/0027 amendments); the card's "what the model sees" note. |
 
 ## 6. Test plan outline (qa-tester)
 
@@ -448,11 +448,12 @@ Tests: no new packages; `ScriptedChatClient` is about 60 lines over `IChatClient
 3. **Only if Q9 = yes:** you create the following yourself, or explicitly confirm an agent may, after reviewing the exact commands given at step 6:
    - one **Microsoft Foundry resource** (kind `AIServices`, local auth disabled) in an EU region that offers gpt-5.4-mini as Data Zone Standard (e.g. Sweden Central);
    - one **gpt-5.4-mini** deployment (Data Zone Standard, a small capacity such as 10k TPM);
+   - *(superseded 2026-11-04: M7 deploys Global Standard, 30k TPM, in `swedencentral`; the subscription has no Data Zone quota for gpt-5.4-mini. See the ADR 0027 amendment "deployment type".)*
    - the role **Cognitive Services User** for your own account on that resource.
 
    Then run `dotnet user-secrets set "Ai:Endpoint" "https://<resource>.openai.azure.com/"` and `… "Ai:Deployment" "<deployment name>"` in the AppHost, and `az login`. **No keys.**
 
-   **Cost:** no fixed fee for a pay-per-token deployment (⚠ to be re-checked in M7). About $0.012 per summary, so the live eval (8 cases × 3 runs, ≤ 2 attempts) is ≈ $0.30–0.60. Delete the deployment afterwards, or keep it for M7.
+   **Cost:** no fixed fee for a pay-per-token deployment (⚠ to be re-checked in M7). About $0.012 per summary, so the live eval (8 cases × 3 runs, ≤ 2 attempts) is ≈ $0.30–0.60. Delete the deployment afterwards, or keep it for M7. *(Superseded: the M7 estimate is ≤ ~$0.68 at Global Standard prices since 2026-11-04, M7 plan §4.)*
 
 ## 9. Open questions (recommended defaults in bold)
 
@@ -463,7 +464,7 @@ Tests: no new packages; `ScriptedChatClient` is about 60 lines over `IChatClient
 5. **Guests generating at all:** **yes, up to 3 when AI is configured, plus the free example summary on the default view**, or the example summary only (zero guest spend).
 6. **Heart rate to the model:** **excluded** (health data minimization), or include the weekly easy-run average HR.
 7. **Failed or timed-out attempts count toward quota:** **yes** (tokens were spent), or only successful generations.
-8. **Deployment type:** **Data Zone Standard EU** (+10 %, processing stays in the EU), or Global Standard.
+8. **Deployment type:** **Data Zone Standard EU** (+10 %, processing stays in the EU), or Global Standard. *(Superseded 2026-11-04: Global Standard, see the answer below.)*
 9. **Live check:** **in M7 with the deployment**, the same precedent as Azure Maps in M4, or now in step 6 (you create the Foundry resource; ≈ $0.30–0.60).
 10. **Demo fixtures:** **one hand-written fixture for the default view, labelled "Example summary"**, or more presets (this month, last week). More presets need more predicates and fail more often across "today".
 
@@ -475,7 +476,7 @@ Tests: no new packages; `ScriptedChatClient` is about 60 lines over `IChatClient
 - Q5: guests may generate 3 times, plus the example summary.
 - Q6: heart rate excluded.
 - Q7: failed attempts count.
-- Q8: Data Zone Standard EU.
+- Q8: Data Zone Standard EU. **Superseded 2026-11-04: Global Standard** (user decision in M7). The subscription's `OpenAI.DataZoneStandard.gpt-5.4-mini` quota is 0 in every EU region checked; Global Standard has 300k TPM free. Data at rest stays in `swedencentral`; prompts may be processed worldwide, which the user accepts because only the metrics-only fact sheet is sent. Details: ADR 0027 amendment "deployment type", ADR 0026 amendment, M7 plan §12 D-AI.
 - Q9: live check in M7.
 - Q10: one demo fixture for the default view.
 
@@ -507,12 +508,12 @@ Tests: no new packages; `ScriptedChatClient` is about 60 lines over `IChatClient
 **Verified against Microsoft Learn (MCP server, 2026-11-04):** see ADR 0027 §Verification.
 - `ChatClientAgent(chatClient, instructions:)`, `RunAsync<T>`, `ChatResponseFormat.ForJsonSchema<T>()`, and `AgentResponse.Usage` (`UsageDetails?`).
 - Nullable fields via a union with `null` / `anyOf` in strict schemas. `maxLength`, `minItems` and `maxItems` are unsupported, so the validator enforces lengths (ADR 0026 §2).
-- gpt-5.4-mini Data Zone Standard EU, including swedencentral (not northeurope).
+- gpt-5.4-mini Data Zone Standard EU, including swedencentral (not northeurope). (Region availability only; the subscription quota turned out to be 0, so M7 uses Global Standard, superseded 2026-11-04.)
 - Cognitive Services User role, the `https://ai.azure.com/.default` scope, and the reasoning-model parameters. `reasoning_effort: none` is not documented; `low` is used.
 - The step-2 spike still compiles against 1.27.0 to confirm the exact signatures.
 
 **Not verified:**
-- gpt-6-luna lifecycle (absent from the retirement schedule). It is in the EU Data Zone table except northeurope;
+- gpt-6-luna lifecycle (absent from the retirement schedule). It is in the EU Data Zone table except northeurope; (2026-11-04: the subscription has EU Data Zone quota 100 for it, so it is the EU-processing alternative for the M7 live eval, ADR 0027 amendment "deployment type");
 - whether a pay-per-token Foundry deployment has any fixed monthly cost;
 - the Azure pricing web page itself, whose prices render client-side (retail API figures used instead);
 - the ACA ingress request timeout (M7).

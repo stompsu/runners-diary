@@ -1,6 +1,6 @@
 # 0026 – Training Insights agent: fact-sheet input, placeholder-only numbers, server-side validation
 
-**Status:** Accepted (M6 plan approved 2026-11-04; verified against Microsoft Learn) · Amended 2026-11-04 (implementation, see the end)
+**Status:** Accepted (M6 plan approved 2026-11-04; verified against Microsoft Learn) · Amended 2026-11-04 (implementation, see the end) · Amended 2026-11-04 (fact sheet as the data-residency safeguard, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -200,3 +200,10 @@ What the implementation on branch `m6-ai-summary` changed or made precise. Detai
   - the top 8 run types (`type.N.*`, by duration);
   - the 6 most recent races (`race.N.*`, `race.1` is the oldest listed). `races.*Count` still covers all races.
 - The cap stays 24 000 characters. The demo default view is about 16.2k characters.
+
+## Amended 2026-11-04 (fact sheet as the data-residency safeguard)
+
+- The production model deployment is **Global Standard**, not Data Zone EU ([ADR 0027 amendment "deployment type"](0027-ai-model-provider-foundry-and-local-dev.md#amended-2026-11-04-deployment-type)): the user's subscription has no EU Data Zone quota for gpt-5.4-mini. Data at rest stays in `swedencentral`, but **prompts and responses may be processed in any Azure region worldwide**.
+- The §1 rule "no free text, names, notes, location, heart rate or ids reach the model" is therefore **also the data-residency safeguard**, not only the injection and minimization rule. What leaves the EU is the fact sheet: numeric training metrics, dates and run-type codes.
+- **Any future fact-sheet addition must stay metrics-only** (a `factSheetVersion` bump is the review point). The CI eval assertion "no user free text in the request" (§7) guards it; anything that would add personal or free-text data needs a new ADR and, while the deployment is Global Standard, the user's explicit consent.
+- The SPA's "what the model sees" note stays accurate; it does not name a processing location.
