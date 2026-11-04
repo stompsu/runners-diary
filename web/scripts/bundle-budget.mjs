@@ -10,7 +10,8 @@ import { gzipSync } from 'node:zlib'
 const BASELINE_BYTES = 201_242
 const ALLOWED_GROWTH_BYTES = 5 * 1024
 /** Chunk groups from vite.config.ts that must only ever be reached through dynamic import(). */
-const LAZY_ONLY = ['map-vendor', 'chart-vendor']
+// M5: the insights route chunk (dashboard, cards, charts, `insights` strings) is reached through the lazy /insights route.
+const LAZY_ONLY = ['map-vendor', 'chart-vendor', 'InsightsPage']
 
 const dist = join(import.meta.dirname, '..', 'dist')
 const gzipSize = (file) => gzipSync(readFileSync(join(dist, file)), { level: 9 }).length

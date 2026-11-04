@@ -15,9 +15,5 @@
     "degraded": "API degraded",
     "unhealthy": "API unavailable"
   },
-  "insights": {
-    "title": "Insights",
-    "placeholder": "Training insights arrive in M5."
-  },
   "close": "Close"
 }

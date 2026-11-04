@@ -18,6 +18,7 @@ import {
   type RunWriteRequest,
 } from './handlers.ts'
 import { matches, type Fault } from './faults.ts'
+import { buildInsightsReport, validateInsightsQuery, type InsightsScenario } from './insights.ts'
 import { demoRuns, RUN_TYPES } from './seed.ts'
 import {
   inspectGpx,
@@ -38,6 +39,7 @@ export { faults, type Fault } from './faults.ts'
 export { RUN_TYPES, demoRuns, typeId } from './seed.ts'
 export type { ClientConfigResponse, RunDto, RunWriteRequest } from './handlers.ts'
 export { sampleGpx, type TrackDto } from './tracks.ts'
+export { DEMO_REPORT_TODAY, demoReport, type InsightsReportDto, type InsightsScenario } from './insights.ts'
 
 /** A track to put straight into an account (test setup; the upload path is `POST /api/runs/{id}/tracks`). */
 export interface TrackSeed {
@@ -63,6 +65,8 @@ export interface FakeApiOptions {
   demoTracks?: boolean
   /** `client-config.maps.geocodingEnabled` and the availability of `/api/geocoding/search`. Default false. */
   geocodingEnabled?: boolean
+  /** What `GET /api/insights/report` answers with (see `InsightsScenario`). Default `demo`. */
+  insights?: InsightsScenario
   limits?: Partial<Limits>
   /** Clock in ms, for token expiry and timestamps. Default `Date.now`. */
   now?: () => number
@@ -105,6 +109,7 @@ export interface FakeApi {
   /** Test inspection: the tracks of a run (stored DTOs), newest first. */
   tracksOf(token: string, runId: string): TrackDto[]
   setGeocodingEnabled(enabled: boolean): void
+  setInsightsScenario(scenario: InsightsScenario): void
   /** Requests seen so far, `"METHOD /path"`. */
   readonly requests: string[]
 }
@@ -126,6 +131,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const now = options.now ?? Date.now
   const guestTtlMs = options.guestTtlMs ?? DAY_MS
   let geocodingEnabled = options.geocodingEnabled ?? false
+  let insightsScenario: InsightsScenario = options.insights ?? 'demo'
 
   const accounts = new Map<string, Account>() // token -> account
   const faultList: Fault[] = []
@@ -404,6 +410,26 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       }
     }
 
+    if (method === 'GET' && path === '/api/insights/report') {
+      const url = new URL(request.url)
+      const query = {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        compare: url.searchParams.get('compare'),
+      }
+      const errors = validateInsightsQuery(query)
+      if (errors) return validation(errors)
+      return json(
+        buildInsightsReport(
+          { from: query.from!, to: query.to!, compare: query.compare ?? 'previous' },
+          today,
+          insightsScenario,
+        ),
+        200,
+        { 'Cache-Control': 'private, no-store' },
+      )
+    }
+
     const trackResponse = await routeTracks(request, account, path)
     if (trackResponse) return trackResponse
 
@@ -575,6 +601,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tracksOf: (token, runId) =>
       [...(accounts.get(token)?.tracks.values() ?? [])].filter((t) => t.dto.runId === runId).map((t) => t.dto),
     setGeocodingEnabled: (enabled) => void (geocodingEnabled = enabled),
+    setInsightsScenario: (scenario) => void (insightsScenario = scenario),
     requests,
   }
 }

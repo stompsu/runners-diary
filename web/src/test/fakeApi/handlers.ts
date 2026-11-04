@@ -42,6 +42,7 @@ export type HandledOperations = Pick<
   | 'downloadTrackGpx'
   | 'deleteTrack'
   | 'searchPlaces'
+  | 'getInsightsReport'
 >
 
 export interface Account {

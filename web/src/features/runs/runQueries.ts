@@ -32,6 +32,8 @@ export function useInvalidateRuns() {
       const jobs = [
         queryClient.invalidateQueries({ queryKey: ['get', '/api/calendar/months/{year}/{month}'] }),
         queryClient.invalidateQueries({ queryKey: ['get', '/api/runs'] }),
+        // Insights totals, load and races are computed from the runs (M5 AC14); the report is never cached server-side.
+        queryClient.invalidateQueries({ queryKey: ['get', '/api/insights/report'] }),
       ]
       if (runId) {
         jobs.push(

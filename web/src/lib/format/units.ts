@@ -64,6 +64,12 @@ export function formatPace(
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')} /km`
 }
 
+/** "5:51 /km" from a pace in seconds per kilometre (the insights report ships paces, not durations). */
+export function formatPaceValue(secondsPerKm: number): string {
+  const total = Math.round(secondsPerKm)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')} /km`
+}
+
 /** "+3 m" / "-2 m" / "0 m": a signed elevation change (splits table). */
 export function formatElevationDelta(meters: number, locale: string): string {
   return new Intl.NumberFormat(locale, {

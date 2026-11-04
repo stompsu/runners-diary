@@ -6,6 +6,7 @@ using RunnersDiary.Api.Features.ClientConfig;
 using RunnersDiary.Api.Features.Geocoding;
 using RunnersDiary.Api.Features.GuestSessions;
 using RunnersDiary.Api.Features.Health;
+using RunnersDiary.Api.Features.Insights;
 using RunnersDiary.Api.Features.Account;
 using RunnersDiary.Api.Features.RunTypes;
 using RunnersDiary.Api.Features.Runs;
@@ -116,6 +117,7 @@ api.MapMeEndpoints();
 api.MapRunTypeEndpoints();
 api.MapRunEndpoints();
 api.MapCalendarEndpoints();
+api.MapInsightsEndpoints();
 // The upload route's body limit is fixed at mapping time from configuration (the other routes keep the 64 KB default).
 api.MapTrackEndpoints(gpxLimits);
 api.MapGeocodingEndpoints();

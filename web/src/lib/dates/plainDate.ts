@@ -151,6 +151,21 @@ export function shortDayLabel(value: PlainDate, locale: string): string {
   return labelFormat({ month: 'short', day: 'numeric' }, locale, value)
 }
 
+/** "Aug 17 – Nov 8, 2026" (one date when `from` equals `to`); the range collapses shared parts per locale. */
+export function rangeLabel(from: PlainDate, to: PlainDate, locale: string): string {
+  const a = mustParse(from)
+  const b = mustParse(to)
+  const formatter = new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+  const start = utcMs(a.year, a.month, a.day)
+  const end = utcMs(b.year, b.month, b.day)
+  return start === end ? formatter.format(start) : formatter.formatRange(start, end)
+}
+
 /** Weekday names Monday-first, e.g. ["Mon", …] or ["Monday", …]. */
 export function weekdayLabels(locale: string, width: 'short' | 'long' | 'narrow' = 'short'): string[] {
   // 2024-01-01 was a Monday.

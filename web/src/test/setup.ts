@@ -23,7 +23,18 @@ vi.stubGlobal('fetch', vi.fn())
 const nodeFormData = (
   await new Response('a=1', { headers: { 'content-type': 'application/x-www-form-urlencoded' } }).formData()
 ).constructor as typeof FormData
-vi.stubGlobal('FormData', nodeFormData)
+// The Proxy returns an EMPTY FormData in exactly one case: the first constructor argument is a jsdom
+// HTMLFormElement. React 19 builds `new FormData(form, submitter)` itself when a submit handler starts a transition
+// (react-router navigations do) and ignores the result there; Node's class would throw on a jsdom form. Consequence:
+// a test (or app code) that reads fields via `new FormData(formElement)` gets NO entries under test. Read form values
+// through react-hook-form / controlled state or from the event instead; every other call is passed through unchanged.
+vi.stubGlobal(
+  'FormData',
+  new Proxy(nodeFormData, {
+    construct: (target, args: unknown[]) =>
+      args[0] instanceof HTMLFormElement ? new target() : Reflect.construct(target, args),
+  }),
+)
 vi.stubGlobal('Blob', NodeBlob)
 vi.stubGlobal('File', NodeFile)
 

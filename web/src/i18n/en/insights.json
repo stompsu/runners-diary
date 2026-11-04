@@ -1,0 +1,215 @@
+{
+  "title": "Insights",
+  "intro": "Your training load and trends, computed from the runs you logged.",
+  "loading": "Loading insights",
+  "refreshing": "Updating",
+  "sections": {
+    "summary": "Summary",
+    "load": "Training load",
+    "charts": "Charts",
+    "races": "Race results"
+  },
+  "period": {
+    "groupLabel": "Period",
+    "views": {
+      "week": "This week",
+      "month": "This month",
+      "12w": "Last 12 weeks",
+      "ytd": "Year to date",
+      "custom": "Custom"
+    },
+    "earlier": "Show earlier period",
+    "later": "Show later period",
+    "current": "Showing {{range}}",
+    "partial": "Partial period: data through {{date}} ({{elapsed}} of {{days}} days).",
+    "custom": {
+      "legend": "Custom period",
+      "from": "From",
+      "to": "To",
+      "apply": "Show period",
+      "errors": {
+        "invalidFrom": "Enter a valid start date.",
+        "invalidTo": "Enter a valid end date.",
+        "toBeforeFrom": "The end date must not be before the start date.",
+        "tooLong": "A period can be at most 366 days.",
+        "outOfRange": "Dates must be between 1950 and 2100."
+      }
+    }
+  },
+  "compare": {
+    "label": "Compare with",
+    "previous": "Previous period",
+    "previousYear": "Same period last year",
+    "none": "No comparison",
+    "comparedWith": "Compared with {{range}} ({{kind}}).",
+    "noComparison": "No comparison is available for this period.",
+    "partialRange": "{{range}} (the same number of elapsed days)"
+  },
+  "kpi": {
+    "distance": "Distance",
+    "duration": "Time",
+    "runs": "Runs",
+    "elevation": "Elevation gain",
+    "load": "Training load",
+    "pace": "Average pace"
+  },
+  "delta": {
+    "up": "Up {{amount}} ({{percent}})",
+    "down": "Down {{amount}} ({{percent}})",
+    "slower": "Slower {{amount}} ({{percent}})",
+    "faster": "Faster {{amount}} ({{percent}})",
+    "same": "No change",
+    "vs": "vs {{range}}"
+  },
+  "planned": {
+    "title": "Planned",
+    "none": "No planned runs in this period.",
+    "summary_one": "{{count}} planned run: {{distance}}, {{time}}.",
+    "summary_other": "{{count}} planned runs: {{distance}}, {{time}}.",
+    "upcoming": "{{count}} upcoming",
+    "missed": "{{count}} missed (planned before today and not completed)"
+  },
+  "acwr": {
+    "title": "Load change vs your recent norm",
+    "label": "Acute:chronic workload ratio",
+    "value": "Ratio on {{date}}",
+    "band": {
+      "low": "Low: your last 7 days were lighter than your recent norm.",
+      "optimal": "Optimal: your last 7 days were in line with your recent norm.",
+      "high": "High: your last 7 days were heavier than your recent norm."
+    },
+    "bandShort": {
+      "low": "Low",
+      "optimal": "Optimal",
+      "high": "High"
+    },
+    "acute": "Last 7 days",
+    "chronic": "Recent norm (4 weeks before, per week)",
+    "insufficientHistory": "Available after {{days}} days of logged training; {{logged}} so far.",
+    "noChronicLoad": "There was no logged training in the 4 weeks before the last 7 days, so there is nothing to compare with.",
+    "peak": "Highest in this period: {{value}} on {{date}} ({{band}}).",
+    "bandDays": "Days in this period: {{low}} low, {{optimal}} optimal, {{high}} high, {{unavailable}} without a ratio.",
+    "meansTitle": "What this means:",
+    "means": "The ratio compares your training load of the last 7 days with the weekly average of the 4 weeks before. It shows how much your load changed compared with your recent norm.",
+    "notTitle": "What it does not mean:",
+    "not": "It does not predict injury and it is not medical advice. A high or low value only says that this week looked different from your recent weeks.",
+    "thresholds": "Bands: low below {{low}}, optimal {{low}} to {{high}}, high above {{high}}."
+  },
+  "monotony": {
+    "title": "Weekly monotony",
+    "week": "Last complete week: {{range}}",
+    "value": "Monotony",
+    "strain": "Strain",
+    "uniform": "Your days looked alike that week, with little difference between hard and easy days.",
+    "varied": "Your days differed between hard and easy that week.",
+    "unavailable": "Not available for that week: it needs training on at least two days with different load.",
+    "noWeek": "Not available yet: there is no complete week in this period.",
+    "explain": "Monotony is the average daily load divided by its day-to-day variation; strain is the weekly load times monotony. Values above {{high}} mean a week without much variety compared with your usual pattern. This describes the week, it does not predict injury."
+  },
+  "empty": {
+    "title": "No completed runs in this period",
+    "body": "Log a run or pick another period to see totals and charts.",
+    "addRun": "Add a run"
+  },
+  "quality": {
+    "title": "About these numbers",
+    "estimated": "{{share}} of the training load comes from {{count}} sessions without a logged effort (RPE); a typical effort for the run type was used. Log RPE for more accurate load.",
+    "noDuration": "{{count}} sessions have no duration and count as zero load.",
+    "noDistance": "{{count}} runs have no distance and are left out of distance and pace."
+  },
+  "chart": {
+    "showData": "Show data",
+    "tableRegion": "{{title}}: data table",
+    "legend": "Legend",
+    "completed": "Completed",
+    "planned": "Planned",
+    "period": "Period",
+    "date": "Date",
+    "noData": "No data for this period."
+  },
+  "volume": {
+    "metricLabel": "Measure",
+    "metrics": {
+      "distance": "Distance",
+      "duration": "Time",
+      "load": "Load",
+      "elevation": "Elevation"
+    },
+    "week": "Week of {{date}}",
+    "weekShort": "W{{week}}",
+    "plannedNote": "Hatched bars are planned runs not yet completed.",
+    "titleWeek": "Volume by week",
+    "titleMonth": "Volume by month",
+    "summaryWeek": "Highest week: {{label}} with {{value}}; average {{average}} per week over {{total}} weeks.",
+    "summaryMonth": "Highest month: {{label}} with {{value}}; average {{average}} per month over {{total}} months."
+  },
+  "loadChart": {
+    "title": "Acute and chronic load",
+    "summary": "On {{date}} the acute load was {{acute}} and the chronic load {{chronic}}.",
+    "summaryNoChronic": "On {{date}} the acute load was {{acute}}; there is no chronic load yet.",
+    "acute": "Acute (last 7 days)",
+    "chronic": "Chronic (weekly average of the 4 weeks before)",
+    "daily": "Daily load"
+  },
+  "acwrChart": {
+    "title": "Load change over time",
+    "summary": "On {{date}} the ratio was {{value}} ({{band}}). It was low on {{low}} days, optimal on {{optimal}} and high on {{high}}.",
+    "summaryUnavailable": "No ratio is available on {{date}}.",
+    "value": "Ratio",
+    "band": "Band"
+  },
+  "types": {
+    "title": "Time by run type",
+    "summary": "{{label}} took the largest share of your time: {{share}} of {{time}}.",
+    "type": "Run type",
+    "runs": "Runs",
+    "distance": "Distance",
+    "time": "Time",
+    "share": "Share of time",
+    "load": "Load",
+    "category": {
+      "Race": "Race",
+      "Training": "Training",
+      "Other": "Other"
+    }
+  },
+  "pace": {
+    "title": "Easy-run pace",
+    "summaryFaster": "Easy-run pace got faster by {{amount}} per week on average.",
+    "summarySlower": "Easy-run pace got slower by {{amount}} per week on average.",
+    "summaryFlat": "Easy-run pace stayed about the same.",
+    "notEnough": "Not enough weeks with easy runs for a trend; it needs at least 4.",
+    "none": "No easy runs in this period. The trend uses runs of the type Easy run on roads and tracks; trail runs and very short runs are left out.",
+    "excluded": "{{count}} easy runs were left out (trail surface, under 1 km or an unusual pace).",
+    "week": "Week of",
+    "runs": "Runs",
+    "distance": "Distance",
+    "pace": "Pace",
+    "heartRate": "Average heart rate",
+    "fasterIsUp": "Pace in min/km; faster is higher on the chart."
+  },
+  "races": {
+    "title": "Race results",
+    "none": "No races in this period.",
+    "region": "Race results table",
+    "date": "Date",
+    "name": "Race",
+    "distance": "Distance",
+    "result": "Result",
+    "target": "Target {{time}}",
+    "pace": "Pace",
+    "place": "Place",
+    "placeOverall": "{{place}} overall",
+    "placeCategory": "{{place}} in {{category}}",
+    "rating": "Rating",
+    "stars": "{{count}} of 5",
+    "planned": "Planned",
+    "personalBest": "Personal best",
+    "personalBestHint": "Fastest result at this distance so far",
+    "status": "Status",
+    "completed": "Completed"
+  },
+  "error": {
+    "invalidPeriod": "This period is not valid."
+  }
+}

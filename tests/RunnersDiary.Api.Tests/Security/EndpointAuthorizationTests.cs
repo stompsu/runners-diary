@@ -133,6 +133,16 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
     }
 
     [Fact]
+    public void The_insights_report_exists_requires_authorization_and_uses_the_general_limiter()
+    {
+        var endpoint = Assert.Single(Endpoints(), e => Key(e) == "GET /api/insights/report");
+
+        Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+        Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+        Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+    }
+
+    [Fact]
     public void GuestSessions_exists_allows_anonymous_and_carries_the_guest_create_limiter()
     {
         var endpoint = Assert.Single(Endpoints(), e => Route(e) == "/api/guest-sessions");

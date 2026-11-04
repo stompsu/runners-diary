@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Guests;
 using RunnersDiary.Infrastructure.Identity;
+using RunnersDiary.Infrastructure.Insights;
 using RunnersDiary.Infrastructure.Maps;
 using RunnersDiary.Infrastructure.Persistence;
 using RunnersDiary.Infrastructure.Runs;
@@ -80,6 +81,7 @@ public static class DependencyInjection
         builder.Services.AddSingleton<DemoDataSeeder>();
         builder.Services.AddSingleton<GuestCleanup>();
         builder.Services.AddSingleton<GuestAccountService>();
+        builder.Services.AddScoped<IInsightsReportService, InsightsReportService>();
         if (builder.Configuration.GetValue("Guests:Cleanup:Enabled", true))
         {
             builder.Services.AddHostedService<GuestCleanupService>();
