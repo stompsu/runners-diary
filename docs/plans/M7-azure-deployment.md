@@ -679,6 +679,13 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 - **Missing approval:** the `prod` environment had only a branch policy and no **Required reviewers** rule. Without it, the automatic run after green CI would deploy unattended. The user is added as required reviewer before deploys are enabled.
 - **OIDC login failed:** `AADSTS700213: No matching federated identity record`. The repository uses GitHub's immutable OIDC subject (`use_immutable_subject: true`, the default for repositories since 2026), so the token subject is `repo:stompsu@12047598/runners-diary@1444016204:environment:prod`, while the federated credential expected `repo:stompsu/runners-diary:environment:prod`. Fix (user chose the immutable format): new Bicep params `githubOwnerId`/`githubRepositoryId` (public numeric ids); `github-oidc.bicep` builds the immutable subject when both are set. The credential `github-prod` is updated in place by the next `azd provision`.
 
+#### G4: first deploy, run 1 (2026-11-04, approved by the user)
+
+- **Passed:** OIDC login (immutable subject), build and push of the three `sha-31f64ce` images, and **the migration job**. That run proves the migrator identity, the Entra-only SQL login and `CREATE USER … WITH SID` with the client id. The app and job updates also passed.
+- **Smoke test failed:** `GET / has no Content-Security-Policy header`. Cause: provisioning on the placeholder image sets the ingress `targetPort` to 80 with no probes (review M1), and `az containerapp update --image` changes only the image. Our images listen on 8080, so ingress answered with a Container Apps error page.
+- **Rollback worked:** all three apps were restored to the placeholder. The migration stays applied (forward-only, harmless).
+- **Fix:** `deploy.yml` now runs `az containerapp ingress update --target-port 8080` for `api` and `web` after the image update. The rollback sets the port back to 80 for the placeholder, or 8080 for one of our images. The first `azd provision` after a successful deploy sees a real image and restores the startup/liveness/readiness probes.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |

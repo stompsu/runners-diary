@@ -167,6 +167,10 @@ jobs:
           az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
           az containerapp update --name api --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
           az containerapp update --name web --resource-group "$RESOURCE_GROUP" --image "$WEB_IMAGE" -o none
+          # Our images listen on 8080. Provisioning on the placeholder image sets the ingress to 80 (and no probes), and
+          # `update --image` leaves the port alone, so set it here. The next azd provision also restores the probes.
+          az containerapp ingress update --name api --resource-group "$RESOURCE_GROUP" --target-port 8080 -o none
+          az containerapp ingress update --name web --resource-group "$RESOURCE_GROUP" --target-port 8080 -o none
 
       - name: Smoke test
         id: smoke
@@ -185,6 +189,10 @@ jobs:
           if [ -z "$PREVIOUS_API" ] || [ -z "$PREVIOUS_WEB" ] || [ -z "$PREVIOUS_CLEANUP" ]; then echo "::error::Previous images unknown; cannot roll back."; exit 1; fi
           az containerapp update --name api --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_API" -o none
           az containerapp update --name web --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_WEB" -o none
+          # The provisioning placeholder serves on 80, our images on 8080.
+          port_for() { case "$1" in mcr.microsoft.com/k8se/quickstart:*) echo 80 ;; *) echo 8080 ;; esac; }
+          az containerapp ingress update --name api --resource-group "$RESOURCE_GROUP" --target-port "$(port_for "$PREVIOUS_API")" -o none
+          az containerapp ingress update --name web --resource-group "$RESOURCE_GROUP" --target-port "$(port_for "$PREVIOUS_WEB")" -o none
           az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_CLEANUP" -o none
           echo "::error::Rolled back to $PREVIOUS_API and $PREVIOUS_WEB. A migration that already ran is not undone (forward-only, ADR 0032)."
           exit 1
