@@ -193,3 +193,7 @@ The first deploy needed four runs; each failure was caught by the smoke test and
 
 After the first successful deploy, one `azd provision --no-state` turned the placeholder settings into port 8080 with our probes. `--no-state` is needed because `azd provision` compares only its template/parameter hash, not the live state. G5 then confirmed the per-visitor guest limit through the whole forwarding chain (ADR 0029) and the main screens under the production CSP.
 
+## Amendment: custom domain (2026-11-05)
+
+The `web` app can carry one custom domain (`CUSTOM_DOMAIN`, prod: `runners-diary.highpace.dev`) with a **free managed certificate**. It is bound with `bindingType: 'Auto'` (`Microsoft.App/containerApps@2026-07-01`), so the certificate created after the binding is attached automatically, and one deployment is enough. Validation is by CNAME. The domain lives in Bicep, not the portal, because a re-provision would otherwise drop it. The default `*.azurecontainerapps.io` address keeps working.
+

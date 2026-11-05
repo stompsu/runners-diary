@@ -750,6 +750,22 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 - **App Insights:** every request type succeeds except the intended 429. The calendar's p95 is about 0.4 s, including the westeurope → polandcentral SQL hop (H-4: acceptable).
 - **Observation (H-6):** guest creation reaches about 11 s at p95 when the auto-paused free SQL database resumes while the demo data (~120 runs + GPX) is written; it is about 1–2 s once SQL is awake. Acceptable for the demo; revisit if real users find the first request slow (options: a lighter demo seed, a warm-up on `web` start, or a non-free SQL tier).
 
+#### Custom domain `runners-diary.highpace.dev` (2026-11-05, prepared; provision pending the user's OK)
+
+- **DNS (set by the user, checked):** the CNAME `runners-diary.highpace.dev` points to `web.grayisland-d22ea91b.westeurope.azurecontainerapps.io`, and the TXT `asuid.runners-diary.highpace.dev` matches the environment's `customDomainVerificationId`.
+- **IaC:**
+  - New parameter `webCustomDomain` (`CUSTOM_DOMAIN`; empty = none).
+  - `app-web.bicep` (now `containerApps@2026-07-01`) adds `customDomains: [{ name, bindingType: 'Auto' }]`.
+  - A `managedEnvironments/managedCertificates` resource (`domainControlValidation: 'CNAME'`, free DigiCert certificate, renewed automatically) is created after the binding.
+  - With `Auto`, Container Apps attaches the certificate once it is issued (HTTP only until then), so a single provision is enough and re-provisioning keeps the binding.
+  - **Don't add the domain in the portal:** the next `azd provision` would remove it, because the ingress is defined in Bicep.
+- **To apply:** `azd env set CUSTOM_DOMAIN runners-diary.highpace.dev`, then the usual hooks + `azd provision`. Allow a few minutes for issuance.
+- **Requirements (Learn):**
+  - the CNAME must point straight at the app FQDN (no proxy such as Cloudflare in between);
+  - any CAA record on `highpace.dev` must allow `digicert.com`;
+  - `web` must be running during issuance and renewals (it scales from zero on the validation request).
+- **G8:** register the redirect URIs on the custom domain, `https://runners-diary.highpace.dev/redirect.html` and `/signin`, and optionally also the default FQDN. The CSP needs no change (`'self'`).
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |
