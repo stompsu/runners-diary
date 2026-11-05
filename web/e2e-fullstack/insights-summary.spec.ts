@@ -116,7 +116,9 @@ test('another period has no stored summary: the card says AI is not enabled, and
   await expect(card.getByTestId('summary-badge').or(card.getByTestId('summary-not-configured'))).toBeVisible()
   const text = (await card.textContent()) ?? ''
   expect(text).not.toMatch(/[{}]|undefined|NaN/)
-  await expect(card.getByTestId('summary-badge')).not.toHaveText('Example summary for the demo data')
+  // Either state is fine here, but never the demo example. The badge may be absent (not configured), so assert on the
+  // text rather than `not.toHaveText` on the badge, which fails when the badge doesn't exist (which month it is decides).
+  await expect(card.getByText('Example summary for the demo data')).toHaveCount(0)
   await expect(card.getByRole('button', { name: /Generate|Regenerate/ })).toHaveCount(0)
   expect(await seriousViolations(page)).toEqual([])
 
