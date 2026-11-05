@@ -700,6 +700,21 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
   - `smoke.sh` retries the first `GET /` until it gets a 200 with our CSP (`SMOKE_READY_TIMEOUT_SECONDS`, default 300), which also covers scale-from-zero.
   - After the first successful deploy, one `azd provision` writes port 8080 with our probes permanently.
 
+#### G4: first deploy, run 3 (2026-11-05, approved by the user)
+
+- **The readiness wait worked:** `api--0000005` and `web--0000005` were ready before the smoke test.
+- **Smoke checks that passed:**
+  - `GET /` returned 200 **with our CSP** (nginx live);
+  - `/redirect.html` had no COOP and was `no-store`;
+  - `/api/client-config` returned 200;
+  - **`POST /api/guest-sessions` returned 201**, a SQL write through the API's managed identity;
+  - anonymous `/api/health` returned 200.
+- **Failed:** the authenticated `/api/health` (full report) stayed at 503 for 150 s.
+  - Cause: Aspire's built-in Blob health check calls the account-level service properties, and the API identity holds Storage Blob Data Contributor **on the `gpx` container only** (ADR 0031), so the check got `403 AuthorizationPermissionMismatch`.
+  - Locally and in CI, Azurite uses the account key, with no RBAC, so tests couldn't see it.
+- **The rollback worked.**
+- **Fix (least privilege kept):** the Aspire blob health check is disabled, and a container-scoped `BlobContainerHealthCheck` ("blobs") lists at most one blob in `gpx`. Tests cover the registration, healthy and unhealthy cases.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |
