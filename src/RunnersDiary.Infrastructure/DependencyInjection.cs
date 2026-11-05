@@ -61,7 +61,9 @@ public static class DependencyInjection
             builder.Services.AddHostedService<DatabaseMigrator>();
         }
 
-        builder.AddAzureBlobServiceClient(BlobsConnectionName);
+        // Aspire's own check reads account-level properties, which the container-scoped role (ADR 0031) does not allow.
+        builder.AddAzureBlobServiceClient(BlobsConnectionName, settings => settings.DisableHealthChecks = true);
+        builder.Services.AddHealthChecks().AddCheck<BlobContainerHealthCheck>("blobs");
         builder.Services.AddSingleton<IBlobStore, AzureBlobStore>();
         if (!jobMode && builder.Configuration.GetValue<bool>(CreateContainerOnStartupKey))
         {
