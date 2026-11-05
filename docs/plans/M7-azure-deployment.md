@@ -686,6 +686,20 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 - **Rollback worked:** all three apps were restored to the placeholder. The migration stays applied (forward-only, harmless).
 - **Fix:** `deploy.yml` now runs `az containerapp ingress update --target-port 8080` for `api` and `web` after the image update. The rollback sets the port back to 80 for the placeholder, or 8080 for one of our images. The first `azd provision` after a successful deploy sees a real image and restores the startup/liveness/readiness probes.
 
+#### G4: first deploy, run 2 (2026-11-05, approved by the user)
+
+- Everything up to the app update passed again, including the migration job and the new `ingress update --target-port 8080`.
+- **Smoke test failed:** `GET / has no Content-Security-Policy header`. The system log shows a race:
+  - the image was swapped while ingress was still on 80, so the default startup probe on 80 failed and the replica restarted;
+  - the port moved to 8080 at 10:05:32, and the smoke test ran in the same second;
+  - Container Apps kept **100 % of the traffic on the old placeholder revision** (`web--0000002`) because the new one wasn't ready, so the smoke test got the placeholder's 200 without our CSP. nginx logged no request.
+- **The rollback worked again.**
+- **Fix:**
+  - `deploy.yml` sets the ingress port **before** swapping the image;
+  - it waits until `latestReadyRevisionName == latestRevisionName` for `api` and `web` (up to 5 minutes);
+  - `smoke.sh` retries the first `GET /` until it gets a 200 with our CSP (`SMOKE_READY_TIMEOUT_SECONDS`, default 300), which also covers scale-from-zero.
+  - After the first successful deploy, one `azd provision` writes port 8080 with our probes permanently.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |
