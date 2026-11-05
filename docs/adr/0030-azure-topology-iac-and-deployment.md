@@ -1,6 +1,6 @@
 # 0030 – Azure topology, IaC (Bicep + azd) and the deploy pipeline
 
-**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, 2026-11-04 for the Foundry deployment type, and 2026-11-04 for the region at G1/G2, see the end)
+**Status:** Accepted (M7 plan approved 2026-11-04; amended 2026-11-04 after Part A implementation, 2026-11-04 for the Foundry deployment type, 2026-11-04 for the region at G1/G2, and 2026-11-05 for the first deploy at G4, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -182,3 +182,14 @@ Recorded after G1 (what-if) and G2 (provision), both run with the user's explici
 - GitHub Actions OIDC with a UAMI (`azure/login`, `id-token: write`; updated 2026-11-04): https://learn.microsoft.com/azure/developer/github/connect-from-azure-openid-connect
 - Container Apps billing (Consumption free grant; management charge only for Dedicated profiles, private endpoints and planned maintenance): https://learn.microsoft.com/azure/container-apps/billing
 - Container Apps jobs (manual/scheduled triggers, cron in UTC, `az containerapp job start`, start ⇒ access to the job's secrets and identities): https://learn.microsoft.com/azure/container-apps/jobs
+
+## Amendment: first deploy (2026-11-05, G4)
+
+The first deploy needed four runs; each failure was caught by the smoke test and undone by the automatic rollback, so production never served a broken release. Three changes to the deploy path came out of it:
+
+1. **Ingress port (#16):** provisioning on the placeholder image sets the ingress `targetPort` to 80 with no probes, and `az containerapp update --image` keeps the port. `deploy.yml` now sets the target port to 8080 (80 when rolling back to the placeholder).
+2. **Readiness before smoke (#18):** Container Apps keeps the traffic on the old revision until the new one is ready. `deploy.yml` sets the port **before** swapping the images and waits until `latestReadyRevisionName == latestRevisionName` for `api` and `web`; `smoke.sh` retries the first `GET /` until it sees our CSP (default 300 s), which also covers scale-from-zero.
+3. **Container-scoped blob health check (#19):** Aspire's built-in Blob check reads account-level properties, which the API identity's container-scoped role (ADR 0031) does not allow (403 `AuthorizationPermissionMismatch`; invisible with Azurite's account key). It is replaced by `BlobContainerHealthCheck` (lists at most one blob in `gpx`).
+
+After the first successful deploy, one `azd provision --no-state` turned the placeholder settings into port 8080 with our probes. `--no-state` is needed because `azd provision` compares only its template/parameter hash, not the live state. G5 then confirmed the per-visitor guest limit through the whole forwarding chain (ADR 0029) and the main screens under the production CSP.
+
