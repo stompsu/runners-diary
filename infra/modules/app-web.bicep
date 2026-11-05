@@ -13,8 +13,10 @@ param apiUpstream string
 param cspEntraHost string
 @description('Space-separated hosts that may serve map tiles, sprites and glyphs.')
 param cspMapHosts string
+@description('Optional custom domain (CUSTOM_DOMAIN), e.g. runners-diary.highpace.dev. Needs a CNAME to the app FQDN and a TXT asuid.<name> with the environment verification id. Empty = none.')
+param customDomain string = ''
 
-resource web 'Microsoft.App/containerApps@2025-01-01' = {
+resource web 'Microsoft.App/containerApps@2026-07-01' = {
   name: 'web'
   location: location
   tags: union(tags, { 'azd-service-name': 'web' })
@@ -33,6 +35,9 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
         transport: 'auto'
         allowInsecure: false
         traffic: [{ latestRevision: true, weight: 100 }]
+        // 'Auto' binds the managed certificate below as soon as it is issued (HTTP only until then), so one deployment is
+        // enough and re-provisioning keeps the binding.
+        customDomains: empty(customDomain) ? [] : [{ name: customDomain, bindingType: 'Auto' }]
       }
       registries: [{ server: registryServer, identity: identityId }]
     }
@@ -74,3 +79,22 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
 
 output name string = web.name
 output fqdn string = web.properties.configuration.ingress.fqdn
+
+resource environment 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
+  name: last(split(environmentId, '/'))
+}
+
+// Free managed certificate (DigiCert, renewed automatically) validated through the CNAME. It needs the hostname on the app
+// first, hence the dependency on `web`.
+resource certificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-01-01' = if (!empty(customDomain)) {
+  parent: environment
+  name: 'mc-${replace(customDomain, '.', '-')}'
+  location: location
+  tags: tags
+  properties: {
+    subjectName: customDomain
+    domainControlValidation: 'CNAME'
+  }
+  dependsOn: [web]
+}
+

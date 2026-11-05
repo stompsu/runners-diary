@@ -15,6 +15,9 @@ param location string
 @description('Stage suffix in resource names (rg-runnersdiary-<stage>). Local Aspire is the dev environment; the cloud has prod only.')
 param stage string = 'prod'
 
+@description('Optional custom domain for the web app (CUSTOM_DOMAIN). DNS first: CNAME to the web FQDN and TXT asuid.<name> = the environment verification id. A free managed certificate is issued and bound automatically.')
+param webCustomDomain string = ''
+
 @description('Region of the Azure SQL server and database (SQL_LOCATION). Empty = the primary region. West Europe was not accepting new SQL servers for this subscription on 2026-11-04 (RegionDoesNotAllowProvisioning), so prod uses polandcentral (westeurope and northeurope are restricted for this subscription per the SQL capabilities API).')
 param sqlLocation string = ''
 
@@ -322,6 +325,7 @@ module web 'modules/app-web.bicep' = {
     apiUpstream: 'https://${api.outputs.fqdn}'
     cspEntraHost: cspEntraHost
     cspMapHosts: cspMapHosts
+    customDomain: webCustomDomain
   }
 }
 
