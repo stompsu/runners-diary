@@ -165,12 +165,23 @@ jobs:
           echo "started=true" >> "$GITHUB_OUTPUT"
           # The cleanup job runs the API image, so it follows the API release.
           az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
-          az containerapp update --name api --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
-          az containerapp update --name web --resource-group "$RESOURCE_GROUP" --image "$WEB_IMAGE" -o none
           # Our images listen on 8080. Provisioning on the placeholder image sets the ingress to 80 (and no probes), and
-          # `update --image` leaves the port alone, so set it here. The next azd provision also restores the probes.
+          # `update --image` leaves the port alone. Set the port first, so the new revision starts (and is probed) on the
+          # right port; the next azd provision after a real image also restores our probes.
           az containerapp ingress update --name api --resource-group "$RESOURCE_GROUP" --target-port 8080 -o none
           az containerapp ingress update --name web --resource-group "$RESOURCE_GROUP" --target-port 8080 -o none
+          az containerapp update --name api --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
+          az containerapp update --name web --resource-group "$RESOURCE_GROUP" --image "$WEB_IMAGE" -o none
+          # The old revision keeps the traffic until the new one is ready: wait for that before the smoke test.
+          for app in api web; do
+            for _ in $(seq 1 60); do
+              latest="$(az containerapp show --name "$app" --resource-group "$RESOURCE_GROUP" --query properties.latestRevisionName -o tsv)"
+              ready="$(az containerapp show --name "$app" --resource-group "$RESOURCE_GROUP" --query properties.latestReadyRevisionName -o tsv)"
+              if [ -n "$latest" ] && [ "$latest" = "$ready" ]; then echo "$app: revision $latest is ready"; break; fi
+              sleep 5
+            done
+            if [ "$latest" != "$ready" ]; then echo "::error::$app: revision $latest did not become ready in 5 minutes"; exit 1; fi
+          done
 
       - name: Smoke test
         id: smoke

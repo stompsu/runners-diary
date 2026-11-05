@@ -17,10 +17,20 @@ ok() { pass=$((pass + 1)); echo "ok   $*"; }
 headers="$(mktemp)"
 trap 'rm -f "$headers"' EXIT
 
-# 1. GET / -> 200 with a CSP header
-code="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' --max-time 90 "$base/")"
-[ "$code" = "200" ] || fail "GET / returned $code"
-grep -qi '^content-security-policy:' "$headers" || fail "GET / has no Content-Security-Policy header"
+# 1. GET / -> 200 with a CSP header. Retried: right after an update the old revision keeps the traffic until the new one is
+#    ready (it answers 200 without our CSP), and a scaled-to-zero app needs a cold start.
+ready_timeout="${SMOKE_READY_TIMEOUT_SECONDS:-300}"
+deadline=$(( $(date +%s) + ready_timeout ))
+while :; do
+  code="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' --max-time 90 "$base/" || true)"
+  if [ "$code" = "200" ] && grep -qi '^content-security-policy:' "$headers"; then break; fi
+  if [ "$(date +%s)" -ge "$deadline" ]; then
+    [ "$code" = "200" ] || fail "GET / returned $code after ${ready_timeout}s"
+    fail "GET / has no Content-Security-Policy header after ${ready_timeout}s (still the old revision?)"
+  fi
+  echo "waiting for the new web revision (GET / -> $code, no CSP yet)..."
+  sleep 10
+done
 ok "GET / -> 200 with CSP"
 
 # 2. /redirect.html -> 200, no COOP (the MSAL bridge breaks with one), no-store
