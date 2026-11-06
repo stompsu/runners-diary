@@ -247,7 +247,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         var summary = created.GetProperty("summary");
         Assert.Equal("model", summary.GetProperty("source").GetString());
         Assert.Equal("scripted-model", summary.GetProperty("model").GetString());
-        Assert.Equal(1, summary.GetProperty("promptVersion").GetInt32());
+        Assert.Equal(2, summary.GetProperty("promptVersion").GetInt32());
         Assert.Equal(1, summary.GetProperty("metricsVersion").GetInt32());
         Assert.NotEqual(JsonValueKind.Null, summary.GetProperty("createdAt").ValueKind);
         Assert.Contains("{period.from}", summary.GetProperty("headline").GetProperty("text").GetString(), StringComparison.Ordinal);
@@ -256,7 +256,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
 
         var row = Assert.Single(await host.SummariesAsync(userId));
         Assert.Equal(32, row.Fingerprint.Length);
-        Assert.Equal((short)1, row.PromptVersion);
+        Assert.Equal((short)2, row.PromptVersion);
         Assert.Equal("gpt-test", row.ModelDeployment);
         Assert.Equal(1234, row.InputTokens);
         Assert.Equal(321, row.OutputTokens);

@@ -1,6 +1,6 @@
 # 0026 – Training Insights agent: fact-sheet input, placeholder-only numbers, server-side validation
 
-**Status:** Accepted (M6 plan approved 2026-11-04; verified against Microsoft Learn) · Amended 2026-11-04 (implementation, see the end) · Amended 2026-11-04 (fact sheet as the data-residency safeguard, see the end)
+**Status:** Accepted (M6 plan approved 2026-11-04; verified against Microsoft Learn) · Amended 2026-11-04 (implementation, see the end) · Amended 2026-11-04 (fact sheet as the data-residency safeguard, see the end) · Amended 2026-11-06 (live-eval tuning: fact sheet v2, prompt v2, see the end)
 **Date:** 2026-11-04
 
 ## Context
@@ -207,3 +207,23 @@ What the implementation on branch `m6-ai-summary` changed or made precise. Detai
 - The §1 rule "no free text, names, notes, location, heart rate or ids reach the model" is therefore **also the data-residency safeguard**, not only the injection and minimization rule. What leaves the EU is the fact sheet: numeric training metrics, dates and run-type codes.
 - **Any future fact-sheet addition must stay metrics-only** (a `factSheetVersion` bump is the review point). The CI eval assertion "no user free text in the request" (§7) guards it; anything that would add personal or free-text data needs a new ADR and, while the deployment is Global Standard, the user's explicit consent.
 - The SPA's "what the model sees" note stays accurate; it does not name a processing location.
+
+## Amended 2026-11-06 (live-eval tuning, gate G6: fact sheet v2, prompt v2)
+
+The live eval (§7) against gpt-5.4-mini (Global Standard, reasoning effort low) passed only 2–3 of 6 cases with prompt v1. Diagnosis with the per-attempt rule codes (now printed by the live eval, test output only):
+
+- **taper-before-race** (0/3): the model saw the low-band week before the race and filed it under `watchOuts`. The intent ("a planned taper is not a problem") was only an inference rule in the prompt. → fact sheet + prompt.
+- **insufficient-history**: the "ratio unavailable" point went to `watchOuts` (often as an item with no placeholder: `missingCitation`), not `dataNotes`. → prompt.
+- **partial-period**, **demo**: number words in prose ("one or two", "at first"), race types written in words instead of placeholders (`raceWeekPeak`), a stray `{` (`unknownKey`), and a demo summary that skipped the trail race. → prompt.
+- No validator rule was found stricter than this ADR intends; the validator is unchanged.
+
+**Fact sheet v2** (`factSheetVersion` 2; cached summaries turn stale). Two week flags, stated only when true, derived from the existing band (ADR 0024 §3) and the race list — categorical joins, no new number, still metrics-only:
+
+| Key | True when |
+|---|---|
+| `week.N.taper` | the week's `acwrBand` is `low` and a race (completed **or planned**) lies in the following ISO week. |
+| `week.N.loadSpike` | the week's `acwrBand` is `high` and no completed race lies in that week (`week.N.raceType` absent). |
+
+Edge case (accepted): a taper week at the end of a period whose race falls after `to` is not flagged, because the report's race list covers the period only.
+
+**Prompt v2** (`prompts/training-insights/v2.md`, current; v1 stays immutable): explicit rules per flag (spike → `watchOuts` citing `week.N.acwrAtEnd`/`load`; taper → `wentWell` only, never `watchOuts`/headline/suggestion; unavailable ratio → a `dataNotes` item citing `thresholds.acwrMinHistoryDays`/`load.historyStart`; partial → "so far" + `period.asOf`), what belongs in `watchOuts`/`dataNotes` (empty lists are fine), mention every completed race, brace hygiene, number-word traps with allowed alternatives, run types/categories/bands only as placeholders, and four short example items. Settings unchanged (effort low, `MaxOutputTokens` 1500).

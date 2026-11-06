@@ -1,10 +1,16 @@
 {
-  "current": 1,
-  "factSheetVersion": 1,
+  "current": 2,
+  "factSheetVersion": 2,
   "versions": {
     "1": {
       "file": "v1.md",
       "sha256": "dc1ed4aacc2d7540c2eb5015e7ef1bce0d5bbad56ae17b0350e78ad5370b9afc",
+      "estimatedLoadThreshold": 0.25,
+      "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
+    },
+    "2": {
+      "file": "v2.md",
+      "sha256": "318379f6975a0bc195078aaed9bb37b29592929e22bb2eee3eca6e9018d971b4",
       "estimatedLoadThreshold": 0.25,
       "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
     }

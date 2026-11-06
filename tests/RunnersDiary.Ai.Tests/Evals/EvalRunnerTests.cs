@@ -1,4 +1,5 @@
 using RunnersDiary.Ai.Tests.Support;
+using RunnersDiary.Domain.Insights.Narrative;
 using RunnersDiary.Infrastructure.Ai;
 
 namespace RunnersDiary.Ai.Tests.Evals;
@@ -32,6 +33,12 @@ public sealed class EvalRunnerTests
         Assert.True(outcome.Passed, outcome.ToString());
         Assert.Equal(2, outcome.Result.Summary!.Attempts);
         Assert.Contains(EvalFiles.ExpectedCode(badFile), scripted.Requests[1].Messages[^1].Text, StringComparison.Ordinal);
+
+        // The live eval's per-attempt detail: the rejected draft with its rule code, then the valid one.
+        Assert.Equal(2, outcome.Attempts.Count);
+        Assert.Contains(outcome.Attempts[0].Violations, v => v.Rule.ToCode() == EvalFiles.ExpectedCode(badFile));
+        Assert.Equal("valid", outcome.Attempts[1].Verdict);
+        Assert.Contains("attempt 1: ", outcome.Details(), StringComparison.Ordinal);
     }
 
     [Fact]
