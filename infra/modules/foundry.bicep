@@ -33,6 +33,8 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 }
 
 // A project only for portal visibility (deployments, metrics, playground). The app does not use it: no agents, no connections.
+// It waits for the model deployment: the account accepts one child operation at a time, and running both in parallel
+// failed the first provision with RequestConflict ("Another operation is in progress").
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: account
   name: 'runnersdiary'
@@ -43,6 +45,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
     displayName: 'Runners Diary'
     description: 'Training Insights summaries (gpt-5.4-mini). Portal view of the production Foundry resource.'
   }
+  dependsOn: [model]
 }
 
 resource model 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
