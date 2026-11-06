@@ -766,6 +766,11 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
   - `web` must be running during issuance and renewals (it scales from zero on the validation request).
 - **G8:** register the redirect URIs on the custom domain, `https://runners-diary.highpace.dev/redirect.html` and `/signin`, and optionally also the default FQDN. The CSP needs no change (`'self'`).
 
+#### Foundry project (2026-11-06, prepared; provision pending the user's OK)
+
+- The new Foundry portal didn't list `ais-rd-m3dcwctu5kpwi` (no project management, no project), while the user's portal-created resources had both.
+- `foundry.bicep` now enables `allowProjectManagement` (with a system-assigned identity) and adds the project `runnersdiary`, for portal visibility only (ADR 0027 amendment). The app is unaffected.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |

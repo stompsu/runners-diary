@@ -192,3 +192,8 @@ Global Standard prices since 2026-11-04 (Azure retail, already in the Context ta
 - Deployment types, data processing per type: https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types
 - Region availability, Global Standard and Data Zone Standard tables: https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability
 - Quota tiers (gpt-5.4-mini listed under `GlobalStandard`): https://learn.microsoft.com/azure/foundry/openai/quotas-limits
+
+## Amendment: Foundry project for portal visibility (2026-11-06)
+
+The new Foundry portal lists only resources with project management enabled and at least one project, so the bare `AIServices` account was visible only in the classic portal. The account now sets `allowProjectManagement: true` with a system-assigned identity, and has one project, `runnersdiary` ("Runners Diary"), with its own system-assigned identity (`accounts/projects@2025-06-01`, per Microsoft Learn). Neither identity gets a role. The app is unchanged: the API calls the same OpenAI v1 endpoint and deployment with its own managed identity, and uses no agents or connections. The project only gives a portal view (deployment, metrics, playground). It costs nothing.
+
