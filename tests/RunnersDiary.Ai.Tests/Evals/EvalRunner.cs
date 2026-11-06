@@ -1,11 +1,24 @@
 using Microsoft.Extensions.AI;
 using RunnersDiary.Ai.Tests.Support;
+using RunnersDiary.Domain.Insights.Narrative;
 using RunnersDiary.Infrastructure.Ai;
 
 namespace RunnersDiary.Ai.Tests.Evals;
 
-/// <summary>The outcome of one eval run: the pipeline result, the case-level failures and the tokens spent.</summary>
-public sealed record EvalOutcome(EvalCase Case, GenerationResult Result, IReadOnlyList<string> Failures, int InputTokens, int OutputTokens)
+/// <summary>
+/// One model attempt as the eval saw it: the raw response text and the validator's violations on it (rule code, fixed location,
+/// well-formed key; never model text). Test output only: production code keeps neither.
+/// </summary>
+public sealed record EvalAttempt(string RawText, IReadOnlyList<SummaryViolation> Violations)
+{
+    public string Verdict => Violations.Count == 0
+        ? "valid"
+        : string.Join("; ", Violations.Select(v => $"{v.Rule.ToCode()}@{v.Location}{(v.Key is null ? string.Empty : "[" + v.Key + "]")}"));
+}
+
+/// <summary>The outcome of one eval run: the pipeline result, the case-level failures, the tokens spent and every attempt.</summary>
+public sealed record EvalOutcome(
+    EvalCase Case, GenerationResult Result, IReadOnlyList<string> Failures, int InputTokens, int OutputTokens, IReadOnlyList<EvalAttempt> Attempts)
 {
     public bool Passed => Result.Status == GenerationStatus.Succeeded && Failures.Count == 0;
 
@@ -14,7 +27,12 @@ public sealed record EvalOutcome(EvalCase Case, GenerationResult Result, IReadOn
 
     public override string ToString() =>
         $"{Case.Name}: {(Passed ? "pass" : "FAIL")} ({Result.Status}{(Result.Failure is { } f ? "/" + f : string.Empty)}, attempts {Result.Summary?.Attempts.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-"}), " +
-        $"{InputTokens} in / {OutputTokens} out, ≈ ${EstimatedCostUsd:0.0000}{(Failures.Count > 0 ? " — " + string.Join(" ", Failures) : string.Empty)}";
+        $"{InputTokens} in / {OutputTokens} out, ≈ ${EstimatedCostUsd.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture)}{(Failures.Count > 0 ? " — " + string.Join(" ", Failures) : string.Empty)}";
+
+    /// <summary>The per-attempt detail for the live eval's test output: verdict and raw draft of each attempt.</summary>
+    public string Details() => string.Join(
+        "\n",
+        Attempts.Select((a, i) => $"  attempt {i + 1}: {a.Verdict}\n    draft: {a.RawText.ReplaceLineEndings(" ")}"));
 }
 
 /// <summary>
@@ -30,10 +48,14 @@ internal static class EvalRunner
             throw new InvalidOperationException($"{evalCase.Name} is a template case.");
         }
 
-        var harness = new AiHarness(client, configure, deployment);
+        // Not disposed: disposing the middleware would dispose the caller's client.
+        var recorder = new RecordingChatClient(client);
+        var harness = new AiHarness(recorder, configure, deployment);
         var result = await harness.Generate(evalCase.Sheet);
         var row = harness.Generations.Rows.SingleOrDefault();
         var failures = result.Summary is { } summary ? EvalAssertions.Failures(evalCase, summary.Draft) : [];
-        return new EvalOutcome(evalCase, result, failures, row?.InputTokens ?? 0, row?.OutputTokens ?? 0);
+        var policy = harness.Agents.Agent!.Prompt.Policy;
+        var attempts = recorder.Take().Select(text => new EvalAttempt(text, SummaryValidator.Validate(text, evalCase.Sheet, policy).Result.Violations)).ToList();
+        return new EvalOutcome(evalCase, result, failures, row?.InputTokens ?? 0, row?.OutputTokens ?? 0, attempts);
     }
 }

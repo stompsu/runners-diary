@@ -6,9 +6,11 @@ namespace RunnersDiary.Domain.Insights.Narrative;
 
 /// <summary>
 /// Projects an <see cref="InsightsReport"/> into the model-facing <see cref="FactSheet"/> (ADR 0026 §1). Values are copied verbatim
-/// with the report's rounding; the only additions are annotations: list lengths, bucket indexes, race-week joins and the band
-/// of a bucket's <c>acwrAtEnd</c> (the Domain band rule). It never computes a new number from metric values, and it never
-/// copies free text (race names, places, category names), heart rate or ids.
+/// with the report's rounding; the only additions are annotations: list lengths, bucket indexes, race-week joins, the band
+/// of a bucket's <c>acwrAtEnd</c> (the Domain band rule) and, since <c>factSheetVersion</c> 2, two week flags derived from that band
+/// and the race list: <c>week.N.taper</c> (band low, a completed or planned race in the following ISO week) and
+/// <c>week.N.loadSpike</c> (band high, no completed race in the week). It never computes a new number from metric values, and it
+/// never copies free text (race names, places, category names), heart rate or ids.
 /// </summary>
 public static class FactSheetBuilder
 {
@@ -270,6 +272,22 @@ public static class FactSheetBuilder
             if (race is not null)
             {
                 f.RunType($"{k}.raceType", race.RunTypeCode);
+            }
+
+            // Interpretation flags (factSheetVersion 2), stated only when true; categorical joins of the band and the race list.
+            if (w.Start <= report.Today && w.AcwrAtEnd is { } ratio)
+            {
+                var band = Acwr.BandOf((decimal)ratio);
+                if (band == AcwrBand.Low && report.Races.Any(r => r.Date >= w.Start.AddDays(7) && r.Date <= w.End.AddDays(7)))
+                {
+                    // A low week right before a week with a race (completed or planned): a deliberate taper, not a problem.
+                    f.Flag($"{k}.taper", true);
+                }
+                else if (band == AcwrBand.High && race is null)
+                {
+                    // A high ratio that no race in the week explains: a training load spike.
+                    f.Flag($"{k}.loadSpike", true);
+                }
             }
         }
     }

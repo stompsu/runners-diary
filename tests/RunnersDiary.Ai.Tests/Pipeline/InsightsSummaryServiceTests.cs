@@ -100,11 +100,11 @@ public sealed class InsightsSummaryServiceTests
         Assert.Equal(SummaryState.Fresh, first.View!.State);
         Assert.Equal(SummarySource.Model, first.View.Summary!.Source);
         Assert.Equal("gpt-5.4-mini-2026-03-17", first.View.Summary.Model);
-        Assert.Equal(1, first.View.Summary.PromptVersion);
+        Assert.Equal(2, first.View.Summary.PromptVersion);
         Assert.Equal(1, first.View.Generation.Used);
 
         var stored = Assert.Single(s.Store.Rows.Values);
-        Assert.Equal((1, 1, 1, "gpt-test", 5000, 600), (stored.MetricsVersion, stored.FactSheetVersion, stored.PromptVersion, stored.ModelDeployment, stored.InputTokens, stored.OutputTokens));
+        Assert.Equal((1, 2, 2, "gpt-test", 5000, 600), (stored.MetricsVersion, stored.FactSheetVersion, stored.PromptVersion, stored.ModelDeployment, stored.InputTokens, stored.OutputTokens));
 
         var get = await s.Get(March);
         Assert.Equal(SummaryState.Fresh, get.State);

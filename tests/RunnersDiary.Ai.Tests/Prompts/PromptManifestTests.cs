@@ -13,8 +13,10 @@ public sealed class PromptManifestTests
         // Load verifies every listed version and throws on a mismatch: editing v1.md without a new version fails CI here.
         var catalog = PromptCatalog.Load(RepoPaths.Prompts);
 
-        Assert.Equal(1, catalog.Current.Version);
-        Assert.Equal(PromptCatalog.Hash(File.ReadAllBytes(Path.Combine(RepoPaths.Prompts, "v1.md"))), catalog.Current.Sha256);
+        Assert.Equal(2, catalog.Current.Version);
+        Assert.Equal(PromptCatalog.Hash(File.ReadAllBytes(Path.Combine(RepoPaths.Prompts, "v2.md"))), catalog.Current.Sha256);
+        Assert.Equal([1, 2], catalog.Versions.Keys.Order());
+        Assert.Equal(PromptCatalog.Hash(File.ReadAllBytes(Path.Combine(RepoPaths.Prompts, "v1.md"))), catalog.Versions[1].Sha256);
         Assert.Equal(["en"], catalog.Languages);
         Assert.Equal(0.25, catalog.Current.Policy.EstimatedLoadThreshold);
         Assert.Equal(SummaryValidationPolicy.DefaultDenyList, catalog.Current.Policy.DenyList);
@@ -24,7 +26,7 @@ public sealed class PromptManifestTests
     [Fact]
     public void The_copy_next_to_the_binaries_equals_the_repository_files()
     {
-        foreach (var relative in new[] { "manifest.json", "v1.md", Path.Combine("templates", "en.json"), Path.Combine("demo", "en", "12w-previous.v1.json") })
+        foreach (var relative in new[] { "manifest.json", "v1.md", "v2.md", Path.Combine("templates", "en.json"), Path.Combine("demo", "en", "12w-previous.v1.json") })
         {
             Assert.Equal(File.ReadAllBytes(Path.Combine(RepoPaths.Prompts, relative)), File.ReadAllBytes(Path.Combine(RepoPaths.PromptsInOutput, relative)));
         }
@@ -50,13 +52,13 @@ public sealed class PromptManifestTests
         var path = Path.Combine(dir, "v1.md");
         File.WriteAllText(path, File.ReadAllText(path).Replace("\n", "\r\n", StringComparison.Ordinal));
 
-        Assert.Equal(1, PromptCatalog.Load(dir).Current.Version);
+        Assert.Equal(2, PromptCatalog.Load(dir).Current.Version);
     }
 
     [Theory]
-    [InlineData("\"current\": 1", "\"current\": 2", "is not listed")]
+    [InlineData("\"current\": 2", "\"current\": 3", "is not listed")]
     [InlineData("\"file\": \"v1.md\"", "\"file\": \"../v1.md\"", "outside the prompt directory")]
-    [InlineData("\"factSheetVersion\": 1", "\"factSheetVersion\": 2", "fact sheet version")]
+    [InlineData("\"factSheetVersion\": 2", "\"factSheetVersion\": 1", "fact sheet version")]
     public void A_broken_manifest_fails_to_load(string find, string replace, string message)
     {
         var dir = CopyPrompts();
@@ -75,7 +77,7 @@ public sealed class PromptManifestTests
         File.WriteAllText(path, File.ReadAllText(path).Replace("version: 1", "version: 2", StringComparison.Ordinal));
         var manifest = Path.Combine(dir, "manifest.json");
         var json = File.ReadAllText(manifest);
-        var oldHash = PromptCatalog.Load(RepoPaths.Prompts).Current.Sha256;
+        var oldHash = PromptCatalog.Load(RepoPaths.Prompts).Versions[1].Sha256;
         File.WriteAllText(manifest, json.Replace(oldHash, PromptCatalog.Hash(File.ReadAllBytes(path)), StringComparison.Ordinal));
 
         var error = Assert.Throws<InvalidOperationException>(() => PromptCatalog.Load(dir));
@@ -86,7 +88,11 @@ public sealed class PromptManifestTests
     public void The_prompt_states_the_rules_the_validator_enforces()
     {
         var text = PromptCatalog.Load(RepoPaths.Prompts).Current.Instructions;
-        foreach (var phrase in new[] { "{totals.distance}", "Never write digits", "isRaceWeek", "taper", "so far", "acwr.asOf.unavailable", "dq.estimatedLoadShare", "No links, no HTML, no Markdown", "at most 3 items", "`null`" })
+        foreach (var phrase in new[]
+        {
+            "{totals.distance}", "write no digits", "ordinal words", "Never write a brace anywhere else", "isRaceWeek", "week.N.taper",
+            "week.N.loadSpike", "so far", "acwr.asOf.unavailable", "dq.estimatedLoadShare", "No links, no HTML, no Markdown", "at most 3 items", "`null`",
+        })
         {
             Assert.Contains(phrase, text, StringComparison.Ordinal);
         }

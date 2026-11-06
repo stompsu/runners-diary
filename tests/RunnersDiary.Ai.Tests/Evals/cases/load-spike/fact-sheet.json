@@ -1,5 +1,5 @@
 {
-  "factSheetVersion": 1,
+  "factSheetVersion": 2,
   "metricsVersion": 1,
   "language": "en",
   "facts": [
@@ -482,6 +482,12 @@
       "value": 0.91,
       "unit": "ratio",
       "display": "0.91"
+    },
+    {
+      "key": "week.4.loadSpike",
+      "value": true,
+      "unit": "flag",
+      "display": "yes"
     },
     {
       "key": "week.5.start",

@@ -20,13 +20,13 @@ public sealed class TrainingInsightsAgentTests
     }
 
     [Fact]
-    public async Task Request_carries_the_v1_instructions_the_options_and_the_fact_sheet()
+    public async Task Request_carries_the_current_instructions_the_options_and_the_fact_sheet()
     {
         var (messages, options) = await CaptureFirstRequest(EvalCases.RaceWeekPeakDemo);
         var prompt = PromptCatalog.Load(RepoPaths.PromptsInOutput).Current;
 
         Assert.NotNull(options);
-        Assert.Equal(1, prompt.Version);
+        Assert.Equal(2, prompt.Version);
         Assert.Equal(prompt.Instructions, options.Instructions);
         Assert.DoesNotContain("version: 1", options.Instructions, StringComparison.Ordinal);
         Assert.Equal(1500, options.MaxOutputTokens);

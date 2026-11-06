@@ -25,14 +25,14 @@ public sealed class SummaryGeneratorTests
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
         var summary = result.Summary!;
         Assert.Equal(1, summary.Attempts);
-        Assert.Equal(1, summary.PromptVersion);
+        Assert.Equal(2, summary.PromptVersion);
         Assert.Equal("gpt-test", summary.ModelDeployment);
         Assert.Equal("gpt-5.4-mini-2026-03-17", summary.ModelId);
         Assert.Equal(Spike.Sheet.Number("week.4.load"), summary.Content.Values["week.4.load"].Number);
         Assert.Equal(harness.Clock.GetUtcNow(), summary.CreatedAt);
 
         var row = Assert.Single(harness.Generations.Rows);
-        Assert.Equal(new AiGenerationRecord(AiHarness.User, false, harness.Clock.GetUtcNow(), AiGenerationOutcome.Succeeded, 1, 5200, 640, row.DurationMs, 1, "gpt-test"), row);
+        Assert.Equal(new AiGenerationRecord(AiHarness.User, false, harness.Clock.GetUtcNow(), AiGenerationOutcome.Succeeded, 1, 5200, 640, row.DurationMs, 2, "gpt-test"), row);
     }
 
     [Fact]

@@ -76,7 +76,7 @@ public sealed class FactSheetJsonTests
         var sheet = FactSheetBuilder.Build(DemoFacts.TwelveWeeks(D("2026-11-04")), "en");
         var json = FactSheetJson.ToJson(sheet);
 
-        Assert.StartsWith("""{"factSheetVersion":1,"metricsVersion":1,"language":"en","facts":[{"key":"period.from","value":"2026-08-17","unit":"date","display":"17 Aug 2026"}""", json, StringComparison.Ordinal);
+        Assert.StartsWith("""{"factSheetVersion":2,"metricsVersion":1,"language":"en","facts":[{"key":"period.from","value":"2026-08-17","unit":"date","display":"17 Aug 2026"}""", json, StringComparison.Ordinal);
         Assert.Contains("""{"key":"totals.distance","value":382593,"unit":"meters","display":"382.6 km"}""", json, StringComparison.Ordinal);
         Assert.Contains("""{"key":"comparison.delta.distance.percent","value":14.2,"unit":"percent","display":"+14.2 %"}""", json, StringComparison.Ordinal);
         Assert.Contains("""{"key":"acwr.peak.isRaceWeek","value":true,"unit":"flag","display":"yes"}""", json, StringComparison.Ordinal);

@@ -2,7 +2,7 @@
   "preset": "12w-previous",
   "language": "en",
   "version": 1,
-  "factSheetVersion": 1,
+  "factSheetVersion": 2,
   "requires": [
     { "key": "comparison.delta.distance.percent", "op": "gt", "value": 0 },
     { "key": "races.completedCount", "op": "gte", "value": 2 },

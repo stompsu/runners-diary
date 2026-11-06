@@ -60,7 +60,7 @@ public sealed class FactSheetBuilderTests
         Assert.Equal(0, sheet.Number("dq.estimatedLoadShare"));
         Assert.Equal("en", sheet.Language);
         Assert.Equal(MetricsVersion.Current, sheet.MetricsVersion);
-        Assert.Equal(1, sheet.FactSheetVersion);
+        Assert.Equal(2, sheet.FactSheetVersion);
     }
 
     [Fact]
@@ -70,6 +70,56 @@ public sealed class FactSheetBuilderTests
         Assert.False(sheet.Flag("acwr.peak.isRaceWeek"));
         Assert.False(sheet.Contains("acwr.peak.raceType"));
         Assert.Equal("high", sheet.Text("acwr.peak.band"));
+    }
+
+    [Fact]
+    public void A_low_week_right_before_a_race_week_is_a_taper_and_a_high_week_without_a_race_is_a_spike()
+    {
+        var taper = EvalCases.Get(EvalCases.TaperBeforeRace).Sheet;
+        Assert.Equal("low", taper.Text("week.5.acwrBand"));
+        Assert.True(taper.Flag("week.5.taper"));
+        Assert.Equal("roadRace", taper.Text("week.6.raceType"));
+        Assert.DoesNotContain(taper.Facts, f => f.Key.EndsWith(".loadSpike", StringComparison.Ordinal));
+        Assert.Single(taper.Facts, f => f.Key.EndsWith(".taper", StringComparison.Ordinal));
+
+        var spike = EvalCases.Get(EvalCases.LoadSpike).Sheet;
+        Assert.Equal("high", spike.Text("week.4.acwrBand"));
+        Assert.True(spike.Flag("week.4.loadSpike"));
+        Assert.Single(spike.Facts, f => f.Key.EndsWith(".loadSpike", StringComparison.Ordinal));
+        Assert.DoesNotContain(spike.Facts, f => f.Key.EndsWith(".taper", StringComparison.Ordinal));
+
+        // Steady training: neither flag.
+        foreach (var name in new[] { EvalCases.PartialPeriod, EvalCases.EstimatedRpe, EvalCases.InsufficientHistory })
+        {
+            Assert.DoesNotContain(EvalCases.Get(name).Sheet.Facts, f => f.Key.EndsWith(".taper", StringComparison.Ordinal) || f.Key.EndsWith(".loadSpike", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public void Demo_flags_the_low_week_before_the_road_race_as_a_taper_and_the_race_week_is_no_spike()
+    {
+        var sheet = EvalCases.Get(EvalCases.RaceWeekPeakDemo).Sheet;
+
+        // Week 4 (low) precedes the road race of week 5; week 9 (high) holds the trail race; week 1 (high) has no race.
+        Assert.True(sheet.Flag("week.4.taper"));
+        Assert.False(sheet.Contains("week.9.loadSpike"));
+        Assert.True(sheet.Flag("week.1.loadSpike"));
+        Assert.False(sheet.Contains("week.2.taper"));
+        Assert.False(sheet.Contains("week.6.taper"));
+    }
+
+    [Fact]
+    public void A_low_week_before_a_planned_race_is_a_taper()
+    {
+        var log = new Training()
+            .Weeks(D("2026-01-05"), 17)
+            .Week(D("2026-05-04"), 0.45)
+            .Race(D("2026-05-17"), "roadRace", RaceDistanceCategory.HalfMarathon, 21097.5, 0, RunStatus.Planned, target: 6900);
+        var sheet = FactSheetBuilder.Build(log.Report(D("2026-04-06"), D("2026-05-17"), D("2026-05-10")), "en");
+
+        Assert.Equal("low", sheet.Text("week.5.acwrBand"));
+        Assert.True(sheet.Flag("week.5.taper"));
+        Assert.Equal("planned", sheet.Text("race.1.status"));
     }
 
     [Theory]

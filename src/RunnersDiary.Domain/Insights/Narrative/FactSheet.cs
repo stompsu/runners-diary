@@ -41,8 +41,11 @@ public sealed record Fact(string Key, FactValue Value, FactUnit Unit, string Dis
 /// </summary>
 public sealed class FactSheet
 {
-    /// <summary>The projection version; a change to the projection bumps it and makes cached summaries stale (ADR 0028 §2).</summary>
-    public const int CurrentVersion = 1;
+    /// <summary>
+    /// The projection version; a change to the projection bumps it and makes cached summaries stale (ADR 0028 §2).
+    /// 2: the <c>week.N.taper</c> and <c>week.N.loadSpike</c> flags.
+    /// </summary>
+    public const int CurrentVersion = 2;
 
     private readonly Dictionary<string, Fact> _byKey;
 
