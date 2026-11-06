@@ -795,6 +795,11 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
   - the guest quota showed 1/3 used.
 - **Cost at this point:** about $0.006 per summary. The worst-case ceiling is about $2.89–5.79/day under the quotas; the token alert (> 400k/24 h) and the $25 RG budget are active.
 
+#### Foundry project (2026-11-06, prepared; provision pending the user's OK)
+
+- The new Foundry portal didn't list `ais-rd-m3dcwctu5kpwi` (no project management, no project), while the user's portal-created resources had both.
+- `foundry.bicep` now enables `allowProjectManagement` (with a system-assigned identity) and adds the project `runnersdiary`, for portal visibility only (ADR 0027 amendment). The app is unaffected.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |

@@ -1,4 +1,5 @@
-// Foundry (AIServices) account with one Global Standard model deployment, keyless (ADR 0027 amended 2026-11-04, 0031).
+// Foundry (AIServices) account with one Global Standard model deployment, keyless (ADR 0027 amended 2026-11-04, 0031),
+// plus one Foundry project so the new Foundry portal lists the resource (it shows project-enabled resources only).
 param location string
 param tags object
 param token string
@@ -21,10 +22,26 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   tags: tags
   kind: 'AIServices'
   sku: { name: 'S0' }
+  // Required with project management; it gets no role assignments (the API calls the model with its own identity).
+  identity: { type: 'SystemAssigned' }
   properties: {
     customSubDomainName: 'ais-rd-${token}'
     disableLocalAuth: true
     publicNetworkAccess: 'Enabled'
+    allowProjectManagement: true
+  }
+}
+
+// A project only for portal visibility (deployments, metrics, playground). The app does not use it: no agents, no connections.
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  parent: account
+  name: 'runnersdiary'
+  location: location
+  tags: tags
+  identity: { type: 'SystemAssigned' }
+  properties: {
+    displayName: 'Runners Diary'
+    description: 'Training Insights summaries (gpt-5.4-mini). Portal view of the production Foundry resource.'
   }
 }
 
