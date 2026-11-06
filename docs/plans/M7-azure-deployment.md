@@ -1,6 +1,6 @@
 # M7 – Azure deployment: plan
 
-**Status:** Approved 2026-11-04 (all §11 defaults except Q2, see §11; claims checked against Microsoft Learn). **Part A (offline) merged** (stompsu/runners-diary#12; deviations and review/QA findings: §12). **Part B: G1–G5 done (2026-11-04/05)** with the user's explicit approval per gate (log: §12.7). **Production is live, guests-only**, at `https://web.grayisland-d22ea91b.westeurope.azurecontainerapps.io`: 25 resources in `rg-runnersdiary-prod` (primary region **`westeurope`**, SQL in **`polandcentral`**), deploys after green CI on `main` behind the `prod` approval with automatic rollback, health probes on both apps. AI is off; Entra sign-in is not configured yet. **Next gates: G6 (live AI eval), then G7; G8 when the Entra tenant exists.** No further cloud resource is created, changed or deployed without the user's explicit confirmation of that specific gate.
+**Status:** Approved 2026-11-04 (all §11 defaults except Q2, see §11; claims checked against Microsoft Learn). **Part A (offline) merged** (stompsu/runners-diary#12; deviations and review/QA findings: §12). **Part B: G1–G7 done (2026-11-04 to 06)** with the user's explicit approval per gate (log: §12.7). **Production is live** at `https://runners-diary.highpace.dev` (custom domain with a managed certificate; the default `*.azurecontainerapps.io` address also works). It runs as 25 resources in `rg-runnersdiary-prod` (primary region **`westeurope`**, SQL in **`polandcentral`**). Deploys run after green CI on `main`, behind the `prod` approval, with automatic rollback, and both apps have health probes. **AI summaries are on** (gpt-5.4-mini Global Standard, prompt v2, fact sheet v2). Production is guests-only until **G8** (Entra), which waits for the user's tenant. No further cloud resource is created, changed or deployed without the user's explicit confirmation of that specific gate.
 
 **Builds on:**
 - M1–M6 (all merged or awaiting merge);
@@ -343,8 +343,8 @@ Headers, routing, timeouts and client-IP handling: [ADR 0029](../adr/0029-web-ti
 | **G3** ✔ 2026-11-04 | User: GitHub environment `prod` (reviewer, `main` only), 3 secrets, variables, `DEPLOY_ENABLED=true` | GitHub settings only | $0 |
 | **G4** ✔ 2026-11-05 (run 4) | User: run `deploy.yml` (dispatch) and **approve** it | pushes 3 images (≈ 0.5 GB of the 10 GB ACR quota), runs the migration job (schema + API DB user), deploys apps and jobs | ≈ $0 (free grants) |
 | **G5** ✔ 2026-11-05 | User + qa-tester: go-live checklist §7.3, incl. the XFF test (6 guest creations) | app data only (guests expire) | $0 |
-| **G6** | User: live AI eval from the laptop (§9.3), with AI still disabled in prod | none | ≤ ~$0.68 (was ≤ $0.75) |
-| **G7** | `azd env set AI_ENABLED true` + `azd provision` (new `api` revision) | AI generation on in prod | usage; ceiling $88–176/month (was $97–194; Global Standard prices since 2026-11-04) |
+| **G6** ✔ 2026-11-06 (prompt v2) | User: live AI eval from the laptop (§9.3), with AI still disabled in prod | none | ≤ ~$0.68 (was ≤ $0.75) |
+| **G7** ✔ 2026-11-06 | `azd env set AI_ENABLED true` + `azd provision` (new `api` revision) | AI generation on in prod | usage; ceiling $88–176/month (was $97–194; Global Standard prices since 2026-11-04) |
 | **G8** | User registers the redirect URIs (§5.6) in their tenant, then `azd env set ENTRA_*` + `azd provision` | Entra sign-in on | $0 (< 50 k MAU) |
 | G9 *(optional)* | `azd env set MAPS_DISPLAY true` + `azd provision` | SAS identity, custom roles, Maps local auth on, `Maps__Provider=AzureMaps` | free ≤ 75 k tiles/month; risk per §4 |
 | G10 *(recurring)* | every later deploy = GitHub approval; every Bicep change = G1 + G2 again | — | — |
@@ -750,7 +750,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 - **App Insights:** every request type succeeds except the intended 429. The calendar's p95 is about 0.4 s, including the westeurope → polandcentral SQL hop (H-4: acceptable).
 - **Observation (H-6):** guest creation reaches about 11 s at p95 when the auto-paused free SQL database resumes while the demo data (~120 runs + GPX) is written; it is about 1–2 s once SQL is awake. Acceptable for the demo; revisit if real users find the first request slow (options: a lighter demo seed, a warm-up on `web` start, or a non-free SQL tier).
 
-#### Custom domain `runners-diary.highpace.dev` (2026-11-05, prepared; provision pending the user's OK)
+#### Custom domain `runners-diary.highpace.dev` (2026-11-05, applied with the user's OK)
 
 - **DNS (set by the user, checked):** the CNAME `runners-diary.highpace.dev` points to `web.grayisland-d22ea91b.westeurope.azurecontainerapps.io`, and the TXT `asuid.runners-diary.highpace.dev` matches the environment's `customDomainVerificationId`.
 - **IaC:**
@@ -766,6 +766,35 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
   - `web` must be running during issuance and renewals (it scales from zero on the validation request).
 - **G8:** register the redirect URIs on the custom domain, `https://runners-diary.highpace.dev/redirect.html` and `/signin`, and optionally also the default FQDN. The CSP needs no change (`'self'`).
 
+- **Applied:** `azd env set CUSTOM_DOMAIN runners-diary.highpace.dev`, then hooks + `azd provision` (7 min 35 s, including certificate issuance).
+  - The managed certificate `mc-runners-diary-highpace-dev` was issued by DigiCert (GeoTrust TLS RSA CA G1), valid until 2027-05-05 and auto-renewed.
+  - It is bound with `Auto`.
+  - `https://runners-diary.highpace.dev` returns 200 with our CSP, and `/api/health` reports Healthy.
+
+#### G6: live AI eval (2026-11-05 and 06)
+
+- **Runs 1 and 2 (prompt v1, fact sheet v1, gpt-5.4-mini Global Standard, effort low):** failed with 2/6 and then 3/6 cases at 3/3, about $0.11 per run.
+  - **taper-before-race 0/3 in both runs:** the pre-race taper was listed as a watch-out.
+  - **insufficient-history 0/3:** "not enough history" was put in watch-outs, or the answer was rejected by the validator.
+  - **partial-period:** 2/3 and 1/3.
+  - **load-spike:** 0/3, then 3/3, showing high run-to-run variance.
+- **Tuning (#22, user-approved, $2 cap):**
+  - The live eval now shows per-attempt rule codes and drafts.
+  - Diagnosis: a missing fact-sheet signal for tapers, plus unclear instructions; number words and stray braces caused the validator rejections. The validator was **not** stricter than ADR 0026 intends.
+  - Fix: fact sheet v2 (`week.N.taper`, `week.N.loadSpike`) and prompt v2 (v1 kept).
+- **Final full live run:** **6/6 cases at 3/3**, 16/18 valid on the first attempt. All live calls cost **about $0.40** in total, and the model is unchanged.
+
+#### G7: AI on in production (2026-11-06)
+
+- PR #22 was deployed first (smoke 9/9), so production runs prompt v2.
+- Then `AI_ENABLED=true` with hooks + `azd provision` (2 min 14 s): `Ai__Enabled=true`, and `client-config.ai.summaryGeneration=true`.
+- **Live check on the custom domain:** a guest generated a summary for October 2026.
+  - HTTP 200 in about 6 s, on the first attempt;
+  - `source: model` (`gpt-5.4-mini-2026-03-17`), prompt v2, fact sheet v2;
+  - the narrative cited the trail race, the pre-race taper (under went well) and the pace trend; all values came from placeholders;
+  - the guest quota showed 1/3 used.
+- **Cost at this point:** about $0.006 per summary. The worst-case ceiling is about $2.89–5.79/day under the quotas; the token alert (> 400k/24 h) and the $25 RG budget are active.
+
 #### Part B deviations
 
 | # | Plan said | Done | Why / where recorded |
@@ -778,6 +807,7 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
 | B6 | azd env `rd-prod` (ADR 0030 §2, §5.2) | azd env **`prod`** | Matches the resource names (`rg-runnersdiary-prod`, `budget-rd-prod`). Docs updated in §5.2. |
 
 **Open items from Part B so far (⚠):**
+- **H-7 (G7):** the prompt's pace example produces "from {pace} to {pace} per km", and the UI's formatted pace already ends in "/km", so the page can read "/km per km". Fix: a wording tweak in a prompt v3, plus re-running the affected live case.
 - **H-6 (G5):** slow first guest creation after SQL auto-resume (~11 s p95); see the G5 log.
 - **H-1: why azd 1.37.2 skipped the project `preprovision`/`postprovision` hooks** on `azd provision --no-prompt` in this setup. To investigate (azure-infra): the hook declaration in `azure.yaml` (project-level `hooks:` block, `posix` shell/`run` paths, `continueOnError`), and whether `--no-prompt` or the azd version changes hook behaviour. Until resolved, the manual sequence in §10 step 5 is **the required procedure**, and a forgotten `postprovision` leaves `GUEST_KEY_BOOTSTRAP` in `.azure/prod/.env`.
 - **H-2: `BUDGET_START_DATE` as a hook-set value does not work on a first provision** (G1-a). azure-infra should either give `budgetStartDate` a non-required path or document the manual `azd env set` as the only path (already in §10).

@@ -192,3 +192,8 @@ Global Standard prices since 2026-11-04 (Azure retail, already in the Context ta
 - Deployment types, data processing per type: https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types
 - Region availability, Global Standard and Data Zone Standard tables: https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability
 - Quota tiers (gpt-5.4-mini listed under `GlobalStandard`): https://learn.microsoft.com/azure/foundry/openai/quotas-limits
+
+## Amendment: live eval and go-live (2026-11-06, gates G6/G7)
+
+The live eval against the production deployment (gpt-5.4-mini Global Standard, effort low) failed with prompt v1 (2/6 and 3/6 cases at 3/3). After fact sheet v2 and prompt v2 (ADR 0026 amendment, #22) it passed 6/6 at 3/3, for about $0.40 of live calls in total. No model or effort change was needed. AI was switched on in production on 2026-11-06 (`AI_ENABLED=true` + provision). The first live summary took about 6 s and was valid on the first attempt; cost is about $0.006 per summary.
+
