@@ -795,10 +795,15 @@ Approval covers Part A only; every Part B gate still needs its own explicit "yes
   - the guest quota showed 1/3 used.
 - **Cost at this point:** about $0.006 per summary. The worst-case ceiling is about $2.89–5.79/day under the quotas; the token alert (> 400k/24 h) and the $25 RG budget are active.
 
-#### Foundry project (2026-11-06, prepared; provision pending the user's OK)
+#### Foundry project (2026-11-06, applied)
 
 - The new Foundry portal didn't list `ais-rd-m3dcwctu5kpwi` (no project management, no project), while the user's portal-created resources had both.
 - `foundry.bicep` now enables `allowProjectManagement` (with a system-assigned identity) and adds the project `runnersdiary`, for portal visibility only (ADR 0027 amendment). The app is unaffected.
+- **Applied (user-approved):** hooks + `azd provision`.
+  - The first run updated the account (identity, `allowProjectManagement`) but failed the project with `RequestConflict` ("Another operation is in progress"): the project and the model deployment are siblings, so ARM ran them in parallel on the same account.
+  - A rerun once the account was idle succeeded (2 min 6 s): the project `runnersdiary` ("Runners Diary") is `Succeeded`, and the deployment is unchanged (`gpt-54-mini`, GlobalStandard, 30k TPM).
+  - Afterwards the web returned 200 and `client-config` still reported `ai.summaryGeneration: true`.
+  - Fix: the project now has `dependsOn: [model]`, so later provisions run the two one after the other.
 
 #### Part B deviations
 
