@@ -5,13 +5,13 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup Label="Aspire hosting">
-    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
   </ItemGroup>
   <ItemGroup Label="Aspire client integrations">
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.6.5" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
