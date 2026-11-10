@@ -3,7 +3,7 @@
 # Base images are pinned by digest (Dependabot's docker ecosystem bumps tag + digest together).
 
 # Node 26 = web/.nvmrc. The guard below fails the build if the two ever drift apart.
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS build
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS build
 WORKDIR /web
 COPY .nvmrc package.json package-lock.json ./
 RUN test "$(node -p 'process.versions.node.split(".")[0]')" = "$(cat .nvmrc)" && npm ci
