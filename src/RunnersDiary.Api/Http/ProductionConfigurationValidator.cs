@@ -33,6 +33,12 @@ public static class ProductionConfigurationValidator
         Require(configuration, $"ConnectionStrings:{DependencyInjection.DatabaseConnectionName}", failures);
         Require(configuration, $"ConnectionStrings:{DependencyInjection.BlobsConnectionName}", failures);
 
+        // The synthetic demo catalogue (M8) is Development/Testing data and must never be seeded into production.
+        if (configuration.GetValue<bool>(DependencyInjection.DemoCatalogueSeedOnStartupKey))
+        {
+            failures.Add($"{DependencyInjection.DemoCatalogueSeedOnStartupKey} must not be true in Production.");
+        }
+
         if (includeWebSettings)
         {
             ValidateForwardedHeaders(configuration, failures);

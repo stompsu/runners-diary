@@ -31,6 +31,9 @@ var api = builder.AddProject<Projects.RunnersDiary_Api>("api")
     .WithEnvironment("Database__MigrateOnStartup", "true")
     // Local dev only: create the private "gpx" container in Azurite. Azure never sets this (Bicep provisions it in M7).
     .WithEnvironment("Storage__CreateContainerOnStartup", "true")
+    // Local dev only (M8): proposals on, with the synthetic demo catalogue seeded after the migrations. The Production validator rejects the seed flag.
+    .WithEnvironment("Races__Enabled", "true")
+    .WithEnvironment("Races__DemoCatalogue__SeedOnStartup", "true")
     .WithEnvironment("Auth__Guest__SigningKey", guestKey)
     // The peer address is the real client locally; Azure (M7) must set true with the trusted proxy networks and hop count.
     .WithEnvironment("ForwardedHeaders__Enabled", "false")

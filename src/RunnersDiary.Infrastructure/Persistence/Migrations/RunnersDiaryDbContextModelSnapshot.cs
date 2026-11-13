@@ -152,6 +152,262 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.ToTable("AiSummaries", (string)null);
                 });
 
+            modelBuilder.Entity("RunnersDiary.Domain.Races.Race", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .IsUnicode(false)
+                        .HasColumnType("char(2)")
+                        .IsFixedLength();
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("DateChangedUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<string>("DetailETag")
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("DetailFetchedUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<string>("DetailLastModified")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<Guid?>("DuplicateOfRaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double?>("ElevationGainMeters")
+                        .HasColumnType("float");
+
+                    b.Property<string>("EventUrl")
+                        .HasMaxLength(2048)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<byte[]>("FactsHash")
+                        .IsRequired()
+                        .HasColumnType("binary(32)");
+
+                    b.Property<DateTime>("ImportedUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("LastSeenUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<string>("LocationName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte>("MissedScans")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OrganizerName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<Point>("Point")
+                        .HasColumnType("geography");
+
+                    b.Property<DateOnly?>("PreviousDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("PriceAmount")
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<string>("PriceCurrency")
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<string>("RegionCode")
+                        .HasMaxLength(6)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(6)");
+
+                    b.Property<DateTime?>("RemovedUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<DateOnly?>("SignupDeadline")
+                        .HasColumnType("date");
+
+                    b.Property<string>("SignupUrl")
+                        .HasMaxLength(2048)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<byte>("Source")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(2048)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time(0)");
+
+                    b.Property<byte?>("Surface")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("TimeZoneId")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("Date")
+                        .HasDatabaseName("CX_Races_Date");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("Date"));
+
+                    b.HasIndex("DuplicateOfRaceId")
+                        .HasDatabaseName("IX_Races_DuplicateOf")
+                        .HasFilter("[DuplicateOfRaceId] IS NOT NULL");
+
+                    b.HasIndex("Source", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Races_Source_External");
+
+                    b.ToTable("Races", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Races_Duplicate", "[DuplicateOfRaceId] IS NULL OR [DuplicateOfRaceId] <> [Id]");
+
+                            t.HasCheckConstraint("CK_Races_Price", "([PriceAmount] IS NULL AND [PriceCurrency] IS NULL) OR ([PriceAmount] IS NOT NULL AND [PriceCurrency] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.RaceDistance", b =>
+                {
+                    b.Property<Guid>("RaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double>("DistanceMeters")
+                        .HasColumnType("float");
+
+                    b.HasKey("RaceId", "DistanceMeters");
+
+                    b.ToTable("RaceDistances", (string)null);
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.RaceInterestProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Point>("Center")
+                        .HasColumnType("geography");
+
+                    b.Property<string>("CenterName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<short>("HorizonDays")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Keywords")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte>("Kinds")
+                        .HasColumnType("tinyint");
+
+                    b.Property<double?>("MaxDistanceMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("MinDistanceMeters")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("ProposalsSeenUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<int?>("RadiusMeters")
+                        .HasColumnType("int");
+
+                    b.PrimitiveCollection<string>("RegionCodes")
+                        .IsRequired()
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<bool>("ShowInCalendar")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("RaceInterestProfiles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RaceInterestProfiles_Center", "([Center] IS NULL AND [RadiusMeters] IS NULL AND [CenterName] IS NULL) OR ([Center] IS NOT NULL AND [RadiusMeters] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_RaceInterestProfiles_Distance", "([MinDistanceMeters] IS NULL OR [MinDistanceMeters] BETWEEN 1000 AND 250000) AND ([MaxDistanceMeters] IS NULL OR [MaxDistanceMeters] BETWEEN 1000 AND 250000) AND ([MinDistanceMeters] IS NULL OR [MaxDistanceMeters] IS NULL OR [MinDistanceMeters] <= [MaxDistanceMeters])");
+
+                            t.HasCheckConstraint("CK_RaceInterestProfiles_Horizon", "[HorizonDays] BETWEEN 7 AND 365");
+
+                            t.HasCheckConstraint("CK_RaceInterestProfiles_Kinds", "[Kinds] BETWEEN 1 AND 127");
+
+                            t.HasCheckConstraint("CK_RaceInterestProfiles_Radius", "[RadiusMeters] IS NULL OR [RadiusMeters] BETWEEN 5000 AND 300000");
+                        });
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.RaceProposalState", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("RaceDateWhenMarked")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.HasKey("UserId", "RaceId");
+
+                    b.HasIndex("RaceId")
+                        .HasDatabaseName("IX_RaceProposalStates_RaceId");
+
+                    b.ToTable("RaceProposalStates", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RaceProposalStates_State", "[State] IN (1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("RunnersDiary.Domain.RunTypes.RunType", b =>
                 {
                     b.Property<short>("Id")
@@ -397,6 +653,9 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.Property<short?>("AvgHeartRate")
                         .HasColumnType("smallint");
 
+                    b.Property<Guid?>("CatalogRaceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2(0)");
 
@@ -537,8 +796,15 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("Id", "UserId")
                         .HasName("AK_Runs_Id_UserId");
 
+                    b.HasIndex("CatalogRaceId");
+
                     b.HasIndex("RunTypeId")
                         .HasDatabaseName("IX_Runs_RunTypeId");
+
+                    b.HasIndex("UserId", "CatalogRaceId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Runs_User_CatalogRace")
+                        .HasFilter("[CatalogRaceId] IS NOT NULL");
 
                     b.HasIndex("UserId", "Date")
                         .HasDatabaseName("CX_Runs_User_Date");
@@ -728,8 +994,54 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RunnersDiary.Domain.Races.Race", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.Races.Race", null)
+                        .WithMany()
+                        .HasForeignKey("DuplicateOfRaceId")
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.RaceDistance", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.Races.Race", null)
+                        .WithMany("Distances")
+                        .HasForeignKey("RaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.RaceInterestProfile", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.RaceProposalState", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.Races.Race", null)
+                        .WithMany()
+                        .HasForeignKey("RaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RunnersDiary.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("RunnersDiary.Domain.Runs.Run", b =>
                 {
+                    b.HasOne("RunnersDiary.Domain.Races.Race", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogRaceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("RunnersDiary.Domain.RunTypes.RunType", null)
                         .WithMany()
                         .HasForeignKey("RunTypeId")
@@ -751,6 +1063,11 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         .HasPrincipalKey("Id", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Races.Race", b =>
+                {
+                    b.Navigation("Distances");
                 });
 
             modelBuilder.Entity("RunnersDiary.Domain.Runs.Run", b =>

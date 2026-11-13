@@ -10,6 +10,7 @@ using RunnersDiary.Infrastructure.Identity;
 using RunnersDiary.Infrastructure.Insights;
 using RunnersDiary.Infrastructure.Maps;
 using RunnersDiary.Infrastructure.Persistence;
+using RunnersDiary.Infrastructure.Races;
 using RunnersDiary.Infrastructure.Runs;
 using RunnersDiary.Infrastructure.Storage;
 using RunnersDiary.Infrastructure.Users;
@@ -24,6 +25,9 @@ public static class DependencyInjection
 
     /// <summary>Configuration key that makes the host apply migrations at startup (set only by the AppHost, never in Azure).</summary>
     public const string MigrateOnStartupKey = "Database:MigrateOnStartup";
+
+    /// <summary>Configuration key that makes the host upsert the synthetic demo race catalogue at startup (AppHost and tests only; the Production validator rejects it).</summary>
+    public const string DemoCatalogueSeedOnStartupKey = "Races:DemoCatalogue:SeedOnStartup";
 
     /// <summary>Configuration key that makes the host create the private <c>gpx</c> container at startup (AppHost and tests only; Bicep provisions it in Azure).</summary>
     public const string CreateContainerOnStartupKey = "Storage:CreateContainerOnStartup";
@@ -86,6 +90,16 @@ public static class DependencyInjection
         }
 
         builder.Services.AddSingleton<DemoDataSeeder>();
+
+        // Race catalogue (M8): options, the synthetic demo catalogue and, in Development/Testing only, its idempotent seeding after the migrator.
+        // The Production configuration validator rejects SeedOnStartup, so this hosted service never runs in Azure.
+        builder.Services.Configure<RacesOptions>(builder.Configuration.GetSection(RacesOptions.SectionName));
+        builder.Services.AddSingleton<DemoRaceCatalogue>();
+        if (!jobMode && builder.Configuration.GetValue<bool>(DemoCatalogueSeedOnStartupKey))
+        {
+            builder.Services.AddHostedService<DemoRaceCatalogueSeeder>();
+        }
+
         builder.Services.AddSingleton<GuestCleanup>();
         builder.Services.AddSingleton<IGuestCleanupPass>(services => services.GetRequiredService<GuestCleanup>());
         builder.Services.AddSingleton<GuestAccountService>();

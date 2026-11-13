@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RunnersDiary.Domain.Demo;
+using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.Time;
 using RunnersDiary.Domain.Tracks;
@@ -28,6 +29,20 @@ public sealed partial class DemoDataSeeder(
     ILogger<DemoDataSeeder> logger)
 {
     private const string GpxContentType = "application/gpx+xml";
+
+    /// <summary>The guest's race interests (M8 plan §3.2): Silesian road and trail races near Gliwice, so the demo catalogue yields proposals at once.</summary>
+    internal static readonly RaceInterestValues DemoInterests = new()
+    {
+        Kinds = [RaceKind.Road, RaceKind.Trail, RaceKind.Mountain],
+        RegionCodes = ["PL-24"],
+        Center = new GeoPoint(50.2945, 18.6714),
+        CenterName = "Gliwice",
+        RadiusMeters = 60_000,
+        MinDistanceMeters = 5_000,
+        MaxDistanceMeters = 42_195,
+        HorizonDays = 120,
+        ShowInCalendar = true,
+    };
 
     /// <summary>
     /// Uploads the blobs, then inserts the user, runs and track rows in one <c>SaveChanges</c> (one transaction).
@@ -78,6 +93,7 @@ public sealed partial class DemoDataSeeder(
             db.Users.Add(guest);
             db.Runs.AddRange(runs);
             db.GpxTracks.AddRange(tracks);
+            db.RaceInterestProfiles.Add(RaceInterestProfile.Create(guest.Id, DemoInterests, now));
             await db.SaveChangesAsync(cancellationToken);
         }
         catch

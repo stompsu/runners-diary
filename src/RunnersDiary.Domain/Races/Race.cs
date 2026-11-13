@@ -9,7 +9,7 @@ namespace RunnersDiary.Domain.Races;
 /// </summary>
 public sealed class Race
 {
-    private readonly List<double> _distances = [];
+    private readonly List<RaceDistance> _distances = [];
 
     private Race()
     {
@@ -43,7 +43,10 @@ public sealed class Race
     public Surface? Surface { get; private set; }
 
     /// <summary>Ascending, deduplicated, at most 12.</summary>
-    public IReadOnlyList<double> DistancesMeters => _distances;
+    public IReadOnlyList<double> DistancesMeters => _distances.Select(d => d.DistanceMeters).ToArray();
+
+    /// <summary>The rows behind <see cref="DistancesMeters"/> (persistence only).</summary>
+    public IReadOnlyCollection<RaceDistance> Distances => _distances;
 
     public double? ElevationGainMeters { get; private set; }
 
@@ -194,7 +197,7 @@ public sealed class Race
 
     public RaceSnapshot ToSnapshot() => new(
         Id, Source, Name, Date, StartTime, TimeZoneId, LocationName, Point, CountryCode, RegionCode, Kind, Surface,
-        _distances.ToArray(), ElevationGainMeters, ImportedUtc, RemovedUtc, DuplicateOfRaceId);
+        DistancesMeters, ElevationGainMeters, ImportedUtc, RemovedUtc, DuplicateOfRaceId);
 
     public RaceIndexEntry ToIndexEntry() => new(Id, Source, ExternalId, Date, FactsHash, MissedScans, RemovedUtc);
 
@@ -221,8 +224,7 @@ public sealed class Race
         RegionCode = f.RegionCode;
         Kind = f.Kind;
         Surface = f.Surface;
-        _distances.Clear();
-        _distances.AddRange(f.DistancesMeters);
+        SyncDistances(f.DistancesMeters);
         ElevationGainMeters = f.ElevationGainMeters;
         SignupUrl = f.SignupUrl;
         EventUrl = f.EventUrl;
@@ -232,6 +234,18 @@ public sealed class Race
         SignupDeadline = f.SignupDeadline;
         OrganizerName = f.OrganizerName;
         FactsHash = RaceFactsHasher.Hash(f);
+    }
+
+    /// <summary>Keeps unchanged rows (so a persisted race issues no needless delete/insert), removes the others and adds the new ones, ascending.</summary>
+    private void SyncDistances(IReadOnlyList<double> wanted)
+    {
+        _distances.RemoveAll(d => !wanted.Contains(d.DistanceMeters));
+        foreach (var meters in wanted.Where(m => _distances.TrueForAll(d => d.DistanceMeters != m)))
+        {
+            _distances.Add(new RaceDistance(Id, meters));
+        }
+
+        _distances.Sort((a, b) => a.DistanceMeters.CompareTo(b.DistanceMeters));
     }
 
     private static string? Truncate(string? value, int max) =>
