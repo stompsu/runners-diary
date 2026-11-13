@@ -61,6 +61,12 @@ public sealed class Run : IUserOwned
 
     public RunRating? Rating { get; private set; }
 
+    /// <summary>
+    /// The catalogue race this run was created from (ADR 0036 §5); informational, never synced back. Set only by <see cref="LinkToCatalogRace"/> on creation,
+    /// and <see cref="Update"/> never touches it. The database sets it to null when the race is purged.
+    /// </summary>
+    public Guid? CatalogRaceId { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
@@ -84,6 +90,22 @@ public sealed class Run : IUserOwned
         var run = new Run { Id = Guid.CreateVersion7(), UserId = userId, CreatedAt = Utc(now) };
         run.Apply(values, now);
         return run;
+    }
+
+    /// <summary>Links a freshly created run to a catalogue race. Call it once, right after <see cref="Create"/> and before the first save.</summary>
+    public void LinkToCatalogRace(Guid catalogRaceId)
+    {
+        if (catalogRaceId == Guid.Empty)
+        {
+            throw new DomainRuleException("A catalogue race id is required.");
+        }
+
+        if (CatalogRaceId is not null)
+        {
+            throw new DomainRuleException("The run is already linked to a catalogue race.");
+        }
+
+        CatalogRaceId = catalogRaceId;
     }
 
     public void Update(RunValues values, DateTimeOffset now)
