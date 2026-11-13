@@ -44,6 +44,27 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Races_are_off_by_default_and_the_sources_are_listed()
+    {
+        var body = await factory.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(body);
+        Assert.False(body.Races.Enabled);
+        var source = Assert.Single(body.Races.Sources);
+        Assert.Equal(new RaceSourceClientConfig("running-life", "running.life", "https://running.life/"), source);
+    }
+
+    [Fact]
+    public async Task Races_enabled_follows_the_Races_Enabled_setting()
+    {
+        using var on = factory.WithWebHostBuilder(b => b.UseSetting("Races:Enabled", "true"));
+
+        var body = await on.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken);
+
+        Assert.True(body?.Races.Enabled);
+    }
+
+    [Fact]
     public async Task Entra_enabled_with_spa_client_id_returns_derived_values()
     {
         using var entra = WithEntra(factory, "spa-client-id");

@@ -298,6 +298,7 @@ export function buildRun(
     startTime,
     timeZoneId,
     startUtc: startTime ? toStartUtc(write.date, startTime, timeZoneId) : null,
+    catalogRaceId: previous?.catalogRaceId ?? null,
     status: write.status,
     runTypeId: write.runTypeId,
     title: write.title ?? null,

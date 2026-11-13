@@ -95,6 +95,8 @@ public static class DependencyInjection
         // The Production configuration validator rejects SeedOnStartup, so this hosted service never runs in Azure.
         builder.Services.Configure<RacesOptions>(builder.Configuration.GetSection(RacesOptions.SectionName));
         builder.Services.AddSingleton<DemoRaceCatalogue>();
+        builder.Services.AddScoped<RaceProposalService>();
+        builder.Services.AddScoped<RaceSignupService>();
         if (!jobMode && builder.Configuration.GetValue<bool>(DemoCatalogueSeedOnStartupKey))
         {
             builder.Services.AddHostedService<DemoRaceCatalogueSeeder>();

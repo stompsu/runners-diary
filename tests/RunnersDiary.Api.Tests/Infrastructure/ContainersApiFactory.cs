@@ -62,6 +62,9 @@ public sealed class ContainersApiFactory : WebApplicationFactory<Program>, IAsyn
         // Functional tests create many guests from one (absent) client IP and own the expiry timeline: no background cleanup, no
         // creation limit. Dedicated tests switch these back on through WithWebHostBuilder.
         builder.UseSetting("Guests:Cleanup:Enabled", "false");
+        // Race proposals (M8): the feature is on. This host runs as Production, whose configuration validator rejects the demo catalogue
+        // seeding switch, so tests that need the synthetic catalogue seed it explicitly (RaceTestSupport.EnsureDemoCatalogueAsync).
+        builder.UseSetting("Races:Enabled", "true");
         builder.UseSetting("RateLimiting:GuestCreate:PermitLimit", "100000");
         builder.UseSetting("RateLimiting:GuestCreate:GlobalPermitLimit", "100000");
     }

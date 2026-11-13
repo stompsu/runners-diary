@@ -291,6 +291,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/races/interests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's race interests; configured is false with the defaults while none were saved.
+         * @description Without saved interests proposals are off (listRaceProposals answers profileConfigured: false). Distances and radius are metres. The response is never cached.
+         */
+        get: operations["getRaceInterests"];
+        /**
+         * Replaces the caller's race interests (creating them on first save).
+         * @description Full replace. kinds >= 1; regionCodes <= 16 known ISO 3166-2:PL codes without duplicates; center and radiusMeters (5,000-300,000) together; min/max distance 1,000-250,000 with min <= max; horizonDays 7-365; keywords <= 100 characters, <= 5 terms of 2-30 characters. Unknown members are rejected.
+         */
+        put: operations["updateRaceInterests"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/races/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalogue races in a date window that match the caller's interests, with the caller's state (signed-up races always show).
+         * @description from and to are required (1950-2100, to >= from, at most 92 days inclusive). The window is clamped to [today, today + horizonDays] in the caller's zone (effectiveFrom/effectiveTo); signed-up races also show outside the horizon. Without saved interests: profileConfigured false and no items. includeDismissed (default false) also returns dismissed races. Ordered by date, then signed up, interested, proximity, name. The response is never cached.
+         */
+        get: operations["listRaceProposals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/races/proposals/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records that the caller opened the proposals list, so races imported later show as new. A no-op without saved interests. */
+        post: operations["markRaceProposalsSeen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/races/{raceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One catalogue race with the caller's state.
+         * @description 404 for an unknown or purged race, and for a removed one the caller is neither interested in nor signed up to. A duplicate answers 200 with canonicalId set (the SPA navigates there). The response is never cached.
+         */
+        get: operations["getRace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/races/{raceId}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Marks a race Interested or Dismissed for the caller, or clears the mark (None).
+         * @description SignedUp is derived from a run and is rejected with 400. A removed or duplicate race can only be cleared (anything else is 404). 409 proposal-state-limit past 2,000 marks per user (200 per guest). The response state is SignedUp while the caller has a linked run.
+         */
+        put: operations["setRaceProposalState"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/races/{raceId}/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Creates a planned race run for the caller from a catalogue race ("I signed up").
+         * @description The body is optional. distanceMeters must equal one of the race's distances and is required when it lists more than one; runTypeId must be a race run type; startTime is HH:mm; targetTimeSeconds 1-604,800. A race dated before the caller's today is a 400 on raceId. 404 for an unknown, removed or duplicate race. 409 race-already-linked (runId = the caller's own run) or run-limit.
+         */
+        post: operations["signUpForRace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -359,6 +480,7 @@ export interface components {
             maps: components["schemas"]["MapsClientConfig"];
             gpx: components["schemas"]["GpxClientConfig"];
             ai: components["schemas"]["AiClientConfig"];
+            races: components["schemas"]["RacesClientConfig"];
         };
         /** @enum {unknown} */
         ComparisonKindDto: "previous" | "previousYear";
@@ -677,7 +799,50 @@ export interface components {
             instance?: null | string;
         };
         /** @enum {unknown} */
+        ProposalState: "None" | "Interested" | "Dismissed" | "SignedUp";
+        /** @enum {unknown} */
         QuotaScopeDto: "rolling24h" | "account" | null;
+        RaceDetailsDto: {
+            /** Format: uuid */
+            raceId: string;
+            name: string;
+            /** Format: date */
+            date: string;
+            /** @description Local time of day, HH:mm. */
+            startTime: null | string;
+            locationName: null | string;
+            regionCode: null | string;
+            countryCode: string;
+            location: null | components["schemas"]["RaceLocationDto"];
+            kind: components["schemas"]["RaceKind"];
+            distancesMeters: number[];
+            state: components["schemas"]["ProposalState"];
+            /** Format: uuid */
+            linkedRunId: null | string;
+            isNew: boolean;
+            dateChanged: boolean;
+            source: string;
+            timeZoneId: null | string;
+            surface: null | components["schemas"]["Surface"];
+            /** Format: double */
+            elevationGainMeters: null | number;
+            price: null | components["schemas"]["RacePriceDto"];
+            /** Format: date */
+            signupDeadline: null | string;
+            organizerName: null | string;
+            signupUrl: null | string;
+            eventUrl: null | string;
+            sourceUrl: null | string;
+            removed: boolean;
+            /** Format: date */
+            previousDate: null | string;
+            /** Format: uuid */
+            canonicalId: null | string;
+            /** Format: date-time */
+            lastSeenUtc: string;
+            /** Format: date-time */
+            updatedUtc: string;
+        };
         /** @enum {unknown} */
         RaceDistanceCategory: "FiveK" | "TenK" | "HalfMarathon" | "Marathon" | "Other";
         RaceDto: {
@@ -696,6 +861,73 @@ export interface components {
             categoryPlace?: null | number;
             categoryName?: null | string;
             resultsUrl?: null | string;
+        };
+        RaceInterestsResponse: {
+            configured: boolean;
+            kinds: components["schemas"]["RaceKind"][];
+            regionCodes: string[];
+            center: null | components["schemas"]["LocationDto"];
+            /** Format: int32 */
+            radiusMeters: null | number;
+            /** Format: double */
+            minDistanceMeters: null | number;
+            /** Format: double */
+            maxDistanceMeters: null | number;
+            /** Format: int32 */
+            horizonDays: number;
+            keywords: null | string;
+            showInCalendar: boolean;
+            /** Format: date-time */
+            updatedAt: null | string;
+        };
+        /** @enum {unknown} */
+        RaceKind: "Road" | "Trail" | "Mountain" | "Ultra" | "CrossCountry" | "Ocr" | "Other";
+        RaceLocationDto: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+        };
+        RacePriceDto: {
+            /** Format: double */
+            amount: number;
+            currency: string;
+        };
+        RaceProposalDto: {
+            /** Format: uuid */
+            raceId: string;
+            name: string;
+            /** Format: date */
+            date: string;
+            /** @description Local time of day, HH:mm. */
+            startTime: null | string;
+            locationName: null | string;
+            regionCode: null | string;
+            countryCode: string;
+            location: null | components["schemas"]["RaceLocationDto"];
+            kind: components["schemas"]["RaceKind"];
+            distancesMeters: number[];
+            state: components["schemas"]["ProposalState"];
+            /** Format: uuid */
+            linkedRunId: null | string;
+            isNew: boolean;
+            dateChanged: boolean;
+            source: string;
+        };
+        RaceProposalListResponse: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** Format: date */
+            effectiveFrom: string;
+            /** Format: date */
+            effectiveTo: string;
+            profileConfigured: boolean;
+            /** Format: date-time */
+            catalogueUpdatedUtc: null | string;
+            truncated: boolean;
+            items: components["schemas"]["RaceProposalDto"][];
         };
         RaceResultDto: {
             /** Format: uuid */
@@ -724,6 +956,25 @@ export interface components {
             /** Format: int32 */
             ratingStars: null | number;
             isPersonalBest: boolean;
+        };
+        RacesClientConfig: {
+            enabled: boolean;
+            sources: components["schemas"]["RaceSourceClientConfig"][];
+        };
+        RaceSourceClientConfig: {
+            id: string;
+            name: string;
+            url: string;
+        };
+        /** @enum {unknown} */
+        RaceStateChoice: "None" | "Interested" | "Dismissed";
+        RaceUserStateDto: {
+            /** Format: uuid */
+            raceId: string;
+            state: components["schemas"]["ProposalState"];
+            /** Format: uuid */
+            linkedRunId: null | string;
+            dateChanged: boolean;
         };
         RatingDto: {
             /** Format: int32 */
@@ -765,6 +1016,8 @@ export interface components {
             surface: null | components["schemas"]["Surface"];
             race: null | components["schemas"]["RaceDto"];
             rating: null | components["schemas"]["RatingDto"];
+            /** Format: uuid */
+            catalogRaceId: null | string;
             version: string;
             tracks: components["schemas"]["RunTrackDto"][];
             /** Format: date-time */
@@ -835,6 +1088,19 @@ export interface components {
             race?: null | components["schemas"]["RaceDto"];
             rating?: null | components["schemas"]["RatingDto"];
             version?: null | string;
+        };
+        SetRaceProposalStateRequest: {
+            state: components["schemas"]["RaceStateChoice"];
+        };
+        SignUpForRaceRequest: {
+            /** Format: double */
+            distanceMeters?: null | number;
+            /** @description Local time of day, HH:mm. */
+            startTime?: null | string;
+            /** Format: int16 */
+            runTypeId?: null | number;
+            /** Format: int32 */
+            targetTimeSeconds?: null | number;
         };
         SummaryGenerationDto: {
             availability: components["schemas"]["GenerationAvailabilityDto"];
@@ -989,6 +1255,21 @@ export interface components {
             displayName?: null | string;
             timeZoneId: string;
             unitSystem: components["schemas"]["UnitSystem"];
+        };
+        UpdateRaceInterestsRequest: {
+            kinds: components["schemas"]["RaceKind"][];
+            regionCodes: string[];
+            center?: null | components["schemas"]["LocationDto"];
+            /** Format: int32 */
+            radiusMeters?: null | number;
+            /** Format: double */
+            minDistanceMeters?: null | number;
+            /** Format: double */
+            maxDistanceMeters?: null | number;
+            /** Format: int32 */
+            horizonDays: number;
+            keywords?: null | string;
+            showInCalendar: boolean;
         };
         UploadTrackForm: {
             kind: components["schemas"]["GpxTrackKind"];
@@ -2334,6 +2615,499 @@ export interface operations {
             };
             /** @description Too Many Requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getRaceInterests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaceInterestsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateRaceInterests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRaceInterestsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaceInterestsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    listRaceProposals: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                includeDismissed?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaceProposalListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    markRaceProposalsSeen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getRace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                raceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaceDetailsDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    setRaceProposalState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                raceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRaceProposalStateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaceUserStateDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    signUpForRace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                raceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["SignUpForRaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

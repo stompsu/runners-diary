@@ -25,5 +25,11 @@ public sealed class RacesOptions
     {
         /// <summary>Upper bound of catalogue rows one proposal request reads; beyond it the response is marked truncated.</summary>
         public int MaxCatalogueRows { get; set; } = 1000;
+
+        /// <summary>Most proposal-state rows (Interested or Dismissed) one user account may hold; beyond it 409 <c>proposal-state-limit</c>.</summary>
+        public int MaxStatesPerUser { get; set; } = 2_000;
+
+        /// <summary>The same cap for a guest account.</summary>
+        public int MaxStatesPerGuest { get; set; } = 200;
     }
 }

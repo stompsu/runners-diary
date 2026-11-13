@@ -135,6 +135,33 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
     }
 
     [Fact]
+    public void All_race_routes_exist_require_authorization_and_use_the_general_limiter()
+    {
+        var endpoints = Endpoints();
+        string[] expected =
+        [
+            "GET /api/races/interests",
+            "PUT /api/races/interests",
+            "GET /api/races/proposals",
+            "POST /api/races/proposals/seen",
+            "GET /api/races/{raceId:guid}",
+            "PUT /api/races/{raceId:guid}/state",
+            "POST /api/races/{raceId:guid}/signup",
+        ];
+
+        foreach (var key in expected)
+        {
+            var endpoint = Assert.Single(endpoints, e => Key(e) == key);
+            Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+            Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+            Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+        }
+
+        // Nothing else lives under /api/races: a new race route must be added to this list on purpose.
+        Assert.Equal(expected.Length, endpoints.Count(e => Route(e).StartsWith("/api/races", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void The_insights_report_exists_requires_authorization_and_uses_the_general_limiter()
     {
         var endpoint = Assert.Single(Endpoints(), e => Key(e) == "GET /api/insights/report");

@@ -1767,6 +1767,651 @@
           }
         ]
       }
+    },
+    "/api/races/interests": {
+      "get": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "The caller's race interests; configured is false with the defaults while none were saved.",
+        "description": "Without saved interests proposals are off (listRaceProposals answers profileConfigured: false). Distances and radius are metres. The response is never cached.",
+        "operationId": "getRaceInterests",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RaceInterestsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "Replaces the caller's race interests (creating them on first save).",
+        "description": "Full replace. kinds >= 1; regionCodes <= 16 known ISO 3166-2:PL codes without duplicates; center and radiusMeters (5,000-300,000) together; min/max distance 1,000-250,000 with min <= max; horizonDays 7-365; keywords <= 100 characters, <= 5 terms of 2-30 characters. Unknown members are rejected.",
+        "operationId": "updateRaceInterests",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRaceInterestsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RaceInterestsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/races/proposals": {
+      "get": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "Catalogue races in a date window that match the caller's interests, with the caller's state (signed-up races always show).",
+        "description": "from and to are required (1950-2100, to >= from, at most 92 days inclusive). The window is clamped to [today, today + horizonDays] in the caller's zone (effectiveFrom/effectiveTo); signed-up races also show outside the horizon. Without saved interests: profileConfigured false and no items. includeDismissed (default false) also returns dismissed races. Ordered by date, then signed up, interested, proximity, name. The response is never cached.",
+        "operationId": "listRaceProposals",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "includeDismissed",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RaceProposalListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/races/proposals/seen": {
+      "post": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "Records that the caller opened the proposals list, so races imported later show as new. A no-op without saved interests.",
+        "operationId": "markRaceProposalsSeen",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/races/{raceId}": {
+      "get": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "One catalogue race with the caller's state.",
+        "description": "404 for an unknown or purged race, and for a removed one the caller is neither interested in nor signed up to. A duplicate answers 200 with canonicalId set (the SPA navigates there). The response is never cached.",
+        "operationId": "getRace",
+        "parameters": [
+          {
+            "name": "raceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RaceDetailsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/races/{raceId}/state": {
+      "put": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "Marks a race Interested or Dismissed for the caller, or clears the mark (None).",
+        "description": "SignedUp is derived from a run and is rejected with 400. A removed or duplicate race can only be cleared (anything else is 404). 409 proposal-state-limit past 2,000 marks per user (200 per guest). The response state is SignedUp while the caller has a linked run.",
+        "operationId": "setRaceProposalState",
+        "parameters": [
+          {
+            "name": "raceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRaceProposalStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RaceUserStateDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/races/{raceId}/signup": {
+      "post": {
+        "tags": [
+          "Races"
+        ],
+        "summary": "Creates a planned race run for the caller from a catalogue race (\"I signed up\").",
+        "description": "The body is optional. distanceMeters must equal one of the race's distances and is required when it lists more than one; runTypeId must be a race run type; startTime is HH:mm; targetTimeSeconds 1-604,800. A race dated before the caller's today is a 400 on raceId. 404 for an unknown, removed or duplicate race. 409 race-already-linked (runId = the caller's own run) or run-limit.",
+        "operationId": "signUpForRace",
+        "parameters": [
+          {
+            "name": "raceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SignUpForRaceRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1988,7 +2633,8 @@
           "entra",
           "maps",
           "gpx",
-          "ai"
+          "ai",
+          "races"
         ],
         "type": "object",
         "properties": {
@@ -2010,6 +2656,9 @@
           },
           "ai": {
             "$ref": "#/components/schemas/AiClientConfig"
+          },
+          "races": {
+            "$ref": "#/components/schemas/RacesClientConfig"
           }
         },
         "additionalProperties": false
@@ -3164,12 +3813,219 @@
         },
         "additionalProperties": false
       },
+      "ProposalState": {
+        "enum": [
+          "None",
+          "Interested",
+          "Dismissed",
+          "SignedUp"
+        ]
+      },
       "QuotaScopeDto": {
         "enum": [
           "rolling24h",
           "account",
           null
         ]
+      },
+      "RaceDetailsDto": {
+        "required": [
+          "raceId",
+          "name",
+          "date",
+          "startTime",
+          "locationName",
+          "regionCode",
+          "countryCode",
+          "location",
+          "kind",
+          "distancesMeters",
+          "state",
+          "linkedRunId",
+          "isNew",
+          "dateChanged",
+          "source",
+          "timeZoneId",
+          "surface",
+          "elevationGainMeters",
+          "price",
+          "signupDeadline",
+          "organizerName",
+          "signupUrl",
+          "eventUrl",
+          "sourceUrl",
+          "removed",
+          "previousDate",
+          "canonicalId",
+          "lastSeenUtc",
+          "updatedUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "raceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startTime": {
+            "pattern": "^\\d{2}:\\d{2}$",
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Local time of day, HH:mm."
+          },
+          "locationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "regionCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RaceLocationDto"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RaceKind"
+          },
+          "distancesMeters": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/ProposalState"
+          },
+          "linkedRunId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isNew": {
+            "type": "boolean"
+          },
+          "dateChanged": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "timeZoneId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "surface": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Surface"
+              }
+            ]
+          },
+          "elevationGainMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "price": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RacePriceDto"
+              }
+            ]
+          },
+          "signupDeadline": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "organizerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "signupUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "removed": {
+            "type": "boolean"
+          },
+          "previousDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "canonicalId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lastSeenUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
       },
       "RaceDistanceCategory": {
         "enum": [
@@ -3253,6 +4109,284 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceInterestsResponse": {
+        "required": [
+          "configured",
+          "kinds",
+          "regionCodes",
+          "center",
+          "radiusMeters",
+          "minDistanceMeters",
+          "maxDistanceMeters",
+          "horizonDays",
+          "keywords",
+          "showInCalendar",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RaceKind"
+            }
+          },
+          "regionCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "center": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          },
+          "radiusMeters": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "minDistanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "maxDistanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "horizonDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "keywords": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "showInCalendar": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceKind": {
+        "enum": [
+          "Road",
+          "Trail",
+          "Mountain",
+          "Ultra",
+          "CrossCountry",
+          "Ocr",
+          "Other"
+        ]
+      },
+      "RaceLocationDto": {
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RacePriceDto": {
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceProposalDto": {
+        "required": [
+          "raceId",
+          "name",
+          "date",
+          "startTime",
+          "locationName",
+          "regionCode",
+          "countryCode",
+          "location",
+          "kind",
+          "distancesMeters",
+          "state",
+          "linkedRunId",
+          "isNew",
+          "dateChanged",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "raceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startTime": {
+            "pattern": "^\\d{2}:\\d{2}$",
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Local time of day, HH:mm."
+          },
+          "locationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "regionCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RaceLocationDto"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RaceKind"
+          },
+          "distancesMeters": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/ProposalState"
+          },
+          "linkedRunId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isNew": {
+            "type": "boolean"
+          },
+          "dateChanged": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceProposalListResponse": {
+        "required": [
+          "from",
+          "to",
+          "effectiveFrom",
+          "effectiveTo",
+          "profileConfigured",
+          "catalogueUpdatedUtc",
+          "truncated",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "profileConfigured": {
+            "type": "boolean"
+          },
+          "catalogueUpdatedUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RaceProposalDto"
+            }
           }
         },
         "additionalProperties": false
@@ -3366,6 +4500,81 @@
         },
         "additionalProperties": false
       },
+      "RacesClientConfig": {
+        "required": [
+          "enabled",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RaceSourceClientConfig"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceSourceClientConfig": {
+        "required": [
+          "id",
+          "name",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaceStateChoice": {
+        "enum": [
+          "None",
+          "Interested",
+          "Dismissed"
+        ]
+      },
+      "RaceUserStateDto": {
+        "required": [
+          "raceId",
+          "state",
+          "linkedRunId",
+          "dateChanged"
+        ],
+        "type": "object",
+        "properties": {
+          "raceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ProposalState"
+          },
+          "linkedRunId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "dateChanged": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "RatingDto": {
         "required": [
           "stars"
@@ -3413,6 +4622,7 @@
           "surface",
           "race",
           "rating",
+          "catalogRaceId",
           "version",
           "tracks",
           "createdAt",
@@ -3565,6 +4775,13 @@
                 "$ref": "#/components/schemas/RatingDto"
               }
             ]
+          },
+          "catalogRaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "version": {
             "type": "string"
@@ -3851,6 +5068,55 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetRaceProposalStateRequest": {
+        "required": [
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/RaceStateChoice"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SignUpForRaceRequest": {
+        "type": "object",
+        "properties": {
+          "distanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "startTime": {
+            "pattern": "^\\d{2}:\\d{2}$",
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Local time of day, HH:mm."
+          },
+          "runTypeId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int16"
+          },
+          "targetTimeSeconds": {
+            "maximum": 604800,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -4465,6 +5731,74 @@
         },
         "additionalProperties": false
       },
+      "UpdateRaceInterestsRequest": {
+        "required": [
+          "kinds",
+          "regionCodes",
+          "horizonDays",
+          "showInCalendar"
+        ],
+        "type": "object",
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RaceKind"
+            }
+          },
+          "regionCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "center": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          },
+          "radiusMeters": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "minDistanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "maxDistanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "horizonDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "keywords": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "showInCalendar": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "UploadTrackForm": {
         "required": [
           "kind",
@@ -4536,6 +5870,9 @@
     },
     {
       "name": "Tracks"
+    },
+    {
+      "name": "Races"
     }
   ]
 }

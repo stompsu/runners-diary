@@ -16,5 +16,7 @@ public static class ProblemTypes
     public const string AiBusy = "urn:runnersdiary:problem:ai-busy";
     public const string SummaryInProgress = "urn:runnersdiary:problem:summary-in-progress";
     public const string SummaryFailed = "urn:runnersdiary:problem:summary-failed";
+    public const string RaceAlreadyLinked = "urn:runnersdiary:problem:race-already-linked";
+    public const string ProposalStateLimit = "urn:runnersdiary:problem:proposal-state-limit";
     public const string StorageUnavailable = "urn:runnersdiary:problem:storage-unavailable";
 }

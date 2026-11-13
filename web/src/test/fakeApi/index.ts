@@ -311,6 +311,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
             azureMapsDomain: null,
           },
           gpx: { maxFileBytesUser: 20 * 1024 * 1024, maxFileBytesGuest: 5 * 1024 * 1024 },
+          races: { enabled: true, sources: [{ id: 'running-life', name: 'running.life', url: 'https://running.life/' }] },
           ai: { summaryGeneration: summaryService.generationEnabled() },
         } satisfies ClientConfigResponse,
         200,

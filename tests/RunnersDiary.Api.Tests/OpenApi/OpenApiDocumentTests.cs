@@ -64,6 +64,28 @@ public sealed class OpenApiDocumentTests
     }
 
     [Fact]
+    public void Document_ContainsTheM8RaceOperations_WithBearerSecurity_And_CatalogRaceId()
+    {
+        using var doc = LoadDocument();
+        var operations = doc.RootElement.GetProperty("paths").EnumerateObject()
+            .SelectMany(p => p.Value.EnumerateObject().Select(m => (Path: p.Name, Operation: m.Value)))
+            .ToDictionary(x => x.Operation.GetProperty("operationId").GetString()!, x => x);
+
+        string[] ids = ["getRaceInterests", "updateRaceInterests", "listRaceProposals", "markRaceProposalsSeen", "getRace", "setRaceProposalState", "signUpForRace"];
+        foreach (var id in ids)
+        {
+            Assert.True(operations.ContainsKey(id), id);
+            Assert.True(operations[id].Operation.TryGetProperty("security", out _), id + " has no security requirement");
+        }
+
+        var schemas = doc.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.True(schemas.GetProperty("RunDto").GetProperty("properties").TryGetProperty("catalogRaceId", out _));
+        Assert.False(schemas.GetProperty("RunWriteRequest").GetProperty("properties").TryGetProperty("catalogRaceId", out _));
+        Assert.True(schemas.GetProperty("ClientConfigResponse").GetProperty("properties").TryGetProperty("races", out _));
+        Assert.Equal(["None", "Interested", "Dismissed"], schemas.GetProperty("RaceStateChoice").GetProperty("enum").EnumerateArray().Select(e => e.GetString()).ToArray());
+    }
+
+    [Fact]
     public void Document_DescribesTimeOnlyAsHHmm_AndKeepsNumbersStrict()
     {
         using var doc = LoadDocument();
