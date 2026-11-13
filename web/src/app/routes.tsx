@@ -1,4 +1,4 @@
-import type { RouteObject } from 'react-router'
+import { Navigate, type RouteObject } from 'react-router'
 import { RequireAuth } from '@/auth/RequireAuth'
 import { AppShell } from '@/components/layout/AppShell'
 import { DiaryMonthPage } from '@/features/calendar/DiaryMonthPage'
@@ -9,6 +9,7 @@ import { SignInPage } from '@/features/auth/SignInPage'
 import { panelRoutes } from '@/features/runs/panelRoutes'
 
 export const loadInsightsPage = () => import('@/features/insights/InsightsPage')
+export const loadRaceInterestsPage = () => import('@/features/races/RaceInterestsPage')
 
 // The URL is the source of truth for navigation state (brief §1.1.2): /diary/2026/11.
 // Everything except /signin sits behind RequireAuth (ADR 0014 §7).
@@ -32,6 +33,12 @@ export const routes: RouteObject[] = [
           },
           // The dashboard, its i18n namespace and Recharts load only when the route is opened (M5 AC13).
           { path: 'insights', lazy: async () => ({ Component: (await loadInsightsPage()).InsightsPage }) },
+          // Settings: the page and its `races` namespace load only when opened (M8 AC12). More sections can follow.
+          { path: 'settings', element: <Navigate to="/settings/races" replace /> },
+          {
+            path: 'settings/races',
+            lazy: async () => ({ Component: (await loadRaceInterestsPage()).RaceInterestsPage }),
+          },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

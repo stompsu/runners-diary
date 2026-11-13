@@ -6,7 +6,8 @@
   "nav": {
     "label": "Main",
     "diary": "Diary",
-    "insights": "Insights"
+    "insights": "Insights",
+    "settings": "Settings"
   },
   "apiStatus": {
     "label": "API status",

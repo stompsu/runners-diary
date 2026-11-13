@@ -1,0 +1,166 @@
+{
+  "nav": {
+    "settings": "Settings"
+  },
+  "interests": {
+    "title": "Race interests",
+    "intro": "Choose which upcoming races to suggest. Matching races from public calendars show up in your diary.",
+    "unavailable": "Race proposals are not available right now.",
+    "saveForm": "Race interests",
+    "save": "Save interests",
+    "saving": "Saving…",
+    "discard": "Discard changes",
+    "saved": "Race interests saved",
+    "notConfigured": "You have not saved any interests yet. These are the suggested defaults; save them to start seeing proposals.",
+    "what": {
+      "legend": "What",
+      "kinds": "Kinds of race",
+      "kindsHint": "Pick at least one.",
+      "ultraHint": "Ultra also matches any race longer than a marathon."
+    },
+    "where": {
+      "legend": "Where",
+      "hint": "Voivodeships and a place with a radius both count: a race matches if either one fits. With neither, races from all of Poland match.",
+      "regions": "Voivodeships",
+      "regionLabel": "{{en}} ({{pl}})",
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "selectedCount": "{{count}} of {{total}} voivodeships selected",
+      "nearPlace": "Near a place",
+      "placeHint": "Pick a place on the map, then set how far from it a race may be.",
+      "radius": "Radius (km)",
+      "radiusHint": "5 to 300 km.",
+      "radiusNeedsPlace": "Choose a place first.",
+      "radiusSlider": "Radius slider (km)",
+      "mapLabel": "Preview of the search area on a map"
+    },
+    "distance": {
+      "legend": "Distance",
+      "hint": "A race matches if one of its distances falls in this range. Leave a field empty for no limit.",
+      "min": "From (km)",
+      "max": "To (km)",
+      "presets": "Presets",
+      "preset": {
+        "fiveK": "5K",
+        "tenK": "10K",
+        "half": "Half",
+        "marathon": "Marathon",
+        "ultra": "Ultra"
+      }
+    },
+    "when": {
+      "legend": "When",
+      "horizon": "Look ahead",
+      "horizonOption_one": "{{count}} day",
+      "horizonOption_other": "{{count}} days"
+    },
+    "keywords": {
+      "legend": "Keywords",
+      "label": "Keywords (optional)",
+      "hint": "Up to 5 words; a race must contain all of them in its name or place."
+    },
+    "show": {
+      "legend": "Diary",
+      "label": "Show proposals in the diary",
+      "hint": "Proposals appear in the calendar as dotted flag markers."
+    },
+    "sources": {
+      "legend": "Sources",
+      "opensNewTab": "(opens in a new tab)"
+    },
+    "validation": {
+      "kindsRequired": "Select at least one kind of race.",
+      "regionUnknown": "Unknown voivodeship.",
+      "latitude": "Latitude must be between -90 and 90.",
+      "longitude": "Longitude must be between -180 and 180.",
+      "centerNameLength": "The place name can have at most 200 characters.",
+      "radiusRequired": "Enter a radius for the chosen place.",
+      "radiusRange": "Enter a radius from 5 to 300 km.",
+      "distanceRange": "Enter a distance from 1 to 250 km.",
+      "distanceOrder": "The longest distance must not be shorter than the shortest.",
+      "horizonRange": "Choose 7 to 365 days.",
+      "keywordsLength": "Keywords can have at most 100 characters.",
+      "keywordsTerms": "Use at most 5 keywords.",
+      "keywordsTermLength": "Each keyword needs 2 to 30 characters."
+    }
+  },
+  "kinds": {
+    "Road": "Road",
+    "Trail": "Trail",
+    "Mountain": "Mountain",
+    "Ultra": "Ultra",
+    "CrossCountry": "Cross country",
+    "Ocr": "Obstacle course",
+    "Other": "Other"
+  },
+  "regions": {
+    "PL-02": {
+      "en": "Lower Silesian",
+      "pl": "Dolnośląskie"
+    },
+    "PL-04": {
+      "en": "Kuyavian-Pomeranian",
+      "pl": "Kujawsko-pomorskie"
+    },
+    "PL-06": {
+      "en": "Lublin",
+      "pl": "Lubelskie"
+    },
+    "PL-08": {
+      "en": "Lubusz",
+      "pl": "Lubuskie"
+    },
+    "PL-10": {
+      "en": "Łódź",
+      "pl": "Łódzkie"
+    },
+    "PL-12": {
+      "en": "Lesser Poland",
+      "pl": "Małopolskie"
+    },
+    "PL-14": {
+      "en": "Masovian",
+      "pl": "Mazowieckie"
+    },
+    "PL-16": {
+      "en": "Opole",
+      "pl": "Opolskie"
+    },
+    "PL-18": {
+      "en": "Subcarpathian",
+      "pl": "Podkarpackie"
+    },
+    "PL-20": {
+      "en": "Podlaskie",
+      "pl": "Podlaskie"
+    },
+    "PL-22": {
+      "en": "Pomeranian",
+      "pl": "Pomorskie"
+    },
+    "PL-24": {
+      "en": "Silesian",
+      "pl": "Śląskie"
+    },
+    "PL-26": {
+      "en": "Holy Cross",
+      "pl": "Świętokrzyskie"
+    },
+    "PL-28": {
+      "en": "Warmian-Masurian",
+      "pl": "Warmińsko-mazurskie"
+    },
+    "PL-30": {
+      "en": "Greater Poland",
+      "pl": "Wielkopolskie"
+    },
+    "PL-32": {
+      "en": "West Pomeranian",
+      "pl": "Zachodniopomorskie"
+    }
+  },
+  "attribution": {
+    "source": "Source: {{name}}",
+    "disclaimer": "Race facts come from public calendars; always check the organiser's page."
+  }
+}

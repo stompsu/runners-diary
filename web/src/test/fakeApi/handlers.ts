@@ -11,6 +11,7 @@ import {
   startOfIsoWeek,
 } from '../../lib/dates/plainDate.ts'
 import { RUN_TYPES } from './seed.ts'
+import type { RaceInterestsDto } from './races.ts'
 import type { StoredTrack } from './tracks.ts'
 
 type S = components['schemas']
@@ -45,6 +46,8 @@ export type HandledOperations = Pick<
   | 'getInsightsReport'
   | 'getInsightsSummary'
   | 'generateInsightsSummary'
+  | 'getRaceInterests'
+  | 'updateRaceInterests'
 >
 
 export interface Account {
@@ -58,6 +61,8 @@ export interface Account {
   runs: Map<string, RunDto>
   /** Tracks of all the account's runs by track id (each knows its run). */
   tracks: Map<string, StoredTrack>
+  /** The race interest profile; null = none saved (`configured: false` + defaults). Guests start with the demo one. */
+  raceInterests: RaceInterestsDto | null
 }
 
 export interface Limits {

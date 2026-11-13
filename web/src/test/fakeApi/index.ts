@@ -19,6 +19,7 @@ import {
 } from './handlers.ts'
 import { matches, type Fault } from './faults.ts'
 import { buildInsightsReport, validateInsightsQuery, type InsightsScenario } from './insights.ts'
+import { defaultRaceInterests, demoRaceInterests, validateRaceInterests, type RaceInterestsDto } from './races.ts'
 import { demoRuns, RUN_TYPES } from './seed.ts'
 import { createSummaryService, type SummaryOptions, type SummaryPostOutcome, type SummaryScenario } from './summary.ts'
 import {
@@ -42,6 +43,7 @@ export type { ClientConfigResponse, RunDto, RunWriteRequest } from './handlers.t
 export { sampleGpx, type TrackDto } from './tracks.ts'
 export { GUEST_LIMIT, USER_LIMIT, sampleSummaryContent } from './summary.ts'
 export type { InsightsSummaryDto, SummaryOptions, SummaryPostOutcome, SummaryScenario } from './summary.ts'
+export type { RaceInterestsDto } from './races.ts'
 export { DEMO_REPORT_TODAY, demoReport, type InsightsReportDto, type InsightsScenario } from './insights.ts'
 
 /** A track to put straight into an account (test setup; the upload path is `POST /api/runs/{id}/tracks`). */
@@ -72,6 +74,10 @@ export interface FakeApiOptions {
   insights?: InsightsScenario
   /** `GET/POST /api/insights/summary` behaviour (see `SummaryScenario`, `SummaryPostOutcome`). Default `none` / `ok`. */
   summary?: SummaryOptions
+  /** `client-config.races.enabled`. Default true. */
+  racesEnabled?: boolean
+  /** Give each new guest the demo race interest profile (M8 plan §3.2). Default true; false = no profile saved. */
+  guestRaceProfile?: boolean
   limits?: Partial<Limits>
   /** Clock in ms, for token expiry and timestamps. Default `Date.now`. */
   now?: () => number
@@ -114,6 +120,9 @@ export interface FakeApi {
   /** Test inspection: the tracks of a run (stored DTOs), newest first. */
   tracksOf(token: string, runId: string): TrackDto[]
   setGeocodingEnabled(enabled: boolean): void
+  setRacesEnabled(enabled: boolean): void
+  /** Test inspection: the saved race interests of the account behind a token (null = none saved). */
+  raceInterestsOf(token: string): RaceInterestsDto | null
   setInsightsScenario(scenario: InsightsScenario): void
   /** Changes what the summary endpoints answer with; `outcome` also sets how the next POSTs end. */
   setSummaryScenario(scenario: SummaryScenario, outcome?: SummaryPostOutcome, options?: { slowMs?: number }): void
@@ -140,6 +149,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const now = options.now ?? Date.now
   const guestTtlMs = options.guestTtlMs ?? DAY_MS
   let geocodingEnabled = options.geocodingEnabled ?? false
+  let racesEnabled = options.racesEnabled ?? true
   let insightsScenario: InsightsScenario = options.insights ?? 'demo'
 
   const summaryService = createSummaryService({
@@ -176,6 +186,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       expiresAtMs: kind === 'Guest' ? now() + guestTtlMs : null,
       runs: new Map(),
       tracks: new Map(),
+      raceInterests:
+        kind === 'Guest' && (options.guestRaceProfile ?? true)
+          ? demoRaceInterests(new Date(now()).toISOString())
+          : null,
     }
     accounts.set(token, account)
     const seed = overrides.seed ?? (kind === 'Guest' ? (options.guestSeed ?? demoRuns(today)) : [])
@@ -311,7 +325,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
             azureMapsDomain: null,
           },
           gpx: { maxFileBytesUser: 20 * 1024 * 1024, maxFileBytesGuest: 5 * 1024 * 1024 },
-          races: { enabled: true, sources: [{ id: 'running-life', name: 'running.life', url: 'https://running.life/' }] },
+          races: {
+            enabled: racesEnabled,
+            sources: [{ id: 'running-life', name: 'running.life', url: 'https://running.life/' }],
+          },
           ai: { summaryGeneration: summaryService.generationEnabled() },
         } satisfies ClientConfigResponse,
         200,
@@ -429,6 +446,30 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         const run = buildRun(id, result.value, account, new Date(now()).toISOString(), ++versionCounter, existing)
         account.runs.set(id, run)
         return json(run)
+      }
+    }
+
+    if (path === '/api/races/interests') {
+      // The real API answers 503 feature-unavailable for the whole /api/races group while Races:Enabled is false.
+      if (!racesEnabled) {
+        return problem(503, 'Race proposals are not available.', {
+          type: 'urn:runnersdiary:problem:feature-unavailable',
+        })
+      }
+      if (method === 'GET') {
+        return json(account.raceInterests ?? defaultRaceInterests(), 200, { 'Cache-Control': 'private, no-store' })
+      }
+      if (method === 'PUT') {
+        const body = await readJson(request)
+        if ('response' in body) return body.response
+        const result = validateRaceInterests(body.value)
+        if ('errors' in result) return validation(result.errors)
+        account.raceInterests = {
+          ...result.value,
+          configured: true,
+          updatedAt: new Date(now()).toISOString(),
+        } as RaceInterestsDto
+        return json(account.raceInterests)
       }
     }
 
@@ -632,6 +673,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tracksOf: (token, runId) =>
       [...(accounts.get(token)?.tracks.values() ?? [])].filter((t) => t.dto.runId === runId).map((t) => t.dto),
     setGeocodingEnabled: (enabled) => void (geocodingEnabled = enabled),
+    setRacesEnabled: (enabled) => void (racesEnabled = enabled),
+    raceInterestsOf: (token) => accounts.get(token)?.raceInterests ?? null,
     setInsightsScenario: (scenario) => void (insightsScenario = scenario),
     setSummaryScenario: (scenario, outcome, opts) => summaryService.set(scenario, outcome, opts),
     setSummaryOutcome: (outcome, opts) => summaryService.setPost(outcome, opts),

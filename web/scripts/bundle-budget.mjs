@@ -12,7 +12,15 @@ const ALLOWED_GROWTH_BYTES = 5 * 1024
 /** Chunk groups from vite.config.ts that must only ever be reached through dynamic import(). */
 // M5: the insights route chunk (dashboard, cards, charts, `insights` strings) is reached through the lazy /insights route.
 // M7: the Azure Maps Web SDK (azure-maps-vendor, AzureMapsMap) loads only when client-config selects it.
-const LAZY_ONLY = ['map-vendor', 'azure-maps-vendor', 'AzureMapsMap', 'chart-vendor', 'InsightsPage']
+// M8: the Settings -> Race interests page (form, pickers, `races` strings) loads only through its lazy route.
+const LAZY_ONLY = [
+  'map-vendor',
+  'azure-maps-vendor',
+  'AzureMapsMap',
+  'chart-vendor',
+  'InsightsPage',
+  'RaceInterestsPage',
+]
 
 const dist = join(import.meta.dirname, '..', 'dist')
 const gzipSize = (file) => gzipSync(readFileSync(join(dist, file)), { level: 9 }).length
