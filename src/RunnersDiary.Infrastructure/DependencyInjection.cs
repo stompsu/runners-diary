@@ -10,7 +10,12 @@ using RunnersDiary.Infrastructure.Identity;
 using RunnersDiary.Infrastructure.Insights;
 using RunnersDiary.Infrastructure.Maps;
 using RunnersDiary.Infrastructure.Persistence;
+using RunnersDiary.Infrastructure.RaceSources;
+using RunnersDiary.Infrastructure.RaceSources.Demo;
+using RunnersDiary.Infrastructure.RaceSources.RunningLife;
 using RunnersDiary.Infrastructure.Races;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RunnersDiary.Infrastructure.Runs;
 using RunnersDiary.Infrastructure.Storage;
 using RunnersDiary.Infrastructure.Users;
@@ -116,4 +121,53 @@ public static class DependencyInjection
 
         return builder;
     }
+
+    /// <summary>
+    /// The <c>--job race-import</c> profile (ADR 0038 §1): the DbContext (no pooling, anonymous user), the race catalogue services and the sources, nothing
+    /// else. There is no Blob, Maps, AI, authentication or guest service, no hosted service and no startup work, and the connection string of the
+    /// database is the only one required. A disabled import never opens it (the service checks the switches first).
+    /// </summary>
+    public static IHostApplicationBuilder AddRaceImportJob(this IHostApplicationBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Services.TryAddScoped<ICurrentUser>(_ => AnonymousCurrentUser.Instance);
+        builder.Services.TryAddSingleton(TimeProvider.System);
+
+        var connectionString = builder.Configuration.GetConnectionString(DatabaseConnectionName)
+            ?? throw new InvalidOperationException($"Connection string '{DatabaseConnectionName}' is missing.");
+        builder.Services.AddSingleton<SqlActivityInterceptor>();
+        builder.Services.AddDbContext<RunnersDiaryDbContext>((services, options) => options
+            .UseSqlServer(connectionString, sql => sql.UseNetTopologySuite())
+            .AddInterceptors(OwnershipGuardInterceptor.Instance, services.GetRequiredService<SqlActivityInterceptor>()));
+        builder.EnrichSqlServerDbContext<RunnersDiaryDbContext>();
+
+        builder.Services.Configure<RacesOptions>(builder.Configuration.GetSection(RacesOptions.SectionName));
+        builder.Services.AddSingleton<DemoRaceCatalogue>();
+
+        builder.Services.AddOptions<RaceImportOptions>().Bind(builder.Configuration.GetSection(RaceImportOptions.SectionName)).ValidateOnStart();
+        builder.Services.AddSingleton<IValidateOptions<RaceImportOptions>, RaceImportOptionsValidator>();
+        builder.Services.AddSingleton<IRaceSource>(sp => new RunningLifeSource(
+            CreateRaceSourceHttpClient(), sp.GetRequiredService<IOptions<RaceImportOptions>>(), sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<ILogger<RunningLifeSource>>()));
+        builder.Services.AddSingleton<IRaceSource, DemoRaceSource>();
+        builder.Services.AddSingleton<RaceImportService>();
+        return builder;
+    }
+
+    /// <summary>
+    /// A plain client, not an <c>IHttpClientFactory</c> one: the standard resilience handler of the service defaults would retry (the polite client never retries,
+    /// ADR 0035 §4) and the default client logging would write URLs. Redirects are followed by hand, only to the same host; decompression is on, the cap is
+    /// applied to the decompressed bytes and the timeout by the polite client.
+    /// </summary>
+    private static HttpClient CreateRaceSourceHttpClient() =>
+        new(new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Brotli,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        })
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        };
 }

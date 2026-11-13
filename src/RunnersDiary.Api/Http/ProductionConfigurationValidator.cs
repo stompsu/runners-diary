@@ -1,5 +1,6 @@
 using System.Net;
 using RunnersDiary.Infrastructure;
+using RunnersDiary.Infrastructure.RaceSources;
 
 namespace RunnersDiary.Api.Http;
 
@@ -14,13 +15,17 @@ public static class ProductionConfigurationValidator
 {
     /// <summary>The API process: connection strings plus a coherent forwarded-headers trust configuration.</summary>
     public static void ValidateApi(IConfiguration configuration, IHostEnvironment environment) =>
-        Validate(configuration, environment, includeWebSettings: true);
+        Validate(configuration, environment, includeWebSettings: true, requireBlobs: true);
 
     /// <summary>The job host: only what Infrastructure needs.</summary>
     public static void ValidateJob(IConfiguration configuration, IHostEnvironment environment) =>
-        Validate(configuration, environment, includeWebSettings: false);
+        Validate(configuration, environment, includeWebSettings: false, requireBlobs: true);
 
-    private static void Validate(IConfiguration configuration, IHostEnvironment environment, bool includeWebSettings)
+    /// <summary>The job host of <paramref name="job"/>: the race import (ADR 0038) needs no Blob connection string, every other job keeps the full set.</summary>
+    public static void ValidateJob(IConfiguration configuration, IHostEnvironment environment, string job) =>
+        Validate(configuration, environment, includeWebSettings: false, requireBlobs: !string.Equals(job, Jobs.JobMode.RaceImportJob, StringComparison.Ordinal));
+
+    private static void Validate(IConfiguration configuration, IHostEnvironment environment, bool includeWebSettings, bool requireBlobs)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(environment);
@@ -31,13 +36,18 @@ public static class ProductionConfigurationValidator
 
         var failures = new List<string>();
         Require(configuration, $"ConnectionStrings:{DependencyInjection.DatabaseConnectionName}", failures);
-        Require(configuration, $"ConnectionStrings:{DependencyInjection.BlobsConnectionName}", failures);
+        if (requireBlobs)
+        {
+            Require(configuration, $"ConnectionStrings:{DependencyInjection.BlobsConnectionName}", failures);
+        }
 
         // The synthetic demo catalogue (M8) is Development/Testing data and must never be seeded into production.
         if (configuration.GetValue<bool>(DependencyInjection.DemoCatalogueSeedOnStartupKey))
         {
             failures.Add($"{DependencyInjection.DemoCatalogueSeedOnStartupKey} must not be true in Production.");
         }
+
+        ValidateRaceImport(configuration, failures);
 
         if (includeWebSettings)
         {
@@ -47,6 +57,22 @@ public static class ProductionConfigurationValidator
         if (failures.Count > 0)
         {
             throw new InvalidOperationException("Invalid production configuration: " + string.Join(" ", failures));
+        }
+    }
+
+    /// <summary>The synthetic Demo source must never run in Production, and the polite-crawling floor (ADR 0035 §4) is enforced before the job starts.</summary>
+    private static void ValidateRaceImport(IConfiguration configuration, List<string> failures)
+    {
+        if (configuration.GetValue<bool>("RaceImport:Sources:Demo:Enabled"))
+        {
+            failures.Add("RaceImport:Sources:Demo:Enabled must not be true in Production.");
+        }
+
+        var interval = configuration["RaceImport:MinInterval"];
+        if (!string.IsNullOrWhiteSpace(interval)
+            && !(TimeSpan.TryParse(interval, System.Globalization.CultureInfo.InvariantCulture, out var parsed) && parsed >= RaceImportOptions.MinimumInterval))
+        {
+            failures.Add("RaceImport:MinInterval must be a time span of at least one second.");
         }
     }
 

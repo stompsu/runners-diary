@@ -95,7 +95,7 @@ public static partial class RaceNormalizer
             return RaceKind.Ocr;
         }
 
-        if (folded.Contains("ultra", StringComparison.Ordinal))
+        if (folded.Contains("ultra", StringComparison.Ordinal) || folded.Contains("backyard", StringComparison.Ordinal))
         {
             return RaceKind.Ultra;
         }
@@ -116,6 +116,7 @@ public static partial class RaceNormalizer
         }
 
         if (folded.Contains("miejsk", StringComparison.Ordinal) || folded.Contains("uliczn", StringComparison.Ordinal)
+            || folded.Contains("asfalt", StringComparison.Ordinal) || folded.Contains("asfalc", StringComparison.Ordinal) || tokens.Contains("urban")
             || tokens.Contains("city") || tokens.Contains("street") || tokens.Contains("road") || tokens.Contains("asfalt"))
         {
             return RaceKind.Road;

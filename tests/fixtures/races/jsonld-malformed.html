@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<!-- SYNTHETIC FIXTURE: one JSON-LD block is not valid JSON, the other one is fine. The bad block must be skipped and counted. -->
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <script type="application/ld+json">{ "@type": "ItemList", "itemListElement": [ { "item": ,, }</script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"ItemList","itemListElement":[
+    {"@type":"ListItem","position":1,"item":{"@type":"SportsEvent","name":"Bieg Ocalaly","url":"https://running.life/pl/wydarzenie/bieg-ocalaly","startDate":"2027-09-05",
+      "location":{"@type":"Place","name":"Opole","address":{"@type":"PostalAddress","addressLocality":"Opole","addressRegion":"Opole Voivodeship","addressCountry":"Polska"},"geo":{"@type":"GeoCoordinates","latitude":50.6751,"longitude":17.9213}}}}
+  ]}
+  </script>
+</head>
+<body><p>Strona testowa.</p></body>
+</html>

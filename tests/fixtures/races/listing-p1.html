@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!-- SYNTHETIC FIXTURE (M8, ADR 0035 section 7): imitates the structure of a race-calendar listing page. Every event, place and URL is invented. -->
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>Kalendarz biegow - strona testowa</title>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Start"}]}</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": [
+      {
+        "@type": "ListItem", "position": 1,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Bieg Testowy w Gliwicach",
+          "description": "Opis wymyslony: ten tekst nigdy nie moze trafic do katalogu.",
+          "url": "https://running.life/pl/wydarzenie/bieg-testowy-w-gliwicach",
+          "startDate": "2027-03-14", "endDate": "2027-03-14",
+          "location": {
+            "@type": "Place", "name": "Gliwice",
+            "address": {"@type": "PostalAddress", "addressLocality": "Gliwice", "addressRegion": "Silesian Voivodeship", "addressCountry": "Polska"},
+            "geo": {"@type": "GeoCoordinates", "latitude": 50.2945, "longitude": 18.6714}
+          }
+        }
+      },
+      {
+        "@type": "ListItem", "position": 2,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Wymyslony Polmaraton Nocny",
+          "description": "Inny wymyslony opis.",
+          "url": "https://running.life/pl/wydarzenie/wymyslony-polmaraton-nocny/2027-04-03",
+          "startDate": "2027-04-03T21:00:00+02:00",
+          "location": {
+            "@type": "Place", "name": "Wroclaw",
+            "address": {"@type": "PostalAddress", "addressLocality": "Wroclaw", "addressRegion": "Województwo dolnośląskie", "addressCountry": "Polska"},
+            "geo": {"@type": "GeoCoordinates", "latitude": "51.1079", "longitude": "17.0385"}
+          }
+        }
+      },
+      {
+        "@type": "ListItem", "position": 3,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Trail <b>Pogrubiony</b> & <script>alert(1)<\/script>",
+          "url": "https://running.life/pl/wydarzenie/trail-testowy-beskidy",
+          "startDate": "2027-05-22",
+          "location": {
+            "@type": "Place", "name": "Szczyrk",
+            "address": {"@type": "PostalAddress", "addressLocality": "Szczyrk", "addressRegion": "Silesian Voivodeship", "addressCountry": "Polska"}
+          }
+        }
+      },
+      {
+        "@type": "ListItem", "position": 4,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Wydarzenie z cudzym adresem",
+          "url": "https://evil.example/pl/wydarzenie/phish",
+          "startDate": "2027-06-01",
+          "location": {"@type": "Place", "name": "Nigdzie", "address": {"@type": "PostalAddress", "addressLocality": "Nigdzie", "addressCountry": "Polska"}}
+        }
+      },
+      {
+        "@type": "ListItem", "position": 5,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Wydarzenie bez daty",
+          "url": "https://running.life/pl/wydarzenie/bez-daty",
+          "location": {"@type": "Place", "name": "Krakow", "address": {"@type": "PostalAddress", "addressLocality": "Krakow", "addressCountry": "Polska"}}
+        }
+      },
+      {
+        "@type": "ListItem", "position": 6,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Bieg za granica",
+          "url": "https://running.life/pl/wydarzenie/bieg-za-granica",
+          "startDate": "2027-06-12",
+          "location": {"@type": "Place", "name": "Praga", "address": {"@type": "PostalAddress", "addressLocality": "Praga", "addressCountry": "Czechy"}}
+        }
+      },
+      {
+        "@type": "ListItem", "position": 7,
+        "item": {
+          "@type": "SportsEvent",
+          "name": "Wymyslony Triathlon Miejski",
+          "url": "https://running.life/pl/wydarzenie/wymyslony-triathlon",
+          "startDate": "2027-07-10",
+          "location": {"@type": "Place", "name": "Poznan", "address": {"@type": "PostalAddress", "addressLocality": "Poznan", "addressRegion": "Greater Poland Voivodeship", "addressCountry": "Polska"}}
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <nav>
+    <a href="https://running.life/kalendarz-biegow/polska?page=1">1</a>
+    <a href="https://running.life/kalendarz-biegow/polska?page=2">2</a>
+    <a href="https://running.life/kalendarz-biegow/polska?page=3">3</a>
+    <a href="/kalendarz-biegow/polska?page=3">Ostatnia</a>
+  </nav>
+  <section class="event-card-row"><h2 class="event-card-title">Bieg Testowy w Gliwicach</h2>
+    <div class="event-card-distances-wrap"><div class="flex event-card-distances"><a href="https://running.life/pl/wydarzenie/bieg-testowy-w-gliwicach" class="label-urban">Bieg miejski</a><a href="https://running.life/pl/wydarzenie/bieg-testowy-w-gliwicach" class="label-distance">10 km</a></div></div></section>
+  <section class="event-card-row"><h2 class="event-card-title">Wymyslony Polmaraton Nocny</h2>
+    <div class="event-card-distances-wrap"><div class="flex event-card-distances"><a href="https://running.life/pl/wydarzenie/wymyslony-polmaraton-nocny/2027-04-03" class="label-road">Bieg po asfalcie</a><a href="https://running.life/pl/wydarzenie/wymyslony-polmaraton-nocny/2027-04-03" class="label-distance">10 km</a></div></div></section>
+  <section class="event-card-row"><h2 class="event-card-title">Trail testowy</h2>
+    <div class="event-card-distances-wrap"><div class="flex event-card-distances"><a href="https://running.life/pl/wydarzenie/trail-testowy-beskidy" class="label-trailrun">Bieg terenowy</a><a href="https://running.life/pl/wydarzenie/trail-testowy-beskidy" class="label-distance">10 km</a></div></div></section>
+  <section class="event-card-row"><h2 class="event-card-title">Wymyslony Triathlon</h2>
+    <div class="event-card-distances-wrap"><div class="flex event-card-distances"><a href="https://running.life/pl/wydarzenie/wymyslony-triathlon" class="label-triathlon">Triathlon</a><a href="https://running.life/pl/wydarzenie/wymyslony-triathlon" class="label-distance">10 km</a></div></div></section>
+</body>
+</html>
