@@ -1,6 +1,6 @@
 # M8 – Race proposals: plan
 
-**Status:** Proposed 2026-11-13, awaiting the user's approval · **Date:** 2026-11-13 · **Author:** architect
+**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13); implementation of part A in progress on `m8-race-proposals` · **Date:** 2026-11-13 · **Author:** architect
 **Builds on:**
 - M2: `Runs`, the run-type catalogue, `Owner` filter, guest lifecycle and `DemoDataSeeder`.
 - M3: month grid (ADR 0016), panel routes, run form (ADR 0018), fake API.
