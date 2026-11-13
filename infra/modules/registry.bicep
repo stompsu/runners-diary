@@ -5,6 +5,7 @@ param token string
 param apiPrincipalId string
 param webPrincipalId string
 param migratorPrincipalId string
+param raceImportPrincipalId string
 
 var acrPullRole = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 
@@ -46,6 +47,16 @@ resource pullMigrator 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRole)
     principalId: migratorPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource pullRaceImport 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(registry.id, 'race-import', acrPullRole)
+  scope: registry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRole)
+    principalId: raceImportPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

@@ -23,6 +23,12 @@ resource migrator 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' 
   tags: tags
 }
 
+resource raceImport 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
+  name: 'id-rd-race-import'
+  location: location
+  tags: tags
+}
+
 resource deployer 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
   name: 'id-rd-deployer'
   location: location
@@ -46,6 +52,10 @@ output migratorId string = migrator.id
 output migratorName string = migrator.name
 output migratorClientId string = migrator.properties.clientId
 output migratorPrincipalId string = migrator.properties.principalId
+output raceImportId string = raceImport.id
+output raceImportName string = raceImport.name
+output raceImportClientId string = raceImport.properties.clientId
+output raceImportPrincipalId string = raceImport.properties.principalId
 output deployerName string = deployer.name
 output deployerClientId string = deployer.properties.clientId
 output deployerPrincipalId string = deployer.properties.principalId

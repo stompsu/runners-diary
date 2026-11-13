@@ -11,6 +11,7 @@ param sqlServerName string
 param databaseName string
 param appInsightsName string
 param mapsAccountName string
+param raceImportJobName string
 
 resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
   name: 'ag-rd-${stage}'
@@ -197,6 +198,45 @@ resource mapsUsage 'Microsoft.Insights/metricAlerts@2026-01-01' = {
           operator: 'GreaterThan'
           threshold: 200
           timeAggregation: 'Count'
+        }
+      ]
+    }
+    actions: [{ actionGroupId: actionGroup.id }]
+  }
+}
+
+resource raceImportJob 'Microsoft.App/jobs@2025-01-01' existing = {
+  name: raceImportJobName
+}
+
+// Weekly job: evaluated once a day over a 24 h window; a failed execution alerts within a day (ADR 0038 section 5).
+// Metric `Executions` (display name "Job Executions"), dimension `state`:
+// https://learn.microsoft.com/azure/azure-monitor/reference/supported-metrics/microsoft-app-jobs-metrics
+// The page does not list the dimension values; `Failed` matches the execution status the platform reports
+// (`az containerapp job execution show` -> properties.status), checked against the first real failure (plan G-R3).
+resource raceImportFailed 'Microsoft.Insights/metricAlerts@2026-01-01' = {
+  name: 'alert-rd-race-import-failed'
+  location: 'global'
+  tags: tags
+  properties: {
+    description: 'job-race-import had a failed execution in the last 24 hours.'
+    severity: 2
+    enabled: true
+    scopes: [raceImportJob.id]
+    evaluationFrequency: 'PT1H'
+    windowSize: 'P1D'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'failedExecutions'
+          criterionType: 'StaticThresholdCriterion'
+          metricName: 'Executions'
+          metricNamespace: 'Microsoft.App/jobs'
+          dimensions: [{ name: 'state', operator: 'Include', values: ['Failed'] }]
+          operator: 'GreaterThan'
+          threshold: 0
+          timeAggregation: 'Total'
         }
       ]
     }

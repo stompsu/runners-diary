@@ -22,6 +22,10 @@
     "budgetStartDate": { "value": "${BUDGET_START_DATE}" },
     "budgetContactEmail": { "value": "${BUDGET_CONTACT_EMAIL}" },
     "guestCleanupCron": { "value": "${GUEST_CLEANUP_CRON=15 3 * * 1}" },
+    "raceImportEnabled": { "value": "${RACE_IMPORT_ENABLED=false}" },
+    "raceImportRunningLife": { "value": "${RACE_IMPORT_RUNNING_LIFE=false}" },
+    "raceImportCron": { "value": "${RACE_IMPORT_CRON=25 3 * * 1}" },
+    "racesUiEnabled": { "value": "${RACES_UI_ENABLED=false}" },
     "guestSigningKeyBootstrap": { "value": "${GUEST_KEY_BOOTSTRAP}" },
     "apiExists": { "value": "${SERVICE_API_RESOURCE_EXISTS=false}" },
     "webExists": { "value": "${SERVICE_WEB_RESOURCE_EXISTS=false}" }

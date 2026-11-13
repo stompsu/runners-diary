@@ -1,0 +1,3182 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "16366181716443014416"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "metadata": {
+        "description": "azd environment name (AZURE_ENV_NAME), e.g. rd-prod. Used for tags and resource name uniqueness."
+      }
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Primary region (AZURE_LOCATION), e.g. westeurope. Everything lives here except the Maps account and, when SQL_LOCATION is set, the SQL server."
+      }
+    },
+    "stage": {
+      "type": "string",
+      "defaultValue": "prod",
+      "allowedValues": [
+        "dev",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Stage suffix in resource names (rg-runnersdiary-<stage>). Local Aspire is the dev environment; the cloud has prod only."
+      }
+    },
+    "webCustomDomain": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom domain for the web app (CUSTOM_DOMAIN). DNS first: CNAME to the web FQDN and TXT asuid.<name> = the environment verification id. A free managed certificate is issued and bound automatically."
+      }
+    },
+    "sqlLocation": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Region of the Azure SQL server and database (SQL_LOCATION). Empty = the primary region. West Europe was not accepting new SQL servers for this subscription on 2026-11-04 (RegionDoesNotAllowProvisioning), so prod uses polandcentral (westeurope and northeurope are restricted for this subscription per the SQL capabilities API)."
+      }
+    },
+    "mapsLocation": {
+      "type": "string",
+      "defaultValue": "westeurope",
+      "metadata": {
+        "description": "Region of the Azure Maps account. It must support managed identities (not \"global\"); West/North Europe sit behind eu.atlas.microsoft.com."
+      }
+    },
+    "principalId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Object id of the person running azd (AZURE_PRINCIPAL_ID); gets Key Vault Secrets Officer and optionally Cognitive Services User."
+      }
+    },
+    "principalType": {
+      "type": "string",
+      "defaultValue": "User",
+      "allowedValues": [
+        "User",
+        "ServicePrincipal"
+      ]
+    },
+    "entraTenantId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "entraTenantSubdomain": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "entraApiClientId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "entraSpaClientId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "entraIssuer": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "aiEnabled": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "Ai__Enabled kill switch. Stays false until the live eval passed (plan G6 -> G7)."
+      }
+    },
+    "aiCapacityKtpm": {
+      "type": "string",
+      "defaultValue": "30",
+      "metadata": {
+        "description": "Foundry capacity in thousands of tokens per minute (1 = 1,000 TPM)."
+      }
+    },
+    "aiModelName": {
+      "type": "string",
+      "defaultValue": "gpt-5.4-mini"
+    },
+    "aiModelVersion": {
+      "type": "string",
+      "defaultValue": "2026-03-17"
+    },
+    "grantDeveloperAiAccess": {
+      "type": "string",
+      "defaultValue": "true",
+      "metadata": {
+        "description": "Give the azd user Cognitive Services User on Foundry for the live eval from a laptop."
+      }
+    },
+    "mapsDisplay": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "Azure Maps display via SAS tokens (plan G9). Default off: MapLibre + OpenFreeMap, Azure Maps only for geocoding."
+      }
+    },
+    "geocodeDailyLimit": {
+      "type": "string",
+      "defaultValue": "75"
+    },
+    "budgetAmount": {
+      "type": "string",
+      "defaultValue": "25"
+    },
+    "budgetContactEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "E-mail for the budget and alerts. Required; set it with `azd env set BUDGET_CONTACT_EMAIL ...`, never commit it."
+      }
+    },
+    "budgetStartDate": {
+      "type": "string",
+      "minLength": 10,
+      "metadata": {
+        "description": "First day of a month (yyyy-MM-01). Set once by infra/hooks/preprovision.sh as the azd value BUDGET_START_DATE so re-provisioning does not move the budget."
+      }
+    },
+    "guestCleanupCron": {
+      "type": "string",
+      "defaultValue": "15 3 * * 1"
+    },
+    "raceImportEnabled": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "RaceImport__Enabled kill switch of job-race-import. When false the job exits 0 before touching SQL. azd env RACE_IMPORT_ENABLED."
+      }
+    },
+    "raceImportRunningLife": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "RaceImport__Sources__RunningLife__Enabled: per-source kill switch. azd env RACE_IMPORT_RUNNING_LIFE."
+      }
+    },
+    "raceImportCron": {
+      "type": "string",
+      "defaultValue": "25 3 * * 1",
+      "metadata": {
+        "description": "UTC cron of job-race-import (RACE_IMPORT_CRON). Default is 10 minutes after the guest cleanup so both share one SQL wake; move them together."
+      }
+    },
+    "racesUiEnabled": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "Races__Enabled on the api app: feeds client-config races.enabled (the Races UI). azd env RACES_UI_ENABLED."
+      }
+    },
+    "githubRepository": {
+      "type": "string",
+      "defaultValue": "stompsu/runners-diary"
+    },
+    "githubEnvironment": {
+      "type": "string",
+      "defaultValue": "prod"
+    },
+    "githubOwnerId": {
+      "type": "string",
+      "defaultValue": "12047598",
+      "metadata": {
+        "description": "Numeric GitHub owner and repository ids. When both are set, the federated credential uses GitHub's immutable OIDC subject (repo:<owner>@<ownerId>/<repo>@<repoId>:environment:<env>), which the repository sends (use_immutable_subject). Empty = the name-only subject. Public values: GET /users/<owner> and /repos/<owner>/<repo>."
+      }
+    },
+    "githubRepositoryId": {
+      "type": "string",
+      "defaultValue": "1444016204"
+    },
+    "guestSigningKeyBootstrap": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "First provision only: written to Key Vault by the template. infra/hooks/preprovision.sh fills it when the secret does not exist yet."
+      }
+    },
+    "apiExists": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Set by azd (SERVICE_API_RESOURCE_EXISTS): keep the deployed image instead of resetting to the placeholder."
+      }
+    },
+    "webExists": {
+      "type": "bool",
+      "defaultValue": false
+    }
+  },
+  "variables": {
+    "tags": {
+      "azd-env-name": "[parameters('environmentName')]",
+      "app": "runnersdiary"
+    },
+    "token": "[toLower(uniqueString(subscription().id, parameters('environmentName'), parameters('location')))]",
+    "placeholderImage": "mcr.microsoft.com/k8se/quickstart:latest",
+    "displayEnabled": "[equals(toLower(parameters('mapsDisplay')), 'true')]",
+    "aiEnabledValue": "[if(equals(toLower(parameters('aiEnabled')), 'true'), 'true', 'false')]",
+    "raceImportEnabledValue": "[if(equals(toLower(parameters('raceImportEnabled')), 'true'), 'true', 'false')]",
+    "raceImportRunningLifeValue": "[if(equals(toLower(parameters('raceImportRunningLife')), 'true'), 'true', 'false')]",
+    "racesUiEnabledValue": "[if(equals(toLower(parameters('racesUiEnabled')), 'true'), 'true', 'false')]",
+    "entraEnabled": "[and(and(not(empty(parameters('entraTenantId'))), not(empty(parameters('entraTenantSubdomain')))), not(empty(parameters('entraApiClientId'))))]",
+    "cspEntraHost": "[if(empty(parameters('entraTenantSubdomain')), '', format('https://{0}.ciamlogin.com', parameters('entraTenantSubdomain')))]",
+    "cspMapHosts": "[if(variables('displayEnabled'), 'https://tiles.openfreemap.org https://eu.atlas.microsoft.com https://atlas.microsoft.com', 'https://tiles.openfreemap.org')]",
+    "apiOnlyEnv": "[concat(createArray(createObject('name', 'Auth__Guest__SigningKey', 'secretRef', 'guest-signing-key'), createObject('name', 'OTEL_SERVICE_NAME', 'value', 'api'), createObject('name', 'Auth__Entra__Enabled', 'value', if(variables('entraEnabled'), 'true', 'false')), createObject('name', 'Races__Enabled', 'value', variables('racesUiEnabledValue'))), if(variables('entraEnabled'), createArray(createObject('name', 'Auth__Entra__TenantId', 'value', parameters('entraTenantId')), createObject('name', 'Auth__Entra__TenantSubdomain', 'value', parameters('entraTenantSubdomain')), createObject('name', 'Auth__Entra__Audience', 'value', parameters('entraApiClientId'))), createArray()), if(and(variables('entraEnabled'), not(empty(parameters('entraSpaClientId')))), createArray(createObject('name', 'Auth__Entra__SpaClientId', 'value', parameters('entraSpaClientId'))), createArray()), if(and(variables('entraEnabled'), not(empty(parameters('entraIssuer')))), createArray(createObject('name', 'Auth__Entra__ValidIssuers__0', 'value', parameters('entraIssuer'))), createArray()))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2025-04-01",
+      "name": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "monitoring",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "stage": {
+            "value": "[parameters('stage')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "13890792194291110706"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "dailyQuotaGb": {
+              "type": "string",
+              "defaultValue": "0.15",
+              "metadata": {
+                "description": "Daily ingestion cap in GB. 0.15 keeps a full-cap month near 4.6 GB, under the 5 GB free allowance."
+              }
+            },
+            "retentionInDays": {
+              "type": "int",
+              "defaultValue": 30
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2025-02-01",
+              "name": "[format('log-rd-{0}', parameters('stage'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": "[parameters('retentionInDays')]",
+                "workspaceCapping": {
+                  "dailyQuotaGb": "[json(parameters('dailyQuotaGb'))]"
+                },
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[format('appi-rd-{0}', parameters('stage'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('log-rd-{0}', parameters('stage')))]",
+                "IngestionMode": "LogAnalytics"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', format('log-rd-{0}', parameters('stage')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "workspaceName": {
+              "type": "string",
+              "value": "[format('log-rd-{0}', parameters('stage'))]"
+            },
+            "appInsightsName": {
+              "type": "string",
+              "value": "[format('appi-rd-{0}', parameters('stage'))]"
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', format('appi-rd-{0}', parameters('stage'))), '2020-02-02').ConnectionString]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "identities",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "enableAzureMapsDisplay": {
+            "value": "[variables('displayEnabled')]"
+          },
+          "mapsLocation": {
+            "value": "[parameters('mapsLocation')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "8585442402481019246"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "enableAzureMapsDisplay": {
+              "type": "bool",
+              "metadata": {
+                "description": "Only with Azure Maps display (plan G9): the identity attached to the Maps account that signs SAS tokens."
+              }
+            },
+            "mapsLocation": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "id-rd-api",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "id-rd-web",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "id-rd-migrator",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "id-rd-race-import",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "id-rd-deployer",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "condition": "[parameters('enableAzureMapsDisplay')]",
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "id-rd-maps-sas",
+              "location": "[parameters('mapsLocation')]",
+              "tags": "[parameters('tags')]"
+            }
+          ],
+          "outputs": {
+            "apiId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-api')]"
+            },
+            "apiName": {
+              "type": "string",
+              "value": "id-rd-api"
+            },
+            "apiClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-api'), '2024-11-30').clientId]"
+            },
+            "apiPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-api'), '2024-11-30').principalId]"
+            },
+            "webId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-web')]"
+            },
+            "webName": {
+              "type": "string",
+              "value": "id-rd-web"
+            },
+            "webPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-web'), '2024-11-30').principalId]"
+            },
+            "migratorId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-migrator')]"
+            },
+            "migratorName": {
+              "type": "string",
+              "value": "id-rd-migrator"
+            },
+            "migratorClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-migrator'), '2024-11-30').clientId]"
+            },
+            "migratorPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-migrator'), '2024-11-30').principalId]"
+            },
+            "raceImportId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-race-import')]"
+            },
+            "raceImportName": {
+              "type": "string",
+              "value": "id-rd-race-import"
+            },
+            "raceImportClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-race-import'), '2024-11-30').clientId]"
+            },
+            "raceImportPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-race-import'), '2024-11-30').principalId]"
+            },
+            "deployerName": {
+              "type": "string",
+              "value": "id-rd-deployer"
+            },
+            "deployerClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-deployer'), '2024-11-30').clientId]"
+            },
+            "deployerPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-deployer'), '2024-11-30').principalId]"
+            },
+            "mapsSasId": {
+              "type": "string",
+              "value": "[if(parameters('enableAzureMapsDisplay'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-maps-sas'), '')]"
+            },
+            "mapsSasPrincipalId": {
+              "type": "string",
+              "value": "[if(parameters('enableAzureMapsDisplay'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-maps-sas'), '2024-11-30').principalId, '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "registry",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "token": {
+            "value": "[variables('token')]"
+          },
+          "apiPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiPrincipalId.value]"
+          },
+          "webPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.webPrincipalId.value]"
+          },
+          "migratorPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.migratorPrincipalId.value]"
+          },
+          "raceImportPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "17830954902481098270"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "token": {
+              "type": "string"
+            },
+            "apiPrincipalId": {
+              "type": "string"
+            },
+            "webPrincipalId": {
+              "type": "string"
+            },
+            "migratorPrincipalId": {
+              "type": "string"
+            },
+            "raceImportPrincipalId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2025-04-01",
+              "name": "[format('acrrd{0}', parameters('token'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Basic"
+              },
+              "properties": {
+                "adminUserEnabled": false,
+                "anonymousPullEnabled": false,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token'))), 'api', variables('acrPullRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token'))), 'web', variables('acrPullRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
+                "principalId": "[parameters('webPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token'))), 'migrator', variables('acrPullRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
+                "principalId": "[parameters('migratorPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token'))), 'race-import', variables('acrPullRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
+                "principalId": "[parameters('raceImportPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[format('acrrd{0}', parameters('token'))]"
+            },
+            "loginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', format('acrrd{0}', parameters('token'))), '2025-04-01').loginServer]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyvault",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "token": {
+            "value": "[variables('token')]"
+          },
+          "apiPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiPrincipalId.value]"
+          },
+          "userPrincipalId": {
+            "value": "[parameters('principalId')]"
+          },
+          "userPrincipalType": {
+            "value": "[parameters('principalType')]"
+          },
+          "guestSigningKeyBootstrap": {
+            "value": "[parameters('guestSigningKeyBootstrap')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "6463878387633528403"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "token": {
+              "type": "string"
+            },
+            "apiPrincipalId": {
+              "type": "string"
+            },
+            "userPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "azd principal (object id); gets Key Vault Secrets Officer so it can rotate the guest key. Empty = skip."
+              }
+            },
+            "userPrincipalType": {
+              "type": "string"
+            },
+            "guestSigningKeyBootstrap": {
+              "type": "securestring",
+              "metadata": {
+                "description": "First provision only: the key generated by infra/hooks/preprovision.sh. Empty afterwards, so re-provisioning never rotates the key."
+              }
+            }
+          },
+          "variables": {
+            "secretsUserRole": "4633458b-17de-408a-b874-0445c86b69e6",
+            "secretsOfficerRole": "b86a8fe4-44ce-4948-aee5-eccb2c155cd7",
+            "guestKeySecretName": "guest-token-signing-key"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2026-02-01",
+              "name": "[format('kv-rd-{0}', parameters('token'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "tenantId": "[tenant().tenantId]",
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "enableRbacAuthorization": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 7,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('guestSigningKeyBootstrap')))]",
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2026-02-01",
+              "name": "[format('{0}/{1}', format('kv-rd-{0}', parameters('token')), variables('guestKeySecretName'))]",
+              "properties": {
+                "value": "[parameters('guestSigningKeyBootstrap')]",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token'))), 'api', variables('secretsUserRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('secretsUserRole'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('userPrincipalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token'))), 'user', variables('secretsOfficerRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('secretsOfficerRole'))]",
+                "principalId": "[parameters('userPrincipalId')]",
+                "principalType": "[parameters('userPrincipalType')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[format('kv-rd-{0}', parameters('token'))]"
+            },
+            "vaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('kv-rd-{0}', parameters('token'))), '2026-02-01').vaultUri]"
+            },
+            "guestKeySecretName": {
+              "type": "string",
+              "value": "[variables('guestKeySecretName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "token": {
+            "value": "[variables('token')]"
+          },
+          "apiPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "7251446233165733989"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "token": {
+              "type": "string"
+            },
+            "apiPrincipalId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "blobDataContributorRole": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2025-01-01",
+              "name": "[format('strd{0}', parameters('token'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "properties": {
+                "accessTier": "Hot",
+                "allowSharedKeyAccess": false,
+                "allowBlobPublicAccess": false,
+                "defaultToOAuthAuthentication": true,
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}', format('strd{0}', parameters('token')), 'default')]",
+              "properties": {
+                "deleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                },
+                "containerDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', format('strd{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}/{2}', format('strd{0}', parameters('token')), 'default', 'gpx')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', format('strd{0}', parameters('token')), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('strd{0}', parameters('token')), 'default', 'gpx')]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('strd{0}', parameters('token')), 'default', 'gpx'), 'api', variables('blobDataContributorRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('blobDataContributorRole'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('strd{0}', parameters('token')), 'default', 'gpx')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[format('strd{0}', parameters('token'))]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', format('strd{0}', parameters('token'))), '2025-01-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sql",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": "[if(empty(parameters('sqlLocation')), createObject('value', parameters('location')), createObject('value', parameters('sqlLocation')))]",
+          "nameSuffix": "[if(empty(parameters('sqlLocation')), createObject('value', ''), createObject('value', parameters('sqlLocation')))]",
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "token": {
+            "value": "[variables('token')]"
+          },
+          "migratorName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.migratorName.value]"
+          },
+          "migratorClientId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.migratorClientId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "8213648477348291272"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "token": {
+              "type": "string"
+            },
+            "nameSuffix": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional suffix for the server name, e.g. the region when SQL lives outside the primary region (a failed create in westeurope still holds the plain name)."
+              }
+            },
+            "databaseName": {
+              "type": "string",
+              "defaultValue": "runnersdiary"
+            },
+            "migratorName": {
+              "type": "string"
+            },
+            "migratorClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "Client (application) id of the migrator identity: the admin sid for a managed identity (ADR 0031)."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Sql/servers",
+              "apiVersion": "2025-01-01",
+              "name": "[if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix')))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "minimalTlsVersion": "1.2",
+                "publicNetworkAccess": "Enabled",
+                "administrators": {
+                  "administratorType": "ActiveDirectory",
+                  "principalType": "Application",
+                  "login": "[parameters('migratorName')]",
+                  "sid": "[parameters('migratorClientId')]",
+                  "tenantId": "[tenant().tenantId]",
+                  "azureADOnlyAuthentication": true
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Sql/servers/firewallRules",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}', if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix'))), 'AllowAzureServices')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix'))))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Sql/servers/databases",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}', if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix'))), parameters('databaseName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "GP_S_Gen5",
+                "tier": "GeneralPurpose",
+                "family": "Gen5",
+                "capacity": 2
+              },
+              "properties": {
+                "minCapacity": "[json('0.5')]",
+                "useFreeLimit": true,
+                "freeLimitExhaustionBehavior": "AutoPause",
+                "zoneRedundant": false,
+                "requestedBackupStorageRedundancy": "Local",
+                "maxSizeBytes": 34359738368
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix'))))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "serverName": {
+              "type": "string",
+              "value": "[if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix')))]"
+            },
+            "serverFqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Sql/servers', if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix')))), '2025-01-01').fullyQualifiedDomainName]"
+            },
+            "databaseName": {
+              "type": "string",
+              "value": "[parameters('databaseName')]"
+            },
+            "databaseId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Sql/servers/databases', if(empty(parameters('nameSuffix')), format('sql-rd-{0}', parameters('token')), format('sql-rd-{0}-{1}', parameters('token'), parameters('nameSuffix'))), parameters('databaseName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "foundry",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "token": {
+            "value": "[variables('token')]"
+          },
+          "apiPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiPrincipalId.value]"
+          },
+          "userPrincipalId": {
+            "value": "[parameters('principalId')]"
+          },
+          "userPrincipalType": {
+            "value": "[parameters('principalType')]"
+          },
+          "grantDeveloperAccess": {
+            "value": "[equals(toLower(parameters('grantDeveloperAiAccess')), 'true')]"
+          },
+          "modelName": {
+            "value": "[parameters('aiModelName')]"
+          },
+          "modelVersion": {
+            "value": "[parameters('aiModelVersion')]"
+          },
+          "capacityKtpm": {
+            "value": "[int(if(empty(parameters('aiCapacityKtpm')), '30', parameters('aiCapacityKtpm')))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "267697928759204341"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "token": {
+              "type": "string"
+            },
+            "apiPrincipalId": {
+              "type": "string"
+            },
+            "userPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "azd principal for the live eval from a laptop (plan G6). Empty = skip."
+              }
+            },
+            "userPrincipalType": {
+              "type": "string"
+            },
+            "grantDeveloperAccess": {
+              "type": "bool"
+            },
+            "deploymentName": {
+              "type": "string",
+              "defaultValue": "gpt-54-mini"
+            },
+            "modelName": {
+              "type": "string",
+              "defaultValue": "gpt-5.4-mini"
+            },
+            "modelVersion": {
+              "type": "string",
+              "defaultValue": "2026-03-17"
+            },
+            "capacityKtpm": {
+              "type": "int",
+              "metadata": {
+                "description": "Capacity in thousands of tokens per minute (1 = 1,000 TPM)."
+              }
+            }
+          },
+          "variables": {
+            "cognitiveServicesUserRole": "a97b65f3-24c7-4388-baec-2e87135dc908"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-06-01",
+              "name": "[format('ais-rd-{0}', parameters('token'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "AIServices",
+              "sku": {
+                "name": "S0"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "customSubDomainName": "[format('ais-rd-{0}', parameters('token'))]",
+                "disableLocalAuth": true,
+                "publicNetworkAccess": "Enabled",
+                "allowProjectManagement": true
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', format('ais-rd-{0}', parameters('token')), 'runnersdiary')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "displayName": "Runners Diary",
+                "description": "Training Insights summaries (gpt-5.4-mini). Portal view of the production Foundry resource."
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token')))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format('ais-rd-{0}', parameters('token')), parameters('deploymentName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', format('ais-rd-{0}', parameters('token')), parameters('deploymentName'))]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": "[parameters('capacityKtpm')]"
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[parameters('modelName')]",
+                  "version": "[parameters('modelVersion')]"
+                },
+                "versionUpgradeOption": "NoAutoUpgrade"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token'))), 'api', variables('cognitiveServicesUserRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesUserRole'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token')))]"
+              ]
+            },
+            {
+              "condition": "[and(parameters('grantDeveloperAccess'), not(empty(parameters('userPrincipalId'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token')))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token'))), 'user', variables('cognitiveServicesUserRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesUserRole'))]",
+                "principalId": "[parameters('userPrincipalId')]",
+                "principalType": "[parameters('userPrincipalType')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[format('ais-rd-{0}', parameters('token'))]"
+            },
+            "openAiEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('ais-rd-{0}', parameters('token'))), '2025-06-01').endpoints['OpenAI Language Model Instance API']]"
+            },
+            "deploymentName": {
+              "type": "string",
+              "value": "[parameters('deploymentName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "aca-env",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "stage": {
+            "value": "[parameters('stage')]"
+          },
+          "workspaceName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.workspaceName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "281078406506875554"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "workspaceName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2025-01-01",
+              "name": "[format('cae-rd-{0}', parameters('stage'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "workloadProfiles": [
+                  {
+                    "name": "Consumption",
+                    "workloadProfileType": "Consumption"
+                  }
+                ],
+                "zoneRedundant": false,
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '2025-02-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '2025-02-01').primarySharedKey]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/managedEnvironments', format('cae-rd-{0}', parameters('stage')))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[format('cae-rd-{0}', parameters('stage'))]"
+            },
+            "defaultDomain": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', format('cae-rd-{0}', parameters('stage'))), '2025-01-01').defaultDomain]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "maps",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('mapsLocation')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "stage": {
+            "value": "[parameters('stage')]"
+          },
+          "apiPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiPrincipalId.value]"
+          },
+          "enableAzureMapsDisplay": {
+            "value": "[variables('displayEnabled')]"
+          },
+          "webOrigin": {
+            "value": "[format('https://{0}', format('web.{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env'), '2025-04-01').outputs.defaultDomain.value))]"
+          },
+          "sasIdentityId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.mapsSasId.value]"
+          },
+          "sasIdentityPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.mapsSasPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "13354874062212050319"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "apiPrincipalId": {
+              "type": "string"
+            },
+            "enableAzureMapsDisplay": {
+              "type": "bool"
+            },
+            "webOrigin": {
+              "type": "string"
+            },
+            "sasIdentityId": {
+              "type": "string",
+              "metadata": {
+                "description": "Only with display: the identity that signs SAS tokens and is attached to the account."
+              }
+            },
+            "sasIdentityPrincipalId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "mapsSearchRenderReaderRole": "6be48352-4f82-47c9-ad5e-0acacefdb005",
+            "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Maps/accounts",
+              "apiVersion": "2023-06-01",
+              "name": "[format('map-rd-{0}', parameters('stage'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "Gen2",
+              "sku": {
+                "name": "G2"
+              },
+              "identity": "[if(parameters('enableAzureMapsDisplay'), createObject('type', 'UserAssigned', 'userAssignedIdentities', createObject(format('{0}', parameters('sasIdentityId')), createObject())), null())]",
+              "properties": {
+                "disableLocalAuth": "[not(parameters('enableAzureMapsDisplay'))]",
+                "cors": {
+                  "corsRules": [
+                    {
+                      "allowedOrigins": [
+                        "[parameters('webOrigin')]"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]",
+              "name": "[guid(resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage'))), 'api', variables('mapsSearchRenderReaderRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('mapsSearchRenderReaderRole'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableAzureMapsDisplay')]",
+              "type": "Microsoft.Authorization/roleDefinitions",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, 'RD Maps SAS Issuer')]",
+              "properties": {
+                "roleName": "[format('RD Maps SAS Issuer ({0})', parameters('stage'))]",
+                "description": "Create SAS tokens for the Runners Diary Azure Maps account.",
+                "type": "CustomRole",
+                "permissions": [
+                  {
+                    "actions": [
+                      "Microsoft.Maps/accounts/read",
+                      "Microsoft.Maps/accounts/listSas/action"
+                    ]
+                  }
+                ],
+                "assignableScopes": [
+                  "[resourceGroup().id]"
+                ]
+              }
+            },
+            {
+              "condition": "[parameters('enableAzureMapsDisplay')]",
+              "type": "Microsoft.Authorization/roleDefinitions",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, 'RD Maps Render Reader')]",
+              "properties": {
+                "roleName": "[format('RD Maps Render Reader ({0})', parameters('stage'))]",
+                "description": "Read Azure Maps render (tile) data; assigned to the SAS identity.",
+                "type": "CustomRole",
+                "permissions": [
+                  {
+                    "dataActions": [
+                      "Microsoft.Maps/accounts/services/render/read"
+                    ]
+                  }
+                ],
+                "assignableScopes": [
+                  "[resourceGroup().id]"
+                ]
+              }
+            },
+            {
+              "condition": "[parameters('enableAzureMapsDisplay')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]",
+              "name": "[guid(resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage'))), 'api', 'sas-issuer')]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'RD Maps SAS Issuer'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]",
+                "[resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'RD Maps SAS Issuer'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableAzureMapsDisplay')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]",
+              "name": "[guid(resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage'))), 'sas', 'render-reader')]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'RD Maps Render Reader'))]",
+                "principalId": "[parameters('sasIdentityPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]",
+                "[resourceId('Microsoft.Authorization/roleDefinitions', guid(resourceGroup().id, 'RD Maps Render Reader'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableAzureMapsDisplay')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-rd-maps-sas')]",
+              "name": "[guid(resourceGroup().id, 'api', 'maps-sas-identity-operator')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
+                "principalId": "[parameters('apiPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage')))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[format('map-rd-{0}', parameters('stage'))]"
+            },
+            "clientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Maps/accounts', format('map-rd-{0}', parameters('stage'))), '2023-06-01').uniqueId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "fetch-api-image",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "api"
+          },
+          "exists": {
+            "value": "[parameters('apiExists')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "12138158787725253489"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "bool"
+            }
+          },
+          "resources": [],
+          "outputs": {
+            "image": {
+              "type": "string",
+              "value": "[if(parameters('exists'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2025-01-01').template.containers[0].image, '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "fetch-web-image",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "web"
+          },
+          "exists": {
+            "value": "[parameters('webExists')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "12138158787725253489"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "bool"
+            }
+          },
+          "resources": [],
+          "outputs": {
+            "image": {
+              "type": "string",
+              "value": "[if(parameters('exists'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2025-01-01').template.containers[0].image, '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "app-api",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "environmentId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env'), '2025-04-01').outputs.id.value]"
+          },
+          "image": "[if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), createObject('value', variables('placeholderImage')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value))]",
+          "usePlaceholder": {
+            "value": "[equals(if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), variables('placeholderImage'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), variables('placeholderImage'))]"
+          },
+          "identityId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiId.value]"
+          },
+          "registryServer": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry'), '2025-04-01').outputs.loginServer.value]"
+          },
+          "env": {
+            "value": "[concat(concat(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ConnectionStrings__runnersdiary', 'value', format('Server=tcp:{0},1433;Database={1};Authentication=Active Directory Managed Identity;User Id={2};Encrypt=True;Connect Timeout=60', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.serverFqdn.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.databaseName.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value)), createObject('name', 'ConnectionStrings__blobs', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.blobEndpoint.value), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value), createObject('name', 'ForwardedHeaders__Enabled', 'value', 'true'), createObject('name', 'ForwardedHeaders__ForwardLimit', 'value', '2'), createObject('name', 'ForwardedHeaders__KnownIPNetworks__0', 'value', '0.0.0.0/0'), createObject('name', 'ForwardedHeaders__KnownIPNetworks__1', 'value', '::/0'), createObject('name', 'Ai__Provider', 'value', 'Foundry'), createObject('name', 'Ai__Enabled', 'value', variables('aiEnabledValue')), createObject('name', 'Ai__Foundry__Endpoint', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.openAiEndpoint.value), createObject('name', 'Ai__Foundry__Deployment', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.deploymentName.value), createObject('name', 'Ai__Foundry__ManagedIdentityClientId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value), createObject('name', 'Maps__Provider', 'value', if(variables('displayEnabled'), 'AzureMaps', 'MapLibre')), createObject('name', 'Maps__Geocoding__Provider', 'value', 'AzureMaps'), createObject('name', 'Maps__Geocoding__GlobalDailyLimit', 'value', if(empty(parameters('geocodeDailyLimit')), '75', parameters('geocodeDailyLimit'))), createObject('name', 'Maps__AzureMaps__AccountClientId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps'), '2025-04-01').outputs.clientId.value), createObject('name', 'Maps__AzureMaps__ManagedIdentityClientId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value), createObject('name', 'Maps__AzureMaps__Domain', 'value', 'eu.atlas.microsoft.com'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value)), if(variables('displayEnabled'), createArray(createObject('name', 'Maps__AzureMaps__AccountResourceId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps'), '2025-04-01').outputs.id.value), createObject('name', 'Maps__AzureMaps__SasPrincipalId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.mapsSasPrincipalId.value), createObject('name', 'Maps__AzureMaps__SasRegions__0', 'value', 'westeurope'), createObject('name', 'Maps__AzureMaps__SasRegions__1', 'value', 'northeurope'), createObject('name', 'Maps__AzureMaps__SasMaxRatePerSecond', 'value', '10')), createArray())), variables('apiOnlyEnv'))]"
+          },
+          "secrets": {
+            "value": [
+              {
+                "name": "guest-signing-key",
+                "keyVaultUrl": "[format('{0}secrets/{1}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.vaultUri.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.guestKeySecretName.value)]",
+                "identity": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiId.value]"
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "18428197359054146790"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "environmentId": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "usePlaceholder": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "True while the image is the public quickstart placeholder (port 80, no health endpoints): no probes, target port 80."
+              }
+            },
+            "identityId": {
+              "type": "string"
+            },
+            "registryServer": {
+              "type": "string"
+            },
+            "env": {
+              "type": "array",
+              "metadata": {
+                "description": "Environment variables (plain values and secretRef entries)."
+              }
+            },
+            "secrets": {
+              "type": "array",
+              "metadata": {
+                "description": "ACA secrets; Key Vault references only (ADR 0031)."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2025-01-01",
+              "name": "api",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('azd-service-name', 'api'))]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('identityId'))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[parameters('environmentId')]",
+                "workloadProfileName": "Consumption",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": false,
+                    "targetPort": "[if(parameters('usePlaceholder'), 80, 8080)]",
+                    "transport": "auto",
+                    "allowInsecure": false,
+                    "traffic": [
+                      {
+                        "latestRevision": true,
+                        "weight": 100
+                      }
+                    ]
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('registryServer')]",
+                      "identity": "[parameters('identityId')]"
+                    }
+                  ],
+                  "secrets": "[parameters('secrets')]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "api",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1Gi"
+                      },
+                      "env": "[parameters('env')]",
+                      "probes": "[if(parameters('usePlaceholder'), createArray(), createArray(createObject('type', 'Startup', 'httpGet', createObject('path', '/alive', 'port', 8080), 'periodSeconds', 2, 'failureThreshold', 30), createObject('type', 'Liveness', 'httpGet', createObject('path', '/alive', 'port', 8080), 'periodSeconds', 30, 'failureThreshold', 3), createObject('type', 'Readiness', 'httpGet', createObject('path', '/alive', 'port', 8080), 'periodSeconds', 10, 'failureThreshold', 3)))]"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 2,
+                    "rules": [
+                      {
+                        "name": "http",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "20"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "api"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', 'api'), '2025-01-01').configuration.ingress.fqdn]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'keyvault')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "app-web",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "environmentId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env'), '2025-04-01').outputs.id.value]"
+          },
+          "image": "[if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-web-image'), '2025-04-01').outputs.image.value), createObject('value', variables('placeholderImage')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-web-image'), '2025-04-01').outputs.image.value))]",
+          "usePlaceholder": {
+            "value": "[equals(if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-web-image'), '2025-04-01').outputs.image.value), variables('placeholderImage'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-web-image'), '2025-04-01').outputs.image.value), variables('placeholderImage'))]"
+          },
+          "identityId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.webId.value]"
+          },
+          "registryServer": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry'), '2025-04-01').outputs.loginServer.value]"
+          },
+          "apiUpstream": {
+            "value": "[format('https://{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'app-api'), '2025-04-01').outputs.fqdn.value)]"
+          },
+          "cspEntraHost": {
+            "value": "[variables('cspEntraHost')]"
+          },
+          "cspMapHosts": {
+            "value": "[variables('cspMapHosts')]"
+          },
+          "customDomain": {
+            "value": "[parameters('webCustomDomain')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "16105491471307283399"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "environmentId": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "usePlaceholder": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "True while the image is the public quickstart placeholder (port 80, no health endpoints): no probes, target port 80."
+              }
+            },
+            "identityId": {
+              "type": "string"
+            },
+            "registryServer": {
+              "type": "string"
+            },
+            "apiUpstream": {
+              "type": "string",
+              "metadata": {
+                "description": "Internal API address nginx proxies /api to."
+              }
+            },
+            "cspEntraHost": {
+              "type": "string",
+              "metadata": {
+                "description": "https://<tenant subdomain>.ciamlogin.com, or empty while guests-only."
+              }
+            },
+            "cspMapHosts": {
+              "type": "string",
+              "metadata": {
+                "description": "Space-separated hosts that may serve map tiles, sprites and glyphs."
+              }
+            },
+            "customDomain": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional custom domain (CUSTOM_DOMAIN), e.g. runners-diary.highpace.dev. Needs a CNAME to the app FQDN and a TXT asuid.<name> with the environment verification id. Empty = none."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2026-07-01",
+              "name": "web",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('azd-service-name', 'web'))]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('identityId'))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[parameters('environmentId')]",
+                "workloadProfileName": "Consumption",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": "[if(parameters('usePlaceholder'), 80, 8080)]",
+                    "transport": "auto",
+                    "allowInsecure": false,
+                    "traffic": [
+                      {
+                        "latestRevision": true,
+                        "weight": 100
+                      }
+                    ],
+                    "customDomains": "[if(empty(parameters('customDomain')), createArray(), createArray(createObject('name', parameters('customDomain'), 'bindingType', 'Auto')))]"
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('registryServer')]",
+                      "identity": "[parameters('identityId')]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "web",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "API_UPSTREAM",
+                          "value": "[parameters('apiUpstream')]"
+                        },
+                        {
+                          "name": "CSP_ENTRA_HOST",
+                          "value": "[parameters('cspEntraHost')]"
+                        },
+                        {
+                          "name": "CSP_MAP_HOSTS",
+                          "value": "[parameters('cspMapHosts')]"
+                        }
+                      ],
+                      "probes": "[if(parameters('usePlaceholder'), createArray(), createArray(createObject('type', 'Liveness', 'httpGet', createObject('path', '/nginx-alive', 'port', 8080), 'periodSeconds', 30), createObject('type', 'Readiness', 'httpGet', createObject('path', '/nginx-alive', 'port', 8080), 'periodSeconds', 10)))]"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 2,
+                    "rules": [
+                      {
+                        "name": "http",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "20"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('customDomain')))]",
+              "type": "Microsoft.App/managedEnvironments/managedCertificates",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}', last(split(parameters('environmentId'), '/')), format('mc-{0}', replace(parameters('customDomain'), '.', '-')))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subjectName": "[parameters('customDomain')]",
+                "domainControlValidation": "CNAME"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/containerApps', 'web')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "web"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', 'web'), '2026-07-01').configuration.ingress.fqdn]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'app-api')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-web-image')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "jobs",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "environmentId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env'), '2025-04-01').outputs.id.value]"
+          },
+          "registryServer": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry'), '2025-04-01').outputs.loginServer.value]"
+          },
+          "migrateImage": "[if(contains(if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), variables('placeholderImage'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), '/rd-api:'), createObject('value', replace(if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), variables('placeholderImage'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), '/rd-api:', '/rd-migrate:')), createObject('value', variables('placeholderImage')))]",
+          "cleanupImage": "[if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), createObject('value', variables('placeholderImage')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value))]",
+          "cleanupCron": "[if(empty(parameters('guestCleanupCron')), createObject('value', '15 3 * * 1'), createObject('value', parameters('guestCleanupCron')))]",
+          "migratorIdentityId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.migratorId.value]"
+          },
+          "migratorClientId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.migratorClientId.value]"
+          },
+          "apiIdentityId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiId.value]"
+          },
+          "apiIdentityName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiName.value]"
+          },
+          "apiIdentityClientId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value]"
+          },
+          "raceImportImage": "[if(empty(reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value), createObject('value', variables('placeholderImage')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image'), '2025-04-01').outputs.image.value))]",
+          "raceImportCron": "[if(empty(parameters('raceImportCron')), createObject('value', '25 3 * * 1'), createObject('value', parameters('raceImportCron')))]",
+          "raceImportIdentityId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportId.value]"
+          },
+          "raceImportIdentityName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportName.value]"
+          },
+          "raceImportIdentityClientId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportClientId.value]"
+          },
+          "sqlServerFqdn": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.serverFqdn.value]"
+          },
+          "databaseName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.databaseName.value]"
+          },
+          "cleanupEnv": {
+            "value": "[concat(concat(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ConnectionStrings__runnersdiary', 'value', format('Server=tcp:{0},1433;Database={1};Authentication=Active Directory Managed Identity;User Id={2};Encrypt=True;Connect Timeout=60', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.serverFqdn.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.databaseName.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value)), createObject('name', 'ConnectionStrings__blobs', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.blobEndpoint.value), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value), createObject('name', 'ForwardedHeaders__Enabled', 'value', 'true'), createObject('name', 'ForwardedHeaders__ForwardLimit', 'value', '2'), createObject('name', 'ForwardedHeaders__KnownIPNetworks__0', 'value', '0.0.0.0/0'), createObject('name', 'ForwardedHeaders__KnownIPNetworks__1', 'value', '::/0'), createObject('name', 'Ai__Provider', 'value', 'Foundry'), createObject('name', 'Ai__Enabled', 'value', variables('aiEnabledValue')), createObject('name', 'Ai__Foundry__Endpoint', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.openAiEndpoint.value), createObject('name', 'Ai__Foundry__Deployment', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.deploymentName.value), createObject('name', 'Ai__Foundry__ManagedIdentityClientId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value), createObject('name', 'Maps__Provider', 'value', if(variables('displayEnabled'), 'AzureMaps', 'MapLibre')), createObject('name', 'Maps__Geocoding__Provider', 'value', 'AzureMaps'), createObject('name', 'Maps__Geocoding__GlobalDailyLimit', 'value', if(empty(parameters('geocodeDailyLimit')), '75', parameters('geocodeDailyLimit'))), createObject('name', 'Maps__AzureMaps__AccountClientId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps'), '2025-04-01').outputs.clientId.value), createObject('name', 'Maps__AzureMaps__ManagedIdentityClientId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiClientId.value), createObject('name', 'Maps__AzureMaps__Domain', 'value', 'eu.atlas.microsoft.com'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value)), if(variables('displayEnabled'), createArray(createObject('name', 'Maps__AzureMaps__AccountResourceId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps'), '2025-04-01').outputs.id.value), createObject('name', 'Maps__AzureMaps__SasPrincipalId', 'value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.mapsSasPrincipalId.value), createObject('name', 'Maps__AzureMaps__SasRegions__0', 'value', 'westeurope'), createObject('name', 'Maps__AzureMaps__SasRegions__1', 'value', 'northeurope'), createObject('name', 'Maps__AzureMaps__SasMaxRatePerSecond', 'value', '10')), createArray())), createArray(createObject('name', 'OTEL_SERVICE_NAME', 'value', 'job-guest-cleanup')))]"
+          },
+          "raceImportEnv": {
+            "value": [
+              {
+                "name": "ASPNETCORE_ENVIRONMENT",
+                "value": "Production"
+              },
+              {
+                "name": "ConnectionStrings__runnersdiary",
+                "value": "[format('Server=tcp:{0},1433;Database={1};Authentication=Active Directory Managed Identity;User Id={2};Encrypt=True;Connect Timeout=60', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.serverFqdn.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.databaseName.value, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportClientId.value)]"
+              },
+              {
+                "name": "AZURE_CLIENT_ID",
+                "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportClientId.value]"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+              },
+              {
+                "name": "OTEL_SERVICE_NAME",
+                "value": "job-race-import"
+              },
+              {
+                "name": "RaceImport__Enabled",
+                "value": "[variables('raceImportEnabledValue')]"
+              },
+              {
+                "name": "RaceImport__Sources__RunningLife__Enabled",
+                "value": "[variables('raceImportRunningLifeValue')]"
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "17409666837937272493"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "environmentId": {
+              "type": "string"
+            },
+            "registryServer": {
+              "type": "string"
+            },
+            "migrateImage": {
+              "type": "string"
+            },
+            "cleanupImage": {
+              "type": "string"
+            },
+            "cleanupCron": {
+              "type": "string"
+            },
+            "migratorIdentityId": {
+              "type": "string"
+            },
+            "migratorClientId": {
+              "type": "string"
+            },
+            "apiIdentityId": {
+              "type": "string"
+            },
+            "apiIdentityName": {
+              "type": "string"
+            },
+            "apiIdentityClientId": {
+              "type": "string"
+            },
+            "raceImportImage": {
+              "type": "string"
+            },
+            "raceImportCron": {
+              "type": "string",
+              "metadata": {
+                "description": "UTC cron. Keep it 10 minutes after the guest cleanup so both share one SQL wake (ADR 0038 section 3)."
+              }
+            },
+            "raceImportIdentityId": {
+              "type": "string"
+            },
+            "raceImportIdentityName": {
+              "type": "string"
+            },
+            "raceImportIdentityClientId": {
+              "type": "string"
+            },
+            "sqlServerFqdn": {
+              "type": "string"
+            },
+            "databaseName": {
+              "type": "string"
+            },
+            "cleanupEnv": {
+              "type": "array",
+              "metadata": {
+                "description": "API settings for the cleanup job (no Entra, no guest key: job mode does not need them)."
+              }
+            },
+            "raceImportEnv": {
+              "type": "array",
+              "metadata": {
+                "description": "Settings for the race import job: its own SQL user and nothing else (no Entra, guest key, Blob, Maps or AI)."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2025-01-01",
+              "name": "job-migrate",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('migratorIdentityId'))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[parameters('environmentId')]",
+                "workloadProfileName": "Consumption",
+                "configuration": {
+                  "triggerType": "Manual",
+                  "replicaTimeout": 900,
+                  "replicaRetryLimit": 1,
+                  "manualTriggerConfig": {
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('registryServer')]",
+                      "identity": "[parameters('migratorIdentityId')]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "migrate",
+                      "image": "[parameters('migrateImage')]",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "SQL_SERVER",
+                          "value": "[parameters('sqlServerFqdn')]"
+                        },
+                        {
+                          "name": "SQL_DATABASE",
+                          "value": "[parameters('databaseName')]"
+                        },
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[parameters('migratorClientId')]"
+                        },
+                        {
+                          "name": "API_IDENTITY_NAME",
+                          "value": "[parameters('apiIdentityName')]"
+                        },
+                        {
+                          "name": "API_IDENTITY_CLIENT_ID",
+                          "value": "[parameters('apiIdentityClientId')]"
+                        },
+                        {
+                          "name": "RACE_IMPORT_IDENTITY_NAME",
+                          "value": "[parameters('raceImportIdentityName')]"
+                        },
+                        {
+                          "name": "RACE_IMPORT_IDENTITY_CLIENT_ID",
+                          "value": "[parameters('raceImportIdentityClientId')]"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2025-01-01",
+              "name": "job-guest-cleanup",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('apiIdentityId'))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[parameters('environmentId')]",
+                "workloadProfileName": "Consumption",
+                "configuration": {
+                  "triggerType": "Schedule",
+                  "replicaTimeout": 600,
+                  "replicaRetryLimit": 1,
+                  "scheduleTriggerConfig": {
+                    "cronExpression": "[parameters('cleanupCron')]",
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('registryServer')]",
+                      "identity": "[parameters('apiIdentityId')]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "guest-cleanup",
+                      "image": "[parameters('cleanupImage')]",
+                      "args": [
+                        "--job",
+                        "guest-cleanup"
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": "[parameters('cleanupEnv')]"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2025-01-01",
+              "name": "job-race-import",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('raceImportIdentityId'))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[parameters('environmentId')]",
+                "workloadProfileName": "Consumption",
+                "configuration": {
+                  "triggerType": "Schedule",
+                  "replicaTimeout": 1800,
+                  "replicaRetryLimit": 1,
+                  "scheduleTriggerConfig": {
+                    "cronExpression": "[parameters('raceImportCron')]",
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('registryServer')]",
+                      "identity": "[parameters('raceImportIdentityId')]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "race-import",
+                      "image": "[parameters('raceImportImage')]",
+                      "args": [
+                        "--job",
+                        "race-import"
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": "[parameters('raceImportEnv')]"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "migrateJobName": {
+              "type": "string",
+              "value": "job-migrate"
+            },
+            "cleanupJobName": {
+              "type": "string",
+              "value": "job-guest-cleanup"
+            },
+            "raceImportJobName": {
+              "type": "string",
+              "value": "job-race-import"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'fetch-api-image')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "github-oidc",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "deployerName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.deployerName.value]"
+          },
+          "registryName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry'), '2025-04-01').outputs.name.value]"
+          },
+          "githubRepository": {
+            "value": "[parameters('githubRepository')]"
+          },
+          "githubOwnerId": {
+            "value": "[parameters('githubOwnerId')]"
+          },
+          "githubRepositoryId": {
+            "value": "[parameters('githubRepositoryId')]"
+          },
+          "githubEnvironment": {
+            "value": "[parameters('githubEnvironment')]"
+          },
+          "managedIdentityNames": {
+            "value": [
+              "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.apiName.value]",
+              "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.migratorName.value]",
+              "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.raceImportName.value]",
+              "id-rd-web"
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "18149856348516146403"
+            }
+          },
+          "parameters": {
+            "deployerName": {
+              "type": "string"
+            },
+            "registryName": {
+              "type": "string"
+            },
+            "githubRepository": {
+              "type": "string"
+            },
+            "githubOwnerId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Numeric owner id; with githubRepositoryId it selects GitHub's immutable OIDC subject format."
+              }
+            },
+            "githubRepositoryId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "githubEnvironment": {
+              "type": "string"
+            },
+            "managedIdentityNames": {
+              "type": "array"
+            }
+          },
+          "variables": {
+            "acrPushRole": "8311e382-0749-4cb8-b61a-304f252e45ec",
+            "containerAppsContributorRole": "358470bc-b998-42bd-ab17-a7e34c199c0f",
+            "containerAppsJobsContributorRole": "4e3d2b60-56ae-4dc6-a233-09c8e5a82e68",
+            "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
+            "readerRole": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+            "repoParts": "[split(parameters('githubRepository'), '/')]",
+            "subjectRepo": "[if(or(empty(parameters('githubOwnerId')), empty(parameters('githubRepositoryId'))), parameters('githubRepository'), format('{0}@{1}/{2}@{3}', variables('repoParts')[0], parameters('githubOwnerId'), variables('repoParts')[1], parameters('githubRepositoryId')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+              "apiVersion": "2024-11-30",
+              "name": "[format('{0}/{1}', parameters('deployerName'), format('github-{0}', parameters('githubEnvironment')))]",
+              "properties": {
+                "issuer": "https://token.actions.githubusercontent.com",
+                "subject": "[format('repo:{0}:environment:{1}', variables('subjectRepo'), parameters('githubEnvironment'))]",
+                "audiences": [
+                  "api://AzureADTokenExchange"
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), variables('acrPushRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPushRole'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), '2024-11-30').principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), variables('containerAppsContributorRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('containerAppsContributorRole'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), '2024-11-30').principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), variables('containerAppsJobsContributorRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('containerAppsJobsContributorRole'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), '2024-11-30').principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), variables('readerRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('readerRole'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), '2024-11-30').principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "copy": {
+                "name": "identityOperator",
+                "count": "[length(parameters('managedIdentityNames'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityNames')[copyIndex()])]",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityNames')[copyIndex()]), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), variables('managedIdentityOperatorRole'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deployerName')), '2024-11-30').principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "alerts-budget",
+      "resourceGroup": "[format('rg-runnersdiary-{0}', parameters('stage'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "stage": {
+            "value": "[parameters('stage')]"
+          },
+          "contactEmail": {
+            "value": "[parameters('budgetContactEmail')]"
+          },
+          "budgetAmount": {
+            "value": "[int(if(empty(parameters('budgetAmount')), '25', parameters('budgetAmount')))]"
+          },
+          "budgetStartDate": {
+            "value": "[parameters('budgetStartDate')]"
+          },
+          "foundryName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.name.value]"
+          },
+          "sqlServerName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.serverName.value]"
+          },
+          "databaseName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.databaseName.value]"
+          },
+          "appInsightsName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsName.value]"
+          },
+          "mapsAccountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps'), '2025-04-01').outputs.name.value]"
+          },
+          "raceImportJobName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'jobs'), '2025-04-01').outputs.raceImportJobName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "16468963429911669297"
+            }
+          },
+          "parameters": {
+            "tags": {
+              "type": "object"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "contactEmail": {
+              "type": "string",
+              "minLength": 3
+            },
+            "budgetAmount": {
+              "type": "int"
+            },
+            "budgetStartDate": {
+              "type": "string",
+              "metadata": {
+                "description": "First day of a month (YYYY-MM-01). Fixed on purpose: a moving start date would change the budget on every provision."
+              }
+            },
+            "foundryName": {
+              "type": "string"
+            },
+            "sqlServerName": {
+              "type": "string"
+            },
+            "databaseName": {
+              "type": "string"
+            },
+            "appInsightsName": {
+              "type": "string"
+            },
+            "mapsAccountName": {
+              "type": "string"
+            },
+            "raceImportJobName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/actionGroups",
+              "apiVersion": "2023-01-01",
+              "name": "[format('ag-rd-{0}', parameters('stage'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "groupShortName": "[format('rd-{0}', parameters('stage'))]",
+                "enabled": true,
+                "emailReceivers": [
+                  {
+                    "name": "owner",
+                    "emailAddress": "[parameters('contactEmail')]",
+                    "useCommonAlertSchema": true
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Consumption/budgets",
+              "apiVersion": "2026-06-01",
+              "name": "[format('budget-rd-{0}', parameters('stage'))]",
+              "properties": {
+                "category": "Cost",
+                "amount": "[parameters('budgetAmount')]",
+                "timeGrain": "Monthly",
+                "timePeriod": {
+                  "startDate": "[parameters('budgetStartDate')]"
+                },
+                "notifications": {
+                  "actual40": {
+                    "enabled": true,
+                    "operator": "GreaterThanOrEqualTo",
+                    "threshold": 40,
+                    "thresholdType": "Actual",
+                    "contactEmails": [
+                      "[parameters('contactEmail')]"
+                    ]
+                  },
+                  "actual80": {
+                    "enabled": true,
+                    "operator": "GreaterThanOrEqualTo",
+                    "threshold": 80,
+                    "thresholdType": "Actual",
+                    "contactEmails": [
+                      "[parameters('contactEmail')]"
+                    ]
+                  },
+                  "actual100": {
+                    "enabled": true,
+                    "operator": "GreaterThanOrEqualTo",
+                    "threshold": 100,
+                    "thresholdType": "Actual",
+                    "contactEmails": [
+                      "[parameters('contactEmail')]"
+                    ]
+                  },
+                  "forecast100": {
+                    "enabled": true,
+                    "operator": "GreaterThanOrEqualTo",
+                    "threshold": 100,
+                    "thresholdType": "Forecasted",
+                    "contactEmails": [
+                      "[parameters('contactEmail')]"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2026-01-01",
+              "name": "alert-rd-ai-tokens",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Foundry token usage over 24 hours is above 400k.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryName'))]"
+                ],
+                "evaluationFrequency": "PT1H",
+                "windowSize": "P1D",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "tokens",
+                      "criterionType": "StaticThresholdCriterion",
+                      "metricName": "TokenTransaction",
+                      "metricNamespace": "Microsoft.CognitiveServices/accounts",
+                      "operator": "GreaterThan",
+                      "threshold": 400000,
+                      "timeAggregation": "Total"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2026-01-01",
+              "name": "alert-rd-sql-free",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Azure SQL free offer: less than 10,000 vCore-seconds left this month.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('databaseName'))]"
+                ],
+                "evaluationFrequency": "PT1H",
+                "windowSize": "PT6H",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "freeRemaining",
+                      "criterionType": "StaticThresholdCriterion",
+                      "metricName": "free_amount_remaining",
+                      "metricNamespace": "Microsoft.Sql/servers/databases",
+                      "operator": "LessThan",
+                      "threshold": 10000,
+                      "timeAggregation": "Minimum"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2026-01-01",
+              "name": "alert-rd-api-5xx",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "More than 20 failed requests in 15 minutes.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "failedRequests",
+                      "criterionType": "StaticThresholdCriterion",
+                      "metricName": "requests/failed",
+                      "metricNamespace": "microsoft.insights/components",
+                      "operator": "GreaterThan",
+                      "threshold": 20,
+                      "timeAggregation": "Count"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2026-01-01",
+              "name": "alert-rd-maps-usage",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Azure Maps usage above 200 transactions in 24 hours (geocoding is capped by a durable daily budget; the free tier is 5,000 transactions a month).",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[resourceId('Microsoft.Maps/accounts', parameters('mapsAccountName'))]"
+                ],
+                "evaluationFrequency": "PT1H",
+                "windowSize": "P1D",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "usage",
+                      "criterionType": "StaticThresholdCriterion",
+                      "metricName": "Usage",
+                      "metricNamespace": "Microsoft.Maps/accounts",
+                      "operator": "GreaterThan",
+                      "threshold": 200,
+                      "timeAggregation": "Count"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2026-01-01",
+              "name": "alert-rd-race-import-failed",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "job-race-import had a failed execution in the last 24 hours.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[resourceId('Microsoft.App/jobs', parameters('raceImportJobName'))]"
+                ],
+                "evaluationFrequency": "PT1H",
+                "windowSize": "P1D",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "failedExecutions",
+                      "criterionType": "StaticThresholdCriterion",
+                      "metricName": "Executions",
+                      "metricNamespace": "Microsoft.App/jobs",
+                      "dimensions": [
+                        {
+                          "name": "state",
+                          "operator": "Include",
+                          "values": [
+                            "Failed"
+                          ]
+                        }
+                      ],
+                      "operator": "GreaterThan",
+                      "threshold": 0,
+                      "timeAggregation": "Total"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('ag-rd-{0}', parameters('stage')))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'jobs')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'monitoring')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-runnersdiary-{0}', parameters('stage')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "AZURE_LOCATION": {
+      "type": "string",
+      "value": "[parameters('location')]"
+    },
+    "AZURE_TENANT_ID": {
+      "type": "string",
+      "value": "[tenant().tenantId]"
+    },
+    "AZURE_RESOURCE_GROUP": {
+      "type": "string",
+      "value": "[format('rg-runnersdiary-{0}', parameters('stage'))]"
+    },
+    "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry'), '2025-04-01').outputs.loginServer.value]"
+    },
+    "AZURE_CONTAINER_REGISTRY_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'registry'), '2025-04-01').outputs.name.value]"
+    },
+    "AZURE_CONTAINER_ENVIRONMENT_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'aca-env'), '2025-04-01').outputs.name.value]"
+    },
+    "WEB_FQDN": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'app-web'), '2025-04-01').outputs.fqdn.value]"
+    },
+    "API_INTERNAL_FQDN": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'app-api'), '2025-04-01').outputs.fqdn.value]"
+    },
+    "KEY_VAULT_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.name.value]"
+    },
+    "SQL_SERVER_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.serverName.value]"
+    },
+    "FOUNDRY_ENDPOINT": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.openAiEndpoint.value]"
+    },
+    "FOUNDRY_DEPLOYMENT": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.deploymentName.value]"
+    },
+    "MAPS_ACCOUNT_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'maps'), '2025-04-01').outputs.name.value]"
+    },
+    "MIGRATE_JOB_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'jobs'), '2025-04-01').outputs.migrateJobName.value]"
+    },
+    "CLEANUP_JOB_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'jobs'), '2025-04-01').outputs.cleanupJobName.value]"
+    },
+    "RACE_IMPORT_JOB_NAME": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'jobs'), '2025-04-01').outputs.raceImportJobName.value]"
+    },
+    "DEPLOYER_CLIENT_ID": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-runnersdiary-{0}', parameters('stage'))), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.deployerClientId.value]"
+    }
+  }
+}

@@ -8,7 +8,9 @@ set -eu
 : "${AZURE_CLIENT_ID:?AZURE_CLIENT_ID (client id of the migrator identity) is required}"
 : "${API_IDENTITY_NAME:?API_IDENTITY_NAME is required}"
 : "${API_IDENTITY_CLIENT_ID:?API_IDENTITY_CLIENT_ID is required}"
-export API_IDENTITY_NAME API_IDENTITY_CLIENT_ID
+: "${RACE_IMPORT_IDENTITY_NAME:?RACE_IMPORT_IDENTITY_NAME is required}"
+: "${RACE_IMPORT_IDENTITY_CLIENT_ID:?RACE_IMPORT_IDENTITY_CLIENT_ID is required}"
+export API_IDENTITY_NAME API_IDENTITY_CLIENT_ID RACE_IMPORT_IDENTITY_NAME RACE_IMPORT_IDENTITY_CLIENT_ID
 
 # Serverless SQL on the free offer may be paused: the first connection resumes it, which takes up to about a minute and
 # can fail while it does. Both steps are idempotent, so retrying is safe.
@@ -31,7 +33,7 @@ connection="Server=tcp:${SQL_SERVER},1433;Database=${SQL_DATABASE};Authenticatio
 echo "migrate: applying EF Core migrations"
 retry 5 20 ./efbundle --connection "$connection"
 
-echo "migrate: granting the API database user"
+echo "migrate: granting the API and race import database users"
 retry 5 20 ./sqlcmd -S "tcp:${SQL_SERVER},1433" -d "$SQL_DATABASE" \
   --authentication-method ActiveDirectoryManagedIdentity -U "$AZURE_CLIENT_ID" \
   -i ./grant-app-users.sql -b

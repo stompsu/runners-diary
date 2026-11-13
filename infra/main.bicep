@@ -62,6 +62,16 @@ param budgetStartDate string
 
 // ---- Jobs, CI ----
 param guestCleanupCron string = '15 3 * * 1'
+
+// ---- Race proposals (M8, ADR 0035 section 5 / ADR 0038). Strings because azd parameter files substitute text. ----
+@description('RaceImport__Enabled kill switch of job-race-import. When false the job exits 0 before touching SQL. azd env RACE_IMPORT_ENABLED.')
+param raceImportEnabled string = 'false'
+@description('RaceImport__Sources__RunningLife__Enabled: per-source kill switch. azd env RACE_IMPORT_RUNNING_LIFE.')
+param raceImportRunningLife string = 'false'
+@description('UTC cron of job-race-import (RACE_IMPORT_CRON). Default is 10 minutes after the guest cleanup so both share one SQL wake; move them together.')
+param raceImportCron string = '25 3 * * 1'
+@description('Races__Enabled on the api app: feeds client-config races.enabled (the Races UI). azd env RACES_UI_ENABLED.')
+param racesUiEnabled string = 'false'
 param githubRepository string = 'stompsu/runners-diary'
 param githubEnvironment string = 'prod'
 
@@ -86,6 +96,9 @@ var placeholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
 
 var displayEnabled = toLower(mapsDisplay) == 'true'
 var aiEnabledValue = toLower(aiEnabled) == 'true' ? 'true' : 'false'
+var raceImportEnabledValue = toLower(raceImportEnabled) == 'true' ? 'true' : 'false'
+var raceImportRunningLifeValue = toLower(raceImportRunningLife) == 'true' ? 'true' : 'false'
+var racesUiEnabledValue = toLower(racesUiEnabled) == 'true' ? 'true' : 'false'
 var entraEnabled = !empty(entraTenantId) && !empty(entraTenantSubdomain) && !empty(entraApiClientId)
 var cspEntraHost = empty(entraTenantSubdomain) ? '' : 'https://${entraTenantSubdomain}.ciamlogin.com'
 var cspMapHosts = displayEnabled
@@ -129,6 +142,7 @@ module registry 'modules/registry.bicep' = {
     apiPrincipalId: identities.outputs.apiPrincipalId
     webPrincipalId: identities.outputs.webPrincipalId
     migratorPrincipalId: identities.outputs.migratorPrincipalId
+    raceImportPrincipalId: identities.outputs.raceImportPrincipalId
   }
 }
 
@@ -276,6 +290,7 @@ var apiOnlyEnv = concat(
     { name: 'Auth__Guest__SigningKey', secretRef: 'guest-signing-key' }
     { name: 'OTEL_SERVICE_NAME', value: 'api' }
     { name: 'Auth__Entra__Enabled', value: entraEnabled ? 'true' : 'false' }
+    { name: 'Races__Enabled', value: racesUiEnabledValue }
   ],
   entraEnabled
     ? [
@@ -287,6 +302,20 @@ var apiOnlyEnv = concat(
   entraEnabled && !empty(entraSpaClientId) ? [{ name: 'Auth__Entra__SpaClientId', value: entraSpaClientId }] : [],
   entraEnabled && !empty(entraIssuer) ? [{ name: 'Auth__Entra__ValidIssuers__0', value: entraIssuer }] : []
 )
+
+// The import job needs persistence and telemetry only, under its own identity (ADR 0038 section 2).
+var raceImportEnv = [
+  { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
+  {
+    name: 'ConnectionStrings__runnersdiary'
+    value: 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${sql.outputs.databaseName};Authentication=Active Directory Managed Identity;User Id=${identities.outputs.raceImportClientId};Encrypt=True;Connect Timeout=60'
+  }
+  { name: 'AZURE_CLIENT_ID', value: identities.outputs.raceImportClientId }
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: monitoring.outputs.appInsightsConnectionString }
+  { name: 'OTEL_SERVICE_NAME', value: 'job-race-import' }
+  { name: 'RaceImport__Enabled', value: raceImportEnabledValue }
+  { name: 'RaceImport__Sources__RunningLife__Enabled', value: raceImportRunningLifeValue }
+]
 
 module api 'modules/app-api.bicep' = {
   scope: rg
@@ -345,9 +374,15 @@ module jobs 'modules/jobs.bicep' = {
     apiIdentityId: identities.outputs.apiId
     apiIdentityName: identities.outputs.apiName
     apiIdentityClientId: identities.outputs.apiClientId
+    raceImportImage: apiImage
+    raceImportCron: empty(raceImportCron) ? '25 3 * * 1' : raceImportCron
+    raceImportIdentityId: identities.outputs.raceImportId
+    raceImportIdentityName: identities.outputs.raceImportName
+    raceImportIdentityClientId: identities.outputs.raceImportClientId
     sqlServerFqdn: sql.outputs.serverFqdn
     databaseName: sql.outputs.databaseName
     cleanupEnv: concat(sharedApiEnv, [{ name: 'OTEL_SERVICE_NAME', value: 'job-guest-cleanup' }])
+    raceImportEnv: raceImportEnv
   }
 }
 
@@ -364,6 +399,7 @@ module githubOidc 'modules/github-oidc.bicep' = {
     managedIdentityNames: [
       identities.outputs.apiName
       identities.outputs.migratorName
+      identities.outputs.raceImportName
       'id-rd-web'
     ]
   }
@@ -383,6 +419,7 @@ module alertsBudget 'modules/alerts-budget.bicep' = {
     databaseName: sql.outputs.databaseName
     appInsightsName: monitoring.outputs.appInsightsName
     mapsAccountName: maps.outputs.name
+    raceImportJobName: jobs.outputs.raceImportJobName
   }
 }
 
@@ -402,4 +439,5 @@ output FOUNDRY_DEPLOYMENT string = foundry.outputs.deploymentName
 output MAPS_ACCOUNT_NAME string = maps.outputs.name
 output MIGRATE_JOB_NAME string = jobs.outputs.migrateJobName
 output CLEANUP_JOB_NAME string = jobs.outputs.cleanupJobName
+output RACE_IMPORT_JOB_NAME string = jobs.outputs.raceImportJobName
 output DEPLOYER_CLIENT_ID string = identities.outputs.deployerClientId

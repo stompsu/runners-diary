@@ -275,6 +275,8 @@ jobs:
             -e Storage__CreateContainerOnStartup=true \
             -e ForwardedHeaders__Enabled=false \
             -e Auth__Entra__Enabled=false \
+            -e Races__Enabled=true \
+            -e Races__DemoCatalogue__SeedOnStartup=true \
             -e "Auth__Guest__SigningKey=$GUEST_KEY" \
             rd-api:ci
 
