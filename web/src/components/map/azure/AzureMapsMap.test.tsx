@@ -64,6 +64,18 @@ vi.mock('azure-maps-control', () => {
       this.options = options
     }
   }
+  class Polygon {
+    coordinates: unknown
+    constructor(coordinates: unknown) {
+      this.coordinates = coordinates
+    }
+  }
+  class PolygonLayer {
+    options: Record<string, unknown>
+    constructor(_source: unknown, _id: unknown, options: Record<string, unknown>) {
+      this.options = options
+    }
+  }
   class MultiLineString {
     coordinates: unknown
     constructor(coordinates: unknown) {
@@ -77,8 +89,8 @@ vi.mock('azure-maps-control', () => {
     ControlPosition: { TopRight: 'top-right' },
     control: { ZoomControl: function ZoomControl() {} },
     source: { DataSource },
-    layer: { LineLayer },
-    data: { MultiLineString },
+    layer: { LineLayer, PolygonLayer },
+    data: { MultiLineString, Polygon },
   }
 })
 
@@ -237,6 +249,43 @@ describe('AzureMapsMap', () => {
     const pin = created().markers.add.mock.calls[0]![0] as { getElement: () => HTMLElement }
     expect(pin.getElement().dataset.testid).toBe('map-marker')
     expect(created().setCamera).toHaveBeenCalledWith(expect.objectContaining({ center: [18.67, 50.29], zoom: 14 }))
+  })
+
+  it('draws the area circle, fits to it and replaces it when it changes', () => {
+    const area = { center: { latitude: 50.29, longitude: 18.67 }, radiusMeters: 25_000 }
+    const view = render(<AzureMapsMap azureMapsDomain={DOMAIN} area={area} onStateChange={() => {}} />)
+    fire('ready')
+
+    expect(created().layers.add).toHaveBeenCalledTimes(1)
+    const [fill] = created().layers.add.mock.calls[0]![0] as { options: { fillOpacity: number } }[]
+    expect(fill!.options.fillOpacity).toBe(0.1)
+    expect(created().setCamera).toHaveBeenCalledWith(expect.objectContaining({ bounds: expect.any(Array) }))
+
+    view.rerender(
+      <AzureMapsMap azureMapsDomain={DOMAIN} area={{ ...area, radiusMeters: 50_000 }} onStateChange={() => {}} />,
+    )
+    expect(created().layers.remove).toHaveBeenCalledTimes(1)
+    expect(created().layers.add).toHaveBeenCalledTimes(2)
+
+    view.unmount()
+    expect(created().layers.remove).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a race marker with the supplied label', () => {
+    render(
+      <AzureMapsMap
+        azureMapsDomain={DOMAIN}
+        marker={{ latitude: 50.29, longitude: 18.67 }}
+        markerKind="race"
+        markerLabel="Race location"
+        onStateChange={() => {}}
+      />,
+    )
+    fire('ready')
+
+    const pin = created().markers.add.mock.calls[0]![0] as { options: { htmlContent: HTMLElement } }
+    expect(pin.options.htmlContent).toHaveAttribute('aria-label', 'Race location')
+    expect(pin.options.htmlContent).toHaveAttribute('role', 'img')
   })
 
   it('disposes the map on unmount', () => {

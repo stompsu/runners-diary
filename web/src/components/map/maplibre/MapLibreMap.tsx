@@ -15,7 +15,8 @@ import { useTranslation } from 'react-i18next'
 import type { TrackGeoJson } from '@/features/tracks/trackGeoJson'
 import { DEFAULT_MAPLIBRE_STYLE_URL, DEFAULT_MAP_CENTER } from '../mapConfig'
 import type { MapProviderProps } from '../types'
-import { createEndpointElement, createHighlightElement } from '../markers'
+import { createEndpointElement, createHighlightElement, createRaceElement } from '../markers'
+import { circlePolygon, ringBounds } from '../geo/circlePolygon'
 import '@/i18n/lazyBundles'
 
 // MapLibre 6 resolves its worker at runtime (`new URL('./maplibre-gl-worker.mjs', import.meta.url)`), which a bundler or
@@ -26,8 +27,26 @@ const TRACK_SOURCE = 'rd-track'
 const CASING_LAYER = 'rd-track-casing'
 const LINE_LAYER = 'rd-track-line'
 const LINE_COLOR = '#1d4ed8'
+const AREA_SOURCE = 'rd-area'
+const AREA_FILL_LAYER = 'rd-area-fill'
+const AREA_LINE_LAYER = 'rd-area-line'
+/** The app's primary ink (`--primary`, oklch 0.205 0 0); paint properties cannot read CSS variables. */
+const AREA_COLOR = '#171717'
 const FIT_PADDING = 36
 const PLACE_ZOOM = 14
+
+const areaData = (center: { latitude: number; longitude: number } | undefined, radiusMeters: number) => ({
+  type: 'FeatureCollection' as const,
+  features: center
+    ? [
+        {
+          type: 'Feature' as const,
+          properties: {},
+          geometry: { type: 'Polygon' as const, coordinates: [circlePolygon(center, radiusMeters)] },
+        },
+      ]
+    : [],
+})
 
 const lineData = (track: TrackGeoJson | null | undefined) => ({
   type: 'FeatureCollection' as const,
@@ -38,6 +57,9 @@ const lineData = (track: TrackGeoJson | null | undefined) => ({
 export default function MapLibreMap({
   track,
   marker,
+  markerKind,
+  markerLabel,
+  area,
   highlight,
   onPick,
   fitTo,
@@ -166,7 +188,11 @@ export default function MapLibreMap({
   // A single place (picker / run details).
   useEffect(() => {
     if (!map || !marker) return
-    const pin = new Marker({ color: LINE_COLOR }).setLngLat([marker.longitude, marker.latitude]).addTo(map)
+    const pin = new Marker(
+      markerKind === 'race' ? { element: createRaceElement(markerLabel ?? '') } : { color: LINE_COLOR },
+    )
+      .setLngLat([marker.longitude, marker.latitude])
+      .addTo(map)
     pin.getElement().dataset.testid = 'map-marker'
     // A place typed in as coordinates may be off screen; bring it into view (a click on the map never is).
     if (!map.getBounds().contains([marker.longitude, marker.latitude])) {
@@ -175,7 +201,35 @@ export default function MapLibreMap({
     return () => {
       pin.remove()
     }
-  }, [map, marker])
+  }, [map, marker, markerKind, markerLabel])
+
+  // The radius circle: one polygon source, updated in place; layers are removed with the map on unmount.
+  const areaLat = area?.center.latitude
+  const areaLon = area?.center.longitude
+  const areaRadius = area?.radiusMeters ?? 0
+  useEffect(() => {
+    if (!map) return
+    const areaCenter =
+      areaLat === undefined || areaLon === undefined ? undefined : { latitude: areaLat, longitude: areaLon }
+    const source = map.getSource<GeoJSONSource>(AREA_SOURCE)
+    if (source) {
+      source.setData(areaData(areaCenter, areaRadius))
+      return
+    }
+    map.addSource(AREA_SOURCE, { type: 'geojson', data: areaData(areaCenter, areaRadius) })
+    map.addLayer({
+      id: AREA_FILL_LAYER,
+      type: 'fill',
+      source: AREA_SOURCE,
+      paint: { 'fill-color': AREA_COLOR, 'fill-opacity': 0.1 },
+    })
+    map.addLayer({
+      id: AREA_LINE_LAYER,
+      type: 'line',
+      source: AREA_SOURCE,
+      paint: { 'line-color': AREA_COLOR, 'line-width': 2 },
+    })
+  }, [map, areaLat, areaLon, areaRadius])
 
   // The hover/keyboard marker from the elevation profile.
   const highlightLon = highlight?.[0]
@@ -200,10 +254,13 @@ export default function MapLibreMap({
         duration: 0,
         maxZoom: 17,
       })
+    } else if (areaLat !== undefined && areaLon !== undefined && !track && fitTo !== 'marker') {
+      const [w, s, e, n] = ringBounds(circlePolygon({ latitude: areaLat, longitude: areaLon }, areaRadius))
+      map.fitBounds(new LngLatBounds([w, s], [e, n]), { padding: FIT_PADDING, duration: 0 })
     } else if (!wantsTrack && markerRef.current) {
       map.jumpTo({ center: [markerRef.current.longitude, markerRef.current.latitude], zoom: PLACE_ZOOM })
     }
-  }, [map, track, wantsTrack])
+  }, [map, track, wantsTrack, fitTo, areaLat, areaLon, areaRadius])
 
   // Inline, not a utility class: maplibre-gl.css (a lazy stylesheet that loads after ours) sets `.maplibregl-map
   // { position: relative }`, which would beat Tailwind's `absolute`, collapse the container to zero height and clip

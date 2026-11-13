@@ -39,6 +39,31 @@ export function createEndpointElement(kind: 'start' | 'finish', label: string): 
   return el
 }
 
+/** A race location: a red round pin with a flag; the caller supplies the translated label. */
+export function createRaceElement(label: string): HTMLElement {
+  const el = document.createElement('div')
+  el.setAttribute('role', 'img')
+  el.setAttribute('aria-label', label)
+  el.dataset.testid = 'map-marker'
+  el.dataset.kind = 'race'
+  el.style.cssText = [
+    'width:32px',
+    'height:32px',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'border:2px solid #fff',
+    'border-radius:50% 50% 50% 0',
+    'transform:rotate(-45deg)',
+    'background:#b91c1c',
+    'box-shadow:0 1px 4px rgba(0,0,0,.5)',
+  ].join(';')
+  const flag = icon('M7 4v16M7 5h11l-2.5 4 2.5 4H7', false)
+  flag.style.transform = 'rotate(45deg)'
+  el.append(flag)
+  return el
+}
+
 /** The moving marker driven by the elevation profile: a white ring around a blue dot. */
 export function createHighlightElement(label: string): HTMLElement {
   const el = document.createElement('div')

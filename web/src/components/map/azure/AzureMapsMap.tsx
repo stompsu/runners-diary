@@ -4,13 +4,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LonLat, TrackGeoJson } from '@/features/tracks/trackGeoJson'
 import { DEFAULT_MAP_CENTER } from '../mapConfig'
-import { createEndpointElement, createHighlightElement } from '../markers'
+import { circlePolygon, ringBounds } from '../geo/circlePolygon'
+import { createEndpointElement, createHighlightElement, createRaceElement } from '../markers'
 import type { MapProviderProps } from '../types'
 import { markAzureMapsUnavailable } from './azureSession'
 import { getMapsToken } from './mapsToken'
 import '@/i18n/lazyBundles'
 
 const LINE_COLOR = '#1d4ed8'
+/** The app's primary ink (`--primary`, oklch 0.205 0 0). */
+const AREA_COLOR = '#171717'
 const FIT_PADDING = 36
 const PLACE_ZOOM = 14
 
@@ -25,6 +28,9 @@ const wrapLongitude = (longitude: number) => ((((longitude + 180) % 360) + 360) 
 export default function AzureMapsMap({
   track,
   marker,
+  markerKind,
+  markerLabel,
+  area,
   highlight,
   onPick,
   fitTo,
@@ -151,7 +157,11 @@ export default function AzureMapsMap({
   // A single place (picker / run details).
   useEffect(() => {
     if (!map || !marker) return
-    const pin = new atlas.HtmlMarker({ position: [marker.longitude, marker.latitude], color: LINE_COLOR })
+    const pin = new atlas.HtmlMarker(
+      markerKind === 'race'
+        ? { position: [marker.longitude, marker.latitude], htmlContent: createRaceElement(markerLabel ?? '') }
+        : { position: [marker.longitude, marker.latitude], color: LINE_COLOR },
+    )
     map.markers.add(pin)
     pin.getElement().dataset.testid = 'map-marker'
     // A place typed in as coordinates may be off screen; bring it into view (a click on the map never is).
@@ -162,7 +172,25 @@ export default function AzureMapsMap({
     return () => {
       map.markers.remove(pin)
     }
-  }, [map, marker])
+  }, [map, marker, markerKind, markerLabel])
+
+  // The radius circle: a polygon with a fill layer and an outline layer, replaced when the area changes.
+  const areaLat = area?.center.latitude
+  const areaLon = area?.center.longitude
+  const areaRadius = area?.radiusMeters ?? 0
+  useEffect(() => {
+    if (!map || areaLat === undefined || areaLon === undefined) return
+    const source = new atlas.source.DataSource()
+    map.sources.add(source)
+    source.add(new atlas.data.Polygon(circlePolygon({ latitude: areaLat, longitude: areaLon }, areaRadius)))
+    const fill = new atlas.layer.PolygonLayer(source, undefined, { fillColor: AREA_COLOR, fillOpacity: 0.1 })
+    const outline = new atlas.layer.LineLayer(source, undefined, { strokeColor: AREA_COLOR, strokeWidth: 2 })
+    map.layers.add([fill, outline])
+    return () => {
+      map.layers.remove([fill, outline])
+      map.sources.remove(source)
+    }
+  }, [map, areaLat, areaLon, areaRadius])
 
   // The hover/keyboard marker from the elevation profile.
   const highlightLon = highlight?.[0]
@@ -185,6 +213,9 @@ export default function AzureMapsMap({
     if (!map) return
     if (wantsTrack && track) {
       map.setCamera({ bounds: [...track.bbox], padding: FIT_PADDING, maxZoom: 17, type: 'jump' })
+    } else if (areaLat !== undefined && areaLon !== undefined && !track && fitTo !== 'marker') {
+      const bounds = ringBounds(circlePolygon({ latitude: areaLat, longitude: areaLon }, areaRadius))
+      map.setCamera({ bounds, padding: FIT_PADDING, type: 'jump' })
     } else if (!wantsTrack && markerRef.current) {
       map.setCamera({
         center: [markerRef.current.longitude, markerRef.current.latitude],
@@ -192,7 +223,7 @@ export default function AzureMapsMap({
         type: 'jump',
       })
     }
-  }, [map, track, wantsTrack])
+  }, [map, track, wantsTrack, fitTo, areaLat, areaLon, areaRadius])
 
   // Inline, as for MapLibre: the SDK's own stylesheet loads lazily and must not collapse the container.
   return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />

@@ -11,6 +11,9 @@ import { fakeMap } from './fakeMapState'
 export default function FakeMapLibreMap({
   track,
   marker,
+  markerKind,
+  markerLabel,
+  area,
   highlight,
   onPick,
   fitTo,
@@ -28,6 +31,9 @@ export default function FakeMapLibreMap({
       data-style-url={styleUrl ?? ''}
       data-highlight={highlight ? highlight.join(',') : ''}
       data-marker={marker ? `${marker.latitude},${marker.longitude}` : ''}
+      data-marker-kind={markerKind ?? ''}
+      data-marker-label={markerLabel ?? ''}
+      data-area={area ? `${area.center.latitude},${area.center.longitude},${area.radiusMeters}` : ''}
       data-fit-to={fitTo ?? ''}
       data-center={center ? `${center.latitude},${center.longitude}` : ''}
       data-dashed={String(!!dashed)}

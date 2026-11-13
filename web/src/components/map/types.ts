@@ -22,10 +22,22 @@ export interface MapsConfig {
 export type MapState = 'loading' | 'ready' | 'unavailable' | 'error'
 
 /** Provider-neutral props (ADR 0022 §1). */
+/** A circular search area (race interests preview): drawn as an outline with a light fill. */
+export interface MapArea {
+  center: LatLon
+  radiusMeters: number
+}
+
 export interface MapViewProps {
   track?: TrackGeoJson | null
   /** A single place (location picker, run details). */
   marker?: LatLon | null
+  /** `race` draws a flag pin (needs `markerLabel`); `default` is the plain pin. */
+  markerKind?: 'default' | 'race'
+  /** Accessible name of a `race` marker, supplied by the caller (translated). */
+  markerLabel?: string
+  /** A radius circle; with no track the view fits to it (unless `fitTo="marker"`). */
+  area?: MapArea | null
   /** Hover/keyboard sync from the elevation profile; draws one moving marker. */
   highlight?: LonLat | null
   /** Clicking or tapping the map reports the position (location picker). */
@@ -49,7 +61,18 @@ export interface MapViewProps {
 /** What `MapView` hands to a provider component (which renders only the map surface). */
 export interface MapProviderProps extends Pick<
   MapViewProps,
-  'track' | 'marker' | 'highlight' | 'onPick' | 'fitTo' | 'center' | 'dashed' | 'styleUrl' | 'azureMapsDomain'
+  | 'track'
+  | 'marker'
+  | 'markerKind'
+  | 'markerLabel'
+  | 'area'
+  | 'highlight'
+  | 'onPick'
+  | 'fitTo'
+  | 'center'
+  | 'dashed'
+  | 'styleUrl'
+  | 'azureMapsDomain'
 > {
   onStateChange: (state: MapState) => void
 }
