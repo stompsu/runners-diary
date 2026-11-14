@@ -64,7 +64,7 @@ export function useRaceProposals(range: ProposalRange, options: { enabled: boole
  */
 export function useProposalsGate() {
   const config = useClientConfig()
-  const racesEnabled = config.data?.races.enabled === true
+  const racesEnabled = config.data?.races?.enabled === true
   const interests = useRaceInterests(racesEnabled)
   const configured = racesEnabled && interests.data?.configured === true
   return {

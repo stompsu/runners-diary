@@ -37,7 +37,7 @@ export function RaceInterestsPage() {
   const { t } = useTranslation('races')
   const { t: tCommon } = useTranslation()
   const config = useClientConfig()
-  const enabled = config.data?.races.enabled === true
+  const enabled = config.data?.races?.enabled === true
   const interests = useRaceInterests(enabled)
 
   return (
@@ -177,7 +177,7 @@ function RaceInterestsForm({ saved }: { saved: RaceInterestsDto }) {
   const field = 'h-11 sm:h-9'
   const horizons = [...new Set<number>([...HORIZON_PRESETS, horizonDays])].sort((a, b) => a - b)
   const maps = config.data?.maps
-  const sources = config.data?.races.sources ?? []
+  const sources = config.data?.races?.sources ?? []
 
   return (
     <form

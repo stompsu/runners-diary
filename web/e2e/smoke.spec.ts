@@ -29,7 +29,9 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   )
-  await page.route('**/api/client-config', (route) => route.fulfill({ json: { entra: null } }))
+  await page.route('**/api/client-config', (route) =>
+    route.fulfill({ json: { entra: null, races: { enabled: false, sources: [] } } }),
+  )
 })
 
 async function signInAsGuest(page: Page) {

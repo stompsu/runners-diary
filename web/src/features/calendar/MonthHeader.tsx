@@ -27,7 +27,7 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
   const { t, i18n } = useTranslation('calendar')
   const { t: tRuns } = useTranslation('runs')
   const base = diaryPath(month)
-  const racesEnabled = useClientConfig().data?.races.enabled === true
+  const racesEnabled = useClientConfig().data?.races?.enabled === true
   const iconButton = 'size-11 sm:size-9'
   const label = monthLabel(month.year, month.month, i18n.language)
 

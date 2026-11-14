@@ -8,7 +8,7 @@ import '@/i18n/lazyBundles'
 /** "Source: running.life", linking the race's own page at the source (or the source's home page without one). */
 export function RaceSourceAttribution({ sourceId, sourceUrl }: { sourceId: string; sourceUrl: string | null }) {
   const { t } = useTranslation('races')
-  const sources = useClientConfig().data?.races.sources
+  const sources = useClientConfig().data?.races?.sources
   const text = t('attribution.source', { name: sourceName(sources, sourceId) })
   const url = safeHttpUrl(sourceUrl) ?? safeHttpUrl(sources?.find((source) => source.id === sourceId)?.url)
 

@@ -18,7 +18,7 @@ export function AppShell() {
   const { t } = useTranslation()
   useTimeZoneSync()
   // Settings only hold race interests so far (M8): hidden while race proposals are switched off.
-  const racesEnabled = useClientConfig().data?.races.enabled === true
+  const racesEnabled = useClientConfig().data?.races?.enabled === true
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
