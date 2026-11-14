@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**. **M8 (race proposals) adds the `/api/races` endpoints, `client-config.races`, `RunDto.catalogRaceId` and `--job race-import` (implemented on `m8-race-proposals`; the SPA calendar/details UI is in progress; not merged): see [Added in M8](#added-in-m8-race-proposals).**
+Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**. **M8 (race proposals) adds the `/api/races` endpoints, `client-config.races`, `RunDto.catalogRaceId` and `--job race-import` (part A implemented on `m8-race-proposals`, UI done; awaiting approval/merge; not deployed): see [Added in M8](#added-in-m8-race-proposals).**
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -465,8 +465,9 @@ ClientConfigResponse.maps.azureMapsDomain: string | null   // e.g. "eu.atlas.mic
 
 ## Added in M8 (race proposals)
 
-**Implemented 2026-11-13 on `m8-race-proposals`** (OpenAPI document and `web/src/api/generated/schema.d.ts` regenerated); the SPA calendar/details UI is in progress.
-- Sources: [plan](plans/M8-race-proposals.md) §4 and §12 (deviations D13–D19), ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (signup mapping) and [0037](adr/0037-race-proposals-filtering-and-state.md) (filtering, state, why a separate endpoint; both amended 2026-11-13).
+**Implemented 2026-11-13 on `m8-race-proposals`** (OpenAPI document and `web/src/api/generated/schema.d.ts` regenerated); SPA UI done and reviewed 2026-11-14; awaiting approval/merge. No contract change from the review.
+- Sources: [plan](plans/M8-race-proposals.md) §4 and §12 (deviations D13–D19, F1–F13), ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (signup mapping) and [0037](adr/0037-race-proposals-filtering-and-state.md) (filtering, state, why a separate endpoint; amended 2026-11-13 and 2026-11-14).
+- **Client usage:** the SPA computes `from`/`to` of `listRaceProposals` from the month itself (the same Monday-first grid rule as `getCalendarMonth`) and calls it in parallel with the month; it treats a missing `client-config.races` (an older API during a rolling deploy) as disabled.
 
 All routes are **Auth** (users and guests) on the general per-caller rate limiter. No request carries a user id. Per-user rows (interests, states, the linked run) go through the `Owner` filter. The race catalogue is shared and not user-owned, so a race id is never "foreign": unknown, purged and hidden races answer 404.
 
@@ -577,8 +578,8 @@ RunDto.catalogRaceId: string | null    // read-only; not part of RunWriteRequest
 
 **Limits (M8):** `Races:Proposals:MaxCatalogueRows` 1,000 (→ `truncated`), `Races:Proposals:MaxStatesPerUser` 2,000 and `MaxStatesPerGuest` 200 (→ 409 `proposal-state-limit`); signups use the run caps of `createRun`.
 
-**Job CLI (not HTTP):** `dotnet RunnersDiary.Api.dll --job race-import`. Exit 0 covers success, disabled (no SQL connection), another run holding the lock, and a source stopped by 403/429 or three consecutive 5xx/timeouts (warning only). Exit 1 covers a layout change, a robots failure, a SQL error or an unhandled error. The job is the Container Apps job `job-race-import` (ADR 0038 + amendment).
+**Job CLI (not HTTP):** `dotnet RunnersDiary.Api.dll --job race-import`. Exit 0 covers success, disabled (no SQL connection), another run holding the lock, and a source stopped by 403/429 or three consecutive 5xx/timeouts (warning only). Exit 1 covers a layout change, a robots failure, a SQL error or an unhandled error. A single race whose facts break a domain rule is skipped and counted as `Rejected` in the summary log; it no longer fails the source (ADR 0035/0038 Amendment II). The job is the Container Apps job `job-race-import` (ADR 0038 + amendment).
 
 ## Planned for later milestones
 
-None in the MVP (M8 above is post-MVP, implemented on its branch, UI in progress). A real Foundry deployment (M7 Part B, gate G7) changes no contract.
+None in the MVP (M8 above is post-MVP, implemented on its branch, awaiting approval/merge). A real Foundry deployment (M7 Part B, gate G7) changes no contract.

@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; implemented on `m8-race-proposals`, UI in progress, not merged): see [Added in M8](#added-in-m8-race-proposals).**
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; part A implemented on `m8-race-proposals`, UI done; awaiting approval/merge; not deployed): see [Added in M8](#added-in-m8-race-proposals).**
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -241,7 +241,7 @@ Migration `20261104070212_AiSummaries`; [ADR 0028](adr/0028-summary-cache-quotas
 
 ## Added in M8 (race proposals)
 
-**Implemented 2026-11-13 on `m8-race-proposals` (schema, demo catalogue, endpoints, import job); the calendar/details UI is in progress; nothing deployed.**
+**Implemented 2026-11-13 on `m8-race-proposals` (schema, demo catalogue, endpoints, import job); UI done and reviewed 2026-11-14 (no schema change from the review); awaiting approval/merge; nothing deployed.**
 - [M8 plan](plans/M8-race-proposals.md) (deviations §12); ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (model, upsert, dedup, race → run; amended) and [0037](adr/0037-race-proposals-filtering-and-state.md) (interests, state; amended).
 - One additive migration **`20261113165157_RaceCatalogue`**. It is compatible with the previous release (ADR 0032 expand rule): new tables, plus one nullable column and two indexes on `Runs`.
 

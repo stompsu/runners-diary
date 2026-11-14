@@ -1,6 +1,6 @@
 # 0035 – Race catalogue sources, import strategy and the legal/crawling policy
 
-**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the importer implementation, see the end)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the importer implementation and 2026-11-14 after the review, see the end)
 **Date:** 2026-11-13
 **Related:** [M8 plan](../plans/M8-race-proposals.md), [0036](0036-race-catalogue-model-and-race-runs.md) (data model), [0038](0038-race-import-job.md) (the job), [0033](0033-production-maps-and-azure-maps.md) (geocoding budget)
 
@@ -119,6 +119,14 @@ The decision stands. As built in `Infrastructure/RaceSources/` (commit `c4dbc61`
 4. **Race kind.** The listing JSON-LD carries no type, so the kind comes from the **listing card's type anchor** (`.event-card-distances a[class^="label-"]`, the Polish label text first, the `label-*` class as a fallback). A detail-page `[data-race-type]` label overrides it; guessing from the name and distance chips is the last resort. Cards of non-running sports (**triathlon, duathlon, aquathlon, fitness, multisport**, incl. Polish spellings) are skipped and never imported.
 5. **HTTP stack (§4).** `PoliteHttpClient` wraps a plain `HttpClient` (`AllowAutoRedirect=false`, gzip/brotli decompression), **not** an `IHttpClientFactory` client with the standard resilience handler: that handler would retry (the policy forbids retries) and the default client logging writes full URLs. Redirects are followed by hand (≤ 3 hops, https, same host); the 2 MB cap applies to the **decompressed** body; logs carry the path only, never the query string or the body.
 6. **Spike (§7).** The selector spike (1 listing + 2 detail pages, fetched once with the project UA) pinned the selectors; the pages were **not committed**. The fixtures in `tests/fixtures/races/` are synthetic.
+
+## Amendment II (2026-11-14, review fixes)
+
+The decision stands. After the M8 review (plan §12.3; H1, L1 and two nits), as built in `Infrastructure/RaceSources/`:
+1. **Per-item validation (§4, §6).** Each listing item, and each item combined with its detail page, is checked with the Domain's `RaceFacts.TryNormalize` (the rules `Race.Create` enforces: name ≤ 200 characters, date in 1950–2100, URLs ≤ 2,048 after escaping, …). A failing item is **dropped on its own and counted as `Rejected`**; for a known race the stored facts stay. A listing page whose events are **all** invalid is **not** a layout change (the zero-events rule counts readable events, valid or not). Before this fix one bad item failed the whole source.
+2. **Host allow-list (§4).** A fetch target, including every redirect hop, must be `https`, on the source host, without user info and on the **default port**; the parser applies the same check to detail URLs from the listing.
+3. **Body decoding (§4).** The body is decoded with the response's declared `charset` when .NET knows it, otherwise UTF-8 (still after the 2 MB cap on the decompressed bytes).
+4. **`Content-Signal` logging (§4).** The header value is logged with control characters removed and capped at 200 characters (untrusted input in logs).
 
 ## References (checked 2026-11-13)
 

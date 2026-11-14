@@ -1,6 +1,6 @@
 # 0037 – Race proposals: interest profile, filtering and ranking, per-user state and the calendar integration
 
-**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the endpoints implementation, see the end; **§5 "the endpoints still answer" is superseded by the amendment**)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the endpoints implementation and 2026-11-14 after the SPA and the review, see the end; **§5 "the endpoints still answer" is superseded by the amendment**)
 **Date:** 2026-11-13
 **Related:** [0010](0010-current-user-and-data-scoping.md), [0016](0016-calendar-grid-and-url-state.md) (calendar), [0025](0025-insights-report-computation-and-api.md) (on-demand computation precedent), [0036](0036-race-catalogue-model-and-race-runs.md), [API contract](../api-contract.md#planned-in-m8-race-proposals)
 
@@ -116,6 +116,17 @@ The decision stands except for §5's "endpoints still answer". As built in `Api/
 5. **Removed or duplicate races.** `setRaceProposalState` accepts only `None` (clearing a mark) for them; `Interested`/`Dismissed` → 404. `getRace` answers 404 for a removed race unless the caller is Interested or signed up, and 200 with `canonicalId` for a duplicate (as in §4).
 6. **Signup answer order.** 404 (unknown, removed or duplicate) → 409 `race-already-linked` (with `runId`) → 400 (mapper errors) → 409 `run-limit`. A concurrent second signup that loses the unique index also answers 409 `race-already-linked`.
 7. **Ids and options.** Source ids are `running-life` and `demo`; `client-config.races.sources` lists real sources only (demo is omitted). The state caps are options `Races:Proposals:MaxStatesPerUser` (2,000) and `Races:Proposals:MaxStatesPerGuest` (200).
+
+## Amendment II (2026-11-14, SPA and review)
+
+The decision stands. As built in the SPA (commit `409ba07`; plan §12.2 F1–F4, F8, F13) and after the review (plan §12.3):
+1. **Grid bounds (§4).** The SPA computes the month's grid bounds itself (`gridBounds` in `web/src/features/diary/diaryMonth.ts`, the same Monday-first rule as `getCalendarMonth`'s `gridStart`/`gridEnd`), so `listRaceProposals` runs **in parallel** with `getCalendarMonth` and adjacent months are prefetched with their own bounds. A rule change on either side must change both. No unit test pins `gridBounds` yet (follow-up for qa-tester, plan §13).
+2. **Failure (§4).** "The proposals area shows an inline error" is replaced: the proposals layer **never blocks the grid**, and a failed request simply shows **no proposals and no error UI**.
+3. **Where proposals show (§4, §5).** The `showInCalendar` toggle gates the **grid bubbles** only. The Day panel's "Race proposals" section and the list panel show proposals whenever a profile exists; dismissed ones are fetched only with "Show dismissed" (`includeDismissed=true`).
+4. **"Seen" (§3).** `markRaceProposalsSeen` is sent after the list panel's **first response**, not on mount; the "New" badges stay as they were when the panel opened.
+5. **Toggle writes (§1).** The toggle sends the full-replace `PUT /api/races/interests` from the cached interests; an edit saved meanwhile elsewhere can be overwritten. Accepted (review L4).
+6. **Freshness query.** `catalogueUpdatedUtc` (max `LastSeenUtc`) scans the catalogue on every proposals call. Accepted at ≈ 1k rows (review L3); revisit with an index or a cached value if the catalogue grows.
+7. **`client-config.races` is optional for clients.** The SPA treats a missing `races` member (an older API during a rolling deploy) as disabled.
 
 ## References (checked 2026-11-13)
 

@@ -1,6 +1,6 @@
 # M8 – Race proposals: plan
 
-**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13); implementation of part A in progress on `m8-race-proposals`: backend, importer, infra, MapView and the settings page done; calendar/details UI, E2E and review open (§6.1, §12) · **Date:** 2026-11-13 · **Author:** architect
+**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13). **Part A implemented 2026-11-14** on `m8-race-proposals` (all steps 1–10 of §6.1, incl. the UI, E2E, review and its fixes); **awaiting approval and merge**; part B (G-R1…G-R4) untouched, nothing provisioned (§12, follow-ups §13) · **Date:** 2026-11-13, updated 2026-11-14 · **Author:** architect
 **Builds on:**
 - M2: `Runs`, the run-type catalogue, `Owner` filter, guest lifecycle and `DemoDataSeeder`.
 - M3: month grid (ADR 0016), panel routes, run form (ADR 0018), fake API.
@@ -75,7 +75,7 @@ Both Polish sources lack terms, so **permission e-mails go out before production
 | AC9 | Settings → Race interests (`/settings/races`): kinds, voivodeships, place + radius (existing `LocationField` + map preview with a radius circle), distance range with presets, horizon, keywords, show-in-calendar, and source attribution. react-hook-form + zod, server errors per ADR 0018. Responsive, keyboard-usable. | Vitest + Playwright (desktop + phone-la) |
 | AC10 | `--job race-import`: disabled → exit 0 **with no SQL connection opened**; lock held → exit 0; the Demo source imports idempotently (second run: 0 changes); the RunningLife adapter on synthetic fixtures yields the expected facts; robots/UA/interval/304/stop rules/host allow-list/size cap behave per ADR 0035 §4; layout change → exit 1. | Infrastructure tests (fake `HttpMessageHandler`) + Api.Tests |
 | AC11 | Bicep: `job-race-import` (cron param, `id-rd-race-import`, flags default off), `Races__Enabled` on `api`, the failed-execution alert, grant script table-level grants; `az bicep build/lint` clean. `deploy.yml` updates and rolls back the job's image. **Nothing provisioned in part A.** | CI `deploy-artifacts` + review |
-| AC12 | i18n: new lazily registered `races` namespace, plus grid-level keys in `calendar.json`; no literals; region and kind labels as keys. Initial bundle grows ≤ 1.5 kB gzip; the races chunks are `LAZY_ONLY`. | CI (`bundle-budget`) |
+| AC12 | i18n: new lazily registered `races` namespace, plus grid-level keys in `calendar.json`; no literals; region and kind labels as keys. Initial bundle grows ≤ 1.5 kB gzip; the races chunks are `LAZY_ONLY`. **Result: +3.0 kB, target missed, accepted (§12.2 F12).** | CI (`bundle-budget`) |
 | AC13 | `dotnet build` warning-free; all CI jobs green; the full-stack suite includes a race-proposal journey. | CI |
 
 ## 3. Files / projects by owning agent
@@ -360,7 +360,7 @@ The calendar issues `listRaceProposals` only when `client-config.races.enabled`,
 
 ### 6.1 Part A: offline (each step = one reviewable commit on `m8-race-proposals`)
 
-Progress (2026-11-13): **done** 1 (`07f9edf`), 2 (`6b5cffe`), 3 (`4a07bf1`), 4 (`c4dbc61`), 5 (`139f70f`), 6 (`f5cffca`), 8 (`f29f930`); **in progress** 7; **open** 9, 10. Deviations of the done steps: §12.
+Progress (2026-11-14): **all done**: 1 (`07f9edf`), 2 (`6b5cffe`), 3 (`4a07bf1`), 4 (`c4dbc61`), 5 (`139f70f`), 6 (`f5cffca`), 7 (`409ba07`), 8 (`f29f930`), 9 (`080e3f3`), 10 (review 2026-11-14; fixes in `aaa5cf9` and `07251cb`; docs `005ecce` + this pass). Deviations: §12; follow-ups: §13.
 
 1. [x] **backend-dotnet (+ qa-tester): Domain `Races/`.** All pure logic of §3.1 with hand-written unit tests (§9). No API change.
 2. [x] **backend-dotnet: persistence and demo.** Configurations, migration `RaceCatalogue` (check the cascade ⚠ of ADR 0036 first, on Testcontainers SQL), `Run.CatalogRaceId`, `DemoRaceCatalogue` + seed file + startup check, guest demo profile, AppHost env.
@@ -373,10 +373,10 @@ Progress (2026-11-13): **done** 1 (`07f9edf`), 2 (`6b5cffe`), 3 (`4a07bf1`), 4 (
    - Then `PoliteHttpClient`, `RobotsTxt`, `RunningLifeParser`/`Source`, `DemoRaceSource`, `RaceImportService`, `--job race-import`, validator rules, AngleSharp pin.
 5. [x] **maps-gpx:** `MapView` `area` + race marker.
 6. [x] **frontend-react: settings page** (+ the qa-tester fake API for races).
-7. [ ] **frontend-react: calendar integration and panels** (in progress). Bubbles, legend, toggle, day section, list panel, details dialog, signup flow, banners, invalidations, i18n, bundle budget.
+7. [x] **frontend-react: calendar integration and panels.** Bubbles, legend, toggle, day section, list panel, details dialog, signup flow, banners, invalidations, i18n, bundle budget.
 8. [x] **azure-infra:** Bicep, grant script, `migrate.sh`, `deploy.yml`, CI full-stack env; `az bicep build/lint`, actionlint, shellcheck.
-9. [ ] **qa-tester: E2E** (fake API, phone, axe; full-stack journey).
-10. [ ] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits "M8: race proposals" and stops for approval.
+9. [x] **qa-tester: E2E** (fake API, phone, axe; full-stack journey).
+10. [x] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits "M8: race proposals" and stops for approval.
 
 ### 6.2 Part B: user-confirmed gates (each needs the user's explicit "yes"; same procedure as M7)
 
@@ -492,7 +492,7 @@ Send it through **the site's contact page**, in Polish or English:
 
 ## 12. Implementation notes & deviations
 
-**Backend, importer and infra implemented 2026-11-13** (§6.1 steps 1–6 and 8; nothing provisioned, part B untouched). Step 7 (calendar proposals, list panel, details dialog, signup flow) is **in progress**: its deviations, the verification summary (test counts, bundle size) and the review findings are added after steps 7–10.
+**Backend, importer and infra implemented 2026-11-13** (§6.1 steps 1–6 and 8); **UI, E2E and review done 2026-11-14** (steps 7, 9, 10). Nothing provisioned, part B untouched. Frontend deviations: §12.2; review and fixes: §12.3; verification: §12.4; follow-ups: §13.
 
 ### 12.1 Deviations (backend, importer, infra)
 
@@ -524,12 +524,73 @@ Send it through **the site's contact page**, in Polish or English:
 | D24 | `deploy.yml` updates and rolls back the job | Only **when the job exists**; skipped before G-R2 | ADR 0038 amend. §5 |
 | D25 | — | `id-rd-race-import` added to the deployer's Managed Identity Operator list (`github-oidc.bicep`) | `job update` must assign the UAMI. ADR 0038 amend. §6 |
 | D26 | Job env per ADR 0038 §3 | As planned (`replicaTimeout` 1,800 s); **no blob setting** (job profile needs none; test) | ADR 0038 amend. §7 |
+| D27 | One bad item = (implicitly) a failed `Race.Create` in the source transaction → exit 1 | **Per-item validation** (review H1): the parser and the source check each item with `RaceFacts.TryNormalize` (the same rules as `Race.Create`) and count failures as `Rejected`; `RaceImportService` also catches `DomainRuleException` per insert/update and continues; `Rejected` is in the summary log line | One over-long name must not stop the catalogue. ADR 0035 amend. II §1, ADR 0038 amend. II §1 |
 
-### 12.2 Notes
+### 12.2 Deviations and notes (frontend, steps 5–7; commits `139f70f`, `f5cffca`, `409ba07`)
+
+| # | Plan said | Built | Why / where recorded |
+|---|---|---|---|
+| F1 | The diary calls proposals with the month's `gridStart`/`gridEnd` (ADR 0037 §4) | Bounds computed **client-side** (`gridBounds` in `web/src/features/diary/diaryMonth.ts`, the same Monday-first rule as the API), so the proposals query runs **in parallel** with `getCalendarMonth` (not after it) and adjacent months are prefetched with their own bounds | No request waterfall. ADR 0037 amend. II §1 |
+| F2 | "Its failure never blanks the calendar … the proposals area shows an inline error" | The proposals layer **never blocks the grid**; a failed request shows **no proposals and no error UI** | Proposals are optional decoration; an error banner over the diary would be noisier than the loss. ADR 0037 amend. II §2 |
+| F3 | Proposals are fetched only with `showInCalendar` on (§4.6) | That rule holds for the **grid**. The **Day panel** section and the **list panel** show proposals whenever a profile exists, even with `showInCalendar` off; dismissed ones are fetched only with "Show dismissed" (`includeDismissed=true`) | The toggle hides the bubbles, not the feature. ADR 0037 amend. II §3 |
+| F4 | `markRaceProposalsSeen` "on open" | Sent **after the first list response**, not on mount; the "New" badges are a **snapshot at open** (the cache is patched to `isNew: false`, no refetch) | A mount-time call could race the list and clear badges before they were seen. ADR 0037 amend. II §4 |
+| F5 | — | The two M8 409 problems (`race-already-linked` with `runId`, `proposal-state-limit`) are read in `web/src/features/races/raceProblems.ts` | One place for problem `type` URNs |
+| F6 | "On success, toast + navigate to `runs/:runId`" | Navigation uses **`replace`**, so Back does not reopen the signup form | |
+| F7 | Actions per state unspecified | A **removed** race disables both "Open signup page" and "I signed up"; a **past or duplicate** race disables only "I signed up" | Mirrors the API's 404/400 rules |
+| F8 | `ProposalsToggle` updates `showInCalendar` optimistically | It sends a **full-replace `PUT /api/races/interests`** built from the cached interests. An edit saved meanwhile in another tab could be overwritten. **Accepted** (low; review L4) | The contract is full replace by design (ADR 0037 §1) |
+| F9 | — | **Escape** in race details opened from the Day panel returns to the Day panel; a second Escape returns focus to the grid cell | Keyboard path of AC6 |
+| F10 | Nav "Settings" (step 6) | The label is `common:nav.settings` (the shell's eager namespace, so the lazy `races` bundle is not pulled into the initial load); region names are `races:regions.<code>.en` / `.pl`; distance presets 5K 4.5–5.5, 10K 9.5–10.5, Half 21–21.5, Marathon 42–42.5, Ultra 42.2–250 km; shadcn `checkbox` and `switch` added (the Radix base was already a dependency) | AC12 |
+| F11 | `MapView` `area` + race marker (step 5) | `area` plus `markerKind` / `markerLabel`; the circle colour is a hex of `--primary` (the map styles need a literal colour); the antimeridian is **not handled** (Poland only) | |
+| F12 | AC12: initial bundle grows ≤ 1.5 kB gzip | Initial load **181.8 kB gzip (186,125 B)** vs **183,068 B** after step 6, i.e. **+3.0 kB** for the grid integration. **AC12's ≤ 1.5 kB target is missed**; the overall budget (limit 201.5 kB) passes with ≈ 15 kB headroom. **Accepted** | The bubbles, legend and toggle live in the eagerly loaded month grid; the races chunks themselves are `LAZY_ONLY` |
+| F13 | — | The SPA crashed when `client-config` had no `races` (an older API during a rolling deploy); fixed with optional chaining (`data?.races?.enabled`) in the E2E commit `080e3f3` | Rolling deploys mix API and web versions |
+
+### 12.3 Review (reviewer agent, 2026-11-14) and fixes
+
+| Finding | Severity | Outcome |
+|---|---|---|
+| **H1** One invalid listing item (name > 200 characters, date outside 1950–2100, URL > 2,048 after escaping) failed the whole source | High | **Fixed** (working tree, final backend commit): `RaceFacts.TryNormalize` in `RunningLifeParser` / `RunningLifeSource`; invalid items counted as `Rejected`; `RaceImportService` catches `DomainRuleException` per race and continues; a page whose items are **all invalid** is not a layout change (D27) |
+| **M1** Rollout order between the G-R2 provision and the M8 deploy | Medium | **Fixed** in `aaa5cf9`: `grant-app-users.sql` skips the race-import user while `RACE_IMPORT_IDENTITY_NAME` is empty; `deploy.yml` tolerates only "not found" when reading the job's image (any other `az` error fails the step); G-R2 text in §6.2 |
+| **L1** `Content-Signal` header logged unbounded | Low | **Fixed**: control characters stripped, capped at 200 characters |
+| **L2** `truncated` proposals not logged | Low | **Fixed**: warning `Race proposals truncated to {Max} catalogue rows …` |
+| **L3** `MaxAsync(LastSeenUtc)` scans the catalogue on every proposals call | Low | **Accepted** (≈ 1k rows); revisit if the catalogue grows (an index on `LastSeenUtc` or a cached value) |
+| **L4** Toggle full-replace PUT can overwrite a concurrent edit | Low | **Accepted** (F8) |
+| Nit: default port on redirects / targets | Nit | **Fixed**: `IsAllowedTarget` requires https, the source host, no user info and the **default port**; the parser's detail-URL check does the same |
+| Nit: body decoding ignored the charset | Nit | **Fixed**: the declared `charset` is used when .NET knows it, else UTF-8 |
+| Nit: the MapLibre attribution link inside the map has no `rel` / `referrerpolicy` | Low | **Follow-up (maps-gpx)**, §13; library-generated markup |
+| Nit: the "Loading map…" placeholder fails axe colour contrast while it shows | Low | **Follow-up (frontend-react / maps-gpx)**, §13 |
+
+### 12.4 Verification (2026-11-14)
+
+- `dotnet build` warning-free.
+- **Domain.Tests** 1,385; **Api.Tests** 823 at the last full run (Testcontainers ran; a final re-run after the last backend fixes was pending when this was written); **Ai.Tests** 765 + 6 skipped live evals.
+- **Vitest** 1,070 / 1,070, green with `--maxWorkers=4`. With the default worker count, unrelated run-panel tests flake under load: a pre-existing timing sensitivity, not caused by M8 (follow-up §13).
+- **Playwright** (fake API) 126 passed, 3 pre-existing skips (desktop + phone-la), incl. 18 race tests; axe clean; zero CSP violations.
+- **Full stack:** `web/e2e-fullstack/races.spec.ts` passed against the AppHost stack.
+- `az bicep build/lint`, actionlint, shellcheck clean; `dotnet list package --vulnerable` and `npm audit --omit=dev` clean.
+- **E2E gaps** (covered by unit/integration tests only): the phone date-changed banner, the 409 on a second signup, the duplicate banner. The specs have **not yet run against the nginx web image under the real CSP**; CI `deploy-artifacts` does that on the PR.
+
+### 12.5 Notes
 
 - **CI/AppHost:** `Races__Enabled=true` and `Races__DemoCatalogue__SeedOnStartup=true` in `AppHost.cs` and the `e2e-fullstack` API container (`ci.yml`).
-- **Follow-up (azure-infra):** the comment above `alert-rd-race-import-failed` in `infra/modules/alerts-budget.bicep` says "evaluated once a day", the value is `PT1H`; align the comment.
+- **Done (azure-infra):** the comment above `alert-rd-race-import-failed` in `infra/modules/alerts-budget.bicep` now says hourly (`PT1H`) over 24 h, matching the value.
 - **Outside M8 scope (`b6f334c`):** Aspire packages bumped to **13.6.5** for GHSA-f7vh-h5g3-7jrh; EF Core pins (`SqlServer.NetTopologySuite`, `Design`) aligned to **10.0.14**, the version Aspire 13.6.5 resolves; the `System.Security.Cryptography.Pkcs` security pin (CVE-2026-84008) dropped, since 10.0.14 no longer needs it.
+
+## 13. Follow-ups and open items for the user (2026-11-14)
+
+**For the user (decisions or actions):**
+1. **G-R1:** send the permission e-mail to running.life (outline §10) **before** the import is enabled (G-R3). Record the date and the outcome in §12 (no addresses).
+2. **Outage alerting:** should a persistent 403/429 block or a weeks-long outage of the source alert? Today it exits 0 and shows only as a stale `catalogueUpdatedUtc` and in the summary logs (D22). Options: leave it; a log-based alert on `StoppedByServer` for N consecutive runs; an alert on `catalogueUpdatedUtc` older than 21 days.
+3. **Dependabot:** the open Aspire bump PR is superseded by `b6f334c` and can be closed after the merge.
+4. **G-R3:** verify that the `Failed` value of the `state` dimension matches the first real execution (D23); correct the alert if not.
+5. **M8.1 (optional):** kalendarzbiegowy.pl as the second source (Q11), after permission; needs geocoding (Q2).
+6. **AC12:** accept the +3.0 kB initial-bundle growth (F12), or ask frontend-react to move the proposals layer into a lazy chunk.
+
+**For agents (low, not blocking the merge):**
+- **maps-gpx:** the MapLibre attribution link inside the map has no `rel="noopener noreferrer"` / `referrerpolicy` (library-generated; patch after render or via a custom attribution control).
+- **frontend-react / maps-gpx:** the "Loading map…" placeholder fails axe colour contrast while it shows.
+- **qa-tester:** E2E for the phone date-changed banner, the 409 on a second signup and the duplicate banner (§12.4); a Vitest case for `gridBounds` (`web/src/features/diary/diaryMonth.ts`) against the API's `gridStart`/`gridEnd` rule (F1; no direct test found on 2026-11-14).
+- **qa-tester / azure-infra:** if CI's Vitest flakes in the run-panel tests, bound the workers (`--maxWorkers=4`) or raise `testTimeout` in CI.
+- **backend-dotnet (only if the catalogue grows):** L3, the `MaxAsync(LastSeenUtc)` scan per proposals call.
 
 ## Assumptions
 

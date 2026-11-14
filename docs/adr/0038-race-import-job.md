@@ -1,6 +1,6 @@
 # 0038 – The race import job on Container Apps (schedule, identity, SQL access, kill switch, observability, cost)
 
-**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the job and infra implementation, see the end; nothing provisioned yet)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the job and infra implementation and 2026-11-14 after the review, see the end; nothing provisioned yet)
 **Date:** 2026-11-13
 **Related:** [0031](0031-identities-secrets-and-data-access.md) (identities, Entra-only SQL), [0032](0032-migrations-and-jobs-in-azure.md) (job mode, SQL wake budget), [0034](0034-cost-guardrails-and-observability.md) (alerts, cost), [0035](0035-race-catalogue-sources-and-crawling-policy.md) (crawling rules), [0036](0036-race-catalogue-model-and-race-runs.md) (upsert rules)
 
@@ -140,6 +140,13 @@ The decision stands. As built (`RaceImportService`, `JobMode`; `infra/modules/jo
 5. **Deploy workflow (§4).** `deploy.yml` reads the job's current image only **if the job exists**; the update and the rollback of `job-race-import` are skipped when it does not (before G-R2).
 6. **Deployer rights.** `id-rd-race-import` is added to the identities on which the GitHub deployer has **Managed Identity Operator** (`github-oidc.bicep`), because `az containerapp job update` on a job with a user-assigned identity needs the assign permission on that identity, as for the existing apps and jobs.
 7. **Job settings (§3).** As planned, incl. `replicaTimeout` 1,800 s. The job env has **no blob setting**: the race-import profile registers no Blob client, and a test asserts that the production job needs the database connection string only.
+
+## Amendment II (2026-11-14, review fixes)
+
+The decision stands. After the M8 review (plan §12.3, H1 and M1):
+1. **One bad race costs one race (§1 step 5).** Inside the per-source transaction, `RaceImportService` catches `DomainRuleException` **per insert and per update**, logs the race's external id with the failing rule paths (no values), and continues; the rest of the source commits. Before this fix such an item was a "SQL failure" of the whole source (exit 1). The source adapters already drop invalid items (ADR 0035 Amendment II §1); this is defence in depth.
+2. **Summary log (§5).** The line is now `RaceImportSourceCompleted {Source} {ListingPages} {DetailPages} {NotModified} {New} {Updated} {DateChanged} {Removed} {Restored} {Duplicates} {Purged} {Rejected} {DurationMs} {Outcome}`; `Rejected` = items dropped by the adapter plus those rejected while applying.
+3. **Rollout order (§4, Consequences).** A deploy of the M8 code works **before or after** the G-R2 provision (commit `aaa5cf9`): `grant-app-users.sql` skips the race-import user while `RACE_IMPORT_IDENTITY_NAME` is empty (`migrate.sh` requires the client id only when the name is set), and `deploy.yml`, when reading the job's current image, tolerates **only "not found"**; any other `az` failure (auth, throttling) fails the step. This relaxes the "G-R2 → deploy → G-R3" order in the Consequences: only G-R3 must come after both.
 
 ## References (checked 2026-11-13)
 
