@@ -1,0 +1,280 @@
+{
+  "nav": {
+    "settings": "Settings"
+  },
+  "interests": {
+    "title": "Race interests",
+    "intro": "Choose which upcoming races to suggest. Matching races from public calendars show up in your diary.",
+    "unavailable": "Race proposals are not available right now.",
+    "saveForm": "Race interests",
+    "save": "Save interests",
+    "saving": "Saving…",
+    "discard": "Discard changes",
+    "saved": "Race interests saved",
+    "notConfigured": "You have not saved any interests yet. These are the suggested defaults; save them to start seeing proposals.",
+    "what": {
+      "legend": "What",
+      "kinds": "Kinds of race",
+      "kindsHint": "Pick at least one.",
+      "ultraHint": "Ultra also matches any race longer than a marathon."
+    },
+    "where": {
+      "legend": "Where",
+      "hint": "Voivodeships and a place with a radius both count: a race matches if either one fits. With neither, races from all of Poland match.",
+      "regions": "Voivodeships",
+      "regionLabel": "{{en}} ({{pl}})",
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "selectedCount": "{{count}} of {{total}} voivodeships selected",
+      "nearPlace": "Near a place",
+      "placeHint": "Pick a place on the map, then set how far from it a race may be.",
+      "radius": "Radius (km)",
+      "radiusHint": "5 to 300 km.",
+      "radiusNeedsPlace": "Choose a place first.",
+      "radiusSlider": "Radius slider (km)",
+      "mapLabel": "Preview of the search area on a map"
+    },
+    "distance": {
+      "legend": "Distance",
+      "hint": "A race matches if one of its distances falls in this range. Leave a field empty for no limit.",
+      "min": "From (km)",
+      "max": "To (km)",
+      "presets": "Presets",
+      "preset": {
+        "fiveK": "5K",
+        "tenK": "10K",
+        "half": "Half",
+        "marathon": "Marathon",
+        "ultra": "Ultra"
+      }
+    },
+    "when": {
+      "legend": "When",
+      "horizon": "Look ahead",
+      "horizonOption_one": "{{count}} day",
+      "horizonOption_other": "{{count}} days"
+    },
+    "keywords": {
+      "legend": "Keywords",
+      "label": "Keywords (optional)",
+      "hint": "Up to 5 words; a race must contain all of them in its name or place."
+    },
+    "show": {
+      "legend": "Diary",
+      "label": "Show proposals in the diary",
+      "hint": "Proposals appear in the calendar as dotted flag markers."
+    },
+    "sources": {
+      "legend": "Sources",
+      "opensNewTab": "(opens in a new tab)"
+    },
+    "validation": {
+      "kindsRequired": "Select at least one kind of race.",
+      "regionUnknown": "Unknown voivodeship.",
+      "latitude": "Latitude must be between -90 and 90.",
+      "longitude": "Longitude must be between -180 and 180.",
+      "centerNameLength": "The place name can have at most 200 characters.",
+      "radiusRequired": "Enter a radius for the chosen place.",
+      "radiusRange": "Enter a radius from 5 to 300 km.",
+      "distanceRange": "Enter a distance from 1 to 250 km.",
+      "distanceOrder": "The longest distance must not be shorter than the shortest.",
+      "horizonRange": "Choose 7 to 365 days.",
+      "keywordsLength": "Keywords can have at most 100 characters.",
+      "keywordsTerms": "Use at most 5 keywords.",
+      "keywordsTermLength": "Each keyword needs 2 to 30 characters."
+    }
+  },
+  "kinds": {
+    "Road": "Road",
+    "Trail": "Trail",
+    "Mountain": "Mountain",
+    "Ultra": "Ultra",
+    "CrossCountry": "Cross country",
+    "Ocr": "Obstacle course",
+    "Other": "Other"
+  },
+  "regions": {
+    "PL-02": {
+      "en": "Lower Silesian",
+      "pl": "Dolnośląskie"
+    },
+    "PL-04": {
+      "en": "Kuyavian-Pomeranian",
+      "pl": "Kujawsko-pomorskie"
+    },
+    "PL-06": {
+      "en": "Lublin",
+      "pl": "Lubelskie"
+    },
+    "PL-08": {
+      "en": "Lubusz",
+      "pl": "Lubuskie"
+    },
+    "PL-10": {
+      "en": "Łódź",
+      "pl": "Łódzkie"
+    },
+    "PL-12": {
+      "en": "Lesser Poland",
+      "pl": "Małopolskie"
+    },
+    "PL-14": {
+      "en": "Masovian",
+      "pl": "Mazowieckie"
+    },
+    "PL-16": {
+      "en": "Opole",
+      "pl": "Opolskie"
+    },
+    "PL-18": {
+      "en": "Subcarpathian",
+      "pl": "Podkarpackie"
+    },
+    "PL-20": {
+      "en": "Podlaskie",
+      "pl": "Podlaskie"
+    },
+    "PL-22": {
+      "en": "Pomeranian",
+      "pl": "Pomorskie"
+    },
+    "PL-24": {
+      "en": "Silesian",
+      "pl": "Śląskie"
+    },
+    "PL-26": {
+      "en": "Holy Cross",
+      "pl": "Świętokrzyskie"
+    },
+    "PL-28": {
+      "en": "Warmian-Masurian",
+      "pl": "Warmińsko-mazurskie"
+    },
+    "PL-30": {
+      "en": "Greater Poland",
+      "pl": "Wielkopolskie"
+    },
+    "PL-32": {
+      "en": "West Pomeranian",
+      "pl": "Zachodniopomorskie"
+    }
+  },
+  "attribution": {
+    "source": "Source: {{name}}",
+    "disclaimer": "Race facts come from public calendars; always check the organiser's page."
+  },
+  "proposals": {
+    "title": "Race proposals – {{month}}",
+    "empty": "No race proposals for this month.",
+    "loading": "Loading race proposals…",
+    "notConfigured": "Choose which races to suggest first.",
+    "setup": "Set up race proposals",
+    "window": "Proposals cover {{range}}.",
+    "outsideWindow": "This month is outside your look-ahead window, so no proposals are listed.",
+    "truncated": "Only the first races are listed. Narrow your interests to see the rest.",
+    "updated": "Race list updated {{date}}",
+    "stale": "The race list has not been refreshed for more than 3 weeks, so some details may be out of date.",
+    "showDismissed": "Show dismissed",
+    "new": "New",
+    "noDistance": "Distance not listed",
+    "daySection": "Race proposals",
+    "state": {
+      "Interested": "Interested",
+      "Dismissed": "Not interested",
+      "SignedUp": "Signed up",
+      "dateChanged": "Date changed"
+    },
+    "actions": {
+      "details": "Details",
+      "interested": "Interested",
+      "notInterested": "Not interested",
+      "undo": "Undo",
+      "viewRun": "View my planned run"
+    },
+    "toast": {
+      "dismissed": "Hidden from your proposals: {{name}}",
+      "stateLimit": "You have marked the maximum number of races.",
+      "stateFailed": "Could not save the change. Please try again."
+    }
+  },
+  "details": {
+    "loading": "Loading race…",
+    "goneTitle": "Race not found",
+    "goneBody": "This race is no longer in the list.",
+    "facts": {
+      "date": "Date",
+      "place": "Place",
+      "kind": "Kind",
+      "distances": "Distances",
+      "elevation": "Elevation gain",
+      "price": "Entry fee",
+      "organizer": "Organiser",
+      "deadline": "Signup deadline"
+    },
+    "deadline": {
+      "closesIn_one": "{{date}} (closes in {{count}} day)",
+      "closesIn_other": "{{date}} (closes in {{count}} days)",
+      "closesToday": "{{date}} (closes today)",
+      "closed": "{{date}} (closed)"
+    },
+    "map": {
+      "label": "Map position of the race",
+      "marker": "Race: {{name}}",
+      "none": "No map position from the source",
+      "coordinates": "Coordinates: {{coordinates}}"
+    },
+    "actions": {
+      "signupPage": "Open signup page",
+      "eventSite": "Event website",
+      "signedUp": "I signed up",
+      "interested": "Interested",
+      "notInterested": "Not interested",
+      "undo": "Undo",
+      "viewRun": "View my planned run",
+      "close": "Close",
+      "opensNewTab": "(opens in a new tab)"
+    },
+    "signupUnavailable": {
+      "noUrl": "The source did not provide a signup link.",
+      "removed": "The race is no longer listed.",
+      "past": "The race has already taken place.",
+      "duplicate": "This is a duplicate listing."
+    },
+    "signedUpNote": "You have a planned run for this race."
+  },
+  "signup": {
+    "title": "I signed up",
+    "intro": "This adds a planned race run to your diary on {{date}}.",
+    "distance": "Distance",
+    "distanceSingle": "Distance: {{distance}}",
+    "startTime": "Start time (optional)",
+    "targetTime": "Target time (optional, h:mm:ss)",
+    "submit": "Add to my diary",
+    "submitting": "Adding…",
+    "cancel": "Cancel",
+    "success": "Planned race added to your diary",
+    "alreadyLinked": "This race is already in your diary.",
+    "past": "This race has already taken place.",
+    "gone": "This race is no longer available.",
+    "validation": {
+      "distanceRequired": "Choose a distance.",
+      "startTime": "Enter a time like 09:30.",
+      "targetTime": "Enter a time like 1:45:00."
+    },
+    "targetTimePlaceholder": "1:45:00"
+  },
+  "banners": {
+    "dateChangedSignedUp": "The race listing says {{newDate}}; your planned run is on {{oldDate}}.",
+    "moveRun": "Move my run to {{date}}",
+    "moving": "Moving…",
+    "moved": "Your run moved to {{date}}",
+    "conflict": "Your run was changed elsewhere since you opened it.",
+    "reload": "Reload",
+    "dateChangedInterested": "The listing now says {{newDate}} (it said {{oldDate}} when you marked the race).",
+    "dateChangedInterestedNoOld": "The listing date changed to {{newDate}} since you marked the race.",
+    "ok": "OK",
+    "removed": "No longer listed by the source. Check the organiser's page before you plan around this race.",
+    "duplicate": "This race is listed twice.",
+    "openCanonical": "Open the main listing"
+  }
+}

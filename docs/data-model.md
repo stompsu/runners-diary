@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**.
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; part A implemented on `m8-race-proposals`, UI done; awaiting approval/merge; not deployed): see [Added in M8](#added-in-m8-race-proposals).**
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -236,6 +236,134 @@ Migration `20261104070212_AiSummaries`; [ADR 0028](adr/0028-summary-cache-quotas
 - **Indexes:** the PK only (point seek by day; the purge is a range on the same key).
 - **Retention:** 35 days (`GeocodeBudget.Retention`); each guest cleanup pass deletes older rows.
 - Migration `20261104153828_GeocodeUsage` only creates the table, so it is compatible with the previous release (ADR 0032 expand rule).
+
+<a id="planned-in-m8-race-proposals"></a>
+
+## Added in M8 (race proposals)
+
+**Implemented 2026-11-13 on `m8-race-proposals` (schema, demo catalogue, endpoints, import job); UI done and reviewed 2026-11-14 (no schema change from the review); awaiting approval/merge; nothing deployed.**
+- [M8 plan](plans/M8-race-proposals.md) (deviations §12); ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (model, upsert, dedup, race → run; amended) and [0037](adr/0037-race-proposals-filtering-and-state.md) (interests, state; amended).
+- One additive migration **`20261113165157_RaceCatalogue`**. It is compatible with the previous release (ADR 0032 expand rule): new tables, plus one nullable column and two indexes on `Runs`.
+
+```
+Races (catalogue, shared) 1 ──< RaceDistances
+  │  └── 0..1 DuplicateOfRaceId → Races (self, NO ACTION)
+  ├──< RaceProposalStates >── 1 Users          (per user; Owner filter)
+  └──< Runs.CatalogRaceId (0..1 per user per race; ON DELETE SET NULL)
+Users 1 ── 0..1 RaceInterestProfiles           (per user; Owner filter)
+```
+
+### Races (catalogue)
+
+**Documented exception to the `Owner` filter** (the fourth, after `GuestCleanup`, `AiGenerations` and `GeocodeUsage`; ADR 0010 §6). The table is shared reference data: no `UserId`, not `IUserOwned`, no `Owner` filter. Personal data is never stored (ADR 0035 §2).
+- **Writer:** only the import job (`id-rd-race-import`, table-level grants, ADR 0038), plus the Development/Testing demo seeder.
+- **The API only reads it.**
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Id` | `uniqueidentifier` | no | PK **non-clustered**, v7. |
+| `Source` | `tinyint` | no | `RunningLife = 1`, `Demo = 100` (more later). |
+| `ExternalId` | `varchar(100)` | no | The source's stable id (slug or numeric id). |
+| `Name` | `nvarchar(200)` | no | Source language; trimmed, control characters removed. |
+| `Date` | `date` | no | Local race date (ADR 0008 semantics). |
+| `StartTime` | `time(0)` | yes | Local wall-clock time when the source gives one. |
+| `TimeZoneId` | `varchar(64)` | yes | IANA, from the country (`PL` → `Europe/Warsaw`); NULL when unknown. |
+| `LocationName` | `nvarchar(200)` | yes | Locality as the source names it. |
+| `Point` | `geography` | yes | SRID 4326 via the existing `GeoPointConverter` (X = lon, Y = lat), like `Runs.Location_Point`. |
+| `CountryCode` | `char(2)` | no | ISO 3166-1 alpha-2 (`PL`). |
+| `RegionCode` | `varchar(6)` | yes | ISO 3166-2 (`PL-24` = śląskie). |
+| `Kind` | `tinyint` | no | `Road 0, Trail 1, Mountain 2, Ultra 3, CrossCountry 4, Ocr 5, Other 6`. |
+| `Surface` | `tinyint` | yes | Existing `Surface` enum. |
+| `ElevationGainMeters` | `float` | yes | 0 … 100,000. |
+| `SignupUrl` / `EventUrl` | `varchar(2048)` | yes | Absolute `http(s)` only; never fetched by the server. |
+| `SourceUrl` | `varchar(2048)` | yes | Required for real sources (attribution link); NULL for `Demo`. |
+| `PriceAmount` | `decimal(9,2)` | yes | With `PriceCurrency`; both or neither (check constraint). |
+| `PriceCurrency` | `char(3)` | yes | ISO 4217. |
+| `SignupDeadline` | `date` | yes | |
+| `OrganizerName` | `nvarchar(150)` | yes | Organisation name only; e-mail/phone-like values become NULL (Domain). |
+| `FactsHash` | `binary(32)` | no | SHA-256 of the canonical normalised facts. |
+| `ImportedUtc` / `LastSeenUtc` / `UpdatedUtc` | `datetime2(0)` | no | First seen / last seen in a scan / last facts change. |
+| `PreviousDate` | `date` | yes | The date before the last date change. |
+| `DateChangedUtc` | `datetime2(0)` | yes | |
+| `MissedScans` | `tinyint` | no | Complete scans in which a future race was absent; reset when seen. |
+| `RemovedUtc` | `datetime2(0)` | yes | Soft removal at `MissedScans ≥ 2`; cleared when the race reappears. |
+| `DuplicateOfRaceId` | `uniqueidentifier` | yes | FK → `Races.Id` **NO ACTION**; set by the duplicate matcher. |
+| `DetailETag` | `varchar(200)` | yes | For conditional requests. |
+| `DetailLastModified` | `varchar(64)` | yes | Raw header value. |
+| `DetailFetchedUtc` | `datetime2(0)` | yes | |
+
+- **Keys and indexes:**
+  - **`CX_Races_Date (Date)` clustered**, non-unique: every proposal query is a date window;
+  - `PK_Races (Id)` non-clustered;
+  - **`UX_Races_Source_External (Source, ExternalId)` unique**: the upsert's natural key;
+  - `IX_Races_DuplicateOf (DuplicateOfRaceId) WHERE DuplicateOfRaceId IS NOT NULL`.
+- **Checks:** `CK_Races_Price` (both or neither); `CK_Races_Duplicate` (`DuplicateOfRaceId <> Id`).
+- **Retention:** the import job deletes races with `Date < today − 180 days` (`RaceImport:RetainPastDays`, Q9). Distances and states cascade; linked runs get `CatalogRaceId = NULL` and keep their own copy of every fact. A doomed canonical race still referenced by a surviving duplicate is skipped; `DuplicateOfRaceId` among the deleted rows is cleared first (NO ACTION self-FK).
+- **Volume:** ≈ 600–1,000 rows (one source); ≈ 3k with a second source.
+
+### RaceDistances
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `RaceId` | `uniqueidentifier` | no | FK → `Races.Id` **ON DELETE CASCADE**. |
+| `DistanceMeters` | `float` | no | 1,000 … 250,000 (shorter kids' runs are dropped by the normaliser). |
+
+PK `(RaceId, DistanceMeters)` clustered. ≤ 12 per race (Domain). A child table, not JSON (ADR 0036 §1).
+- **Mapping:** EF one-to-many `Race.Distances` of the domain type `RaceDistance(RaceId, DistanceMeters)`; consumers read `Race.DistancesMeters` (ascending). `Race.ApplyFacts` diffs the rows when `FactsHash` changes (unchanged rows stay, missing ones are deleted, new ones inserted).
+
+### RaceInterestProfiles (per user)
+
+User-owned: `IUserOwned`, **`Owner` filter**, and the owner of a new row is always the current user. One row per user; no row means proposals are off for that user.
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `UserId` | `uniqueidentifier` | no | **PK (clustered)**; FK → `Users.Id` **ON DELETE CASCADE**. |
+| `Kinds` | `tinyint` | no | Bit set of `RaceKind` (bit = 1 << value); ≥ 1 bit. |
+| `RegionCodes` | `varchar(200)` | no | EF primitive collection (JSON array text, explicit column type), ≤ 16 known ISO 3166-2 codes; `[]` = none. |
+| `Center` | `geography` | yes | With `CenterName nvarchar(200) NULL`; both centre and radius or neither (check). |
+| `RadiusMeters` | `int` | yes | 5,000 … 300,000. |
+| `MinDistanceMeters` / `MaxDistanceMeters` | `float` | yes | 1,000 … 250,000; min ≤ max (check). |
+| `HorizonDays` | `smallint` | no | 7 … 365. |
+| `Keywords` | `nvarchar(100)` | yes | ≤ 5 terms. |
+| `ShowInCalendar` | `bit` | no | |
+| `ProposalsSeenUtc` | `datetime2(0)` | yes | "New since last visit" (ADR 0037 §3). |
+| `UpdatedAt` | `datetime2(0)` | no | |
+
+- **Checks** (mirror the Domain rules): `CK_RaceInterestProfiles_Center` (centre and radius both or neither; no `CenterName` without a centre), `_Radius` (5,000–300,000), `_Distance` (1,000–250,000, min ≤ max), `_Horizon` (7–365), `_Kinds` (1–127).
+
+### RaceProposalStates (per user)
+
+User-owned: **`Owner` filter**. One row per user and race that the user marked. `SignedUp` is **not stored**: it is derived from `Runs.CatalogRaceId`.
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `UserId` | `uniqueidentifier` | no | FK → `Users.Id` **ON DELETE CASCADE**. |
+| `RaceId` | `uniqueidentifier` | no | FK → `Races.Id` **ON DELETE CASCADE**. |
+| `State` | `tinyint` | no | `Interested = 1`, `Dismissed = 2` (setting `None` deletes the row). |
+| `RaceDateWhenMarked` | `date` | no | For `dateChanged` on Interested races. |
+| `UpdatedAt` | `datetime2(0)` | no | |
+
+- **Keys:** PK **`(UserId, RaceId)` clustered** (per-user reads are a seek on `UserId` + an id list); `IX_RaceProposalStates_RaceId` (FK, purge cascade).
+- **Check:** `CK_RaceProposalStates_State` (`State IN (1, 2)`).
+- **Cap (application-enforced):** users 2,000 rows, guests 200 (`Races:Proposals:MaxStatesPerUser` / `MaxStatesPerGuest`) → 409 `proposal-state-limit`.
+
+### Runs (change)
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `CatalogRaceId` | `uniqueidentifier` | yes | FK → `Races.Id` **ON DELETE SET NULL**. Set only by `POST /api/races/{id}/signup`; preserved by `PUT /api/runs/{id}`. |
+
+New indexes:
+- **`UX_Runs_User_CatalogRace (UserId, CatalogRaceId) WHERE CatalogRaceId IS NOT NULL`**, unique (one linked run per race per user → 409 `race-already-linked`). It also serves the "signed up?" lookup for a proposal window.
+- `IX_Runs_CatalogRaceId (CatalogRaceId)`, non-unique: the FK index that serves the `SET NULL` when the job purges a race.
+
+Verified (ADR 0036 amendment §2): SQL Server accepts the `SET NULL` FK next to the existing cascades, and a principal with only the `Races`/`RaceDistances` grants can purge; the engine performs the `Runs` SET NULL and the `RaceProposalStates` cascade.
+
+### Guest deletion (M8)
+
+- Every new per-user row hangs off `Users` with `ON DELETE CASCADE`: `RaceInterestProfiles`, `RaceProposalStates`, and runs as before. The existing guest cleanup (`ExecuteDelete` on `Users`) therefore **removes them with no code change** (proved by `Races/RaceGuestLifecycleTests`).
+- Guests never write catalogue rows; the catalogue is untouched by guest cleanup.
+- Signed-up guest runs are ordinary runs (blob prefix rule unchanged).
 
 ## Deferred (by milestone)
 

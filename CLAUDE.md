@@ -15,7 +15,8 @@ Full requirements: [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md). Architectur
 - **M5 – Insights** — done (merged, stompsu/runners-diary#10). Metrics v1 (`metricsVersion` 1) is the read-only contract for M6. Plan and deviations (§12): [`docs/plans/M5-insights.md`](docs/plans/M5-insights.md).
 - **M6 – AI summary** — done (merged, stompsu/runners-diary#11). AI is off by default (`Ai:Provider=None`); local options: `dotnet user-secrets set "Ai:UseFake" "true" --project src/RunnersDiary.AppHost` (fake model) or `Ai:Endpoint` + `Ai:Deployment` with `az login` (real Foundry, opt-in, costs money). Plan and deviations (§12): [`docs/plans/M6-ai-summary.md`](docs/plans/M6-ai-summary.md).
 - **M7 – Azure deployment** — Part A (offline artifacts) done (merged, stompsu/runners-diary#12). Part B: **G1–G7 done 2026-11-04 to 06 — production is live** at `https://runners-diary.highpace.dev` (custom domain via `CUSTOM_DOMAIN`, managed certificate). It runs in `rg-runnersdiary-prod`, **West Europe**, with SQL in **Poland Central** via `SQL_LOCATION`. **AI summaries are on** (gpt-5.4-mini **Global Standard**, prompt v2, fact sheet v2; switch with `AI_ENABLED` + provision). Guests-only until **G8** (Entra; redirect URIs on the custom domain). Deploys: green CI on `main` → `deploy.yml` waits for the `prod` approval → images, migration job, port + readiness wait, smoke test, automatic rollback. Provisioning: run the hooks by hand around `azd provision` (`azd hooks run preprovision` / `postprovision`); use `--no-state` when only the live state changed. Live AI eval: `RD_AI_LIVE_EVAL=1` (costs money; see ADR 0026/0027). Every gate needs explicit user confirmation: [`docs/plans/M7-azure-deployment.md`](docs/plans/M7-azure-deployment.md) (ADRs 0029–0034; 0029 supersedes 0004).
-- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0034).
+- **M8 – Race proposals** — plan approved 2026-11-13 (all recommended defaults); **part A implemented on `m8-race-proposals`** (not merged, not deployed). Upcoming races from a shared, facts-only catalogue (primary source running.life, imported weekly by the Container Apps job `job-race-import` = API image with `--job race-import`; kill switches `RaceImport:Enabled` + per source, all **off** by default) are proposed in the diary calendar per user interest profile; "I signed up" creates a linked planned race run. Locally the AppHost enables `Races__Enabled` and seeds the synthetic demo catalogue (`seed/races/demo-races.json`); the real source stays off until the operator's permission (gate G-R1). Cloud gates G-R1–G-R4 (provision the job with flags off, then enable import, then the UI) each need the user's explicit confirmation: [`docs/plans/M8-race-proposals.md`](docs/plans/M8-race-proposals.md) (ADRs 0035–0038).
+- Architecture: [`docs/architecture.md`](docs/architecture.md); data model: [`docs/data-model.md`](docs/data-model.md); API contract: [`docs/api-contract.md`](docs/api-contract.md); decisions: [`docs/adr/`](docs/adr/) (0001–0038).
 
 ## Prerequisites (local dev)
 
@@ -38,7 +39,7 @@ runners-diary/
 │   ├── RunnersDiary.ServiceDefaults/     # OpenTelemetry, health checks, resilience
 │   ├── RunnersDiary.Api/                 # Minimal APIs, vertical slices: Features/<Area>/<UseCase>.cs
 │   ├── RunnersDiary.Domain/              # pure C#: entities, run types, load metrics, Gpx/ — NO infra deps
-│   └── RunnersDiary.Infrastructure/      # EF Core, migrations, Blob, Maps, Ai/, guest cleanup
+│   └── RunnersDiary.Infrastructure/      # EF Core, migrations, Blob, Maps, Ai/, guest cleanup, Races/, RaceSources/ (M8 importer)
 ├── tests/
 │   ├── RunnersDiary.Domain.Tests/        # fast unit tests (metrics, GPX, ISO weeks)
 │   ├── RunnersDiary.Api.Tests/           # integration tests (WebApplicationFactory + Testcontainers SQL)
@@ -47,11 +48,12 @@ runners-diary/
 ├── web/                                  # React + TS + Vite
 │   ├── src/api/generated/                # generated OpenAPI client — never hand-edit
 │   ├── src/components/map/               # MapView abstraction (Azure Maps / MapLibre)
-│   ├── src/features/<area>/              # calendar, runs, insights, auth
+│   ├── src/features/<area>/              # calendar, runs, insights, auth, races (M8)
 │   ├── src/i18n/                         # en (first), pl (next)
 │   └── e2e/                              # Playwright
 ├── prompts/training-insights/            # versioned AI prompt templates (v1.md, …)
 ├── seed/demo/                            # demo dataset: runs.json + *.gpx (Gliwice / Silesia, synthetic)
+├── seed/races/                           # synthetic demo race catalogue (M8; Development/Testing only)
 ├── infra/                                # Bicep: main.bicep + modules/
 ├── .github/workflows/                    # ci.yml, deploy.yml (OIDC)
 └── docs/                                 # brief, architecture, ADRs, data model, API contract, milestone plans
@@ -137,4 +139,4 @@ CI (`.github/workflows/ci.yml`) runs four jobs on every PR and push to `main` (t
 | `qa-tester` | Runs all suites, writes missing tests and fixtures (incl. malicious GPX), reports failures with repro. Test code only. |
 | `reviewer` | Read-only code & security review of each milestone diff (authZ/IDOR, XML/upload, secrets, guest abuse, cost, ADR consistency). |
 
-Boundary notes: GPX endpoints are wired by `backend-dotnet` but the parsing/processing pipeline belongs to `maps-gpx`. Metrics are computed by `backend-dotnet` in `RunnersDiary.Domain`; `ai-insights` only consumes them. `DemoDataSeeder` is `backend-dotnet`; the demo GPX files are `maps-gpx`.
+Boundary notes: GPX endpoints are wired by `backend-dotnet` but the parsing/processing pipeline belongs to `maps-gpx`. Metrics are computed by `backend-dotnet` in `RunnersDiary.Domain`; `ai-insights` only consumes them. `DemoDataSeeder` is `backend-dotnet`; the demo GPX files are `maps-gpx`. The race catalogue importer (`RaceSources/`, polite crawling per ADR 0035) and the race endpoints are `backend-dotnet`; the race UI is `frontend-react` and the `MapView` radius/pin additions are `maps-gpx`.

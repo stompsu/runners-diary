@@ -1,11 +1,13 @@
-import { ChevronDown, ChevronLeft, ChevronRight, List, Plus } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Flag, List, Plus } from 'lucide-react'
 import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { useClientConfig } from '@/auth/useClientConfig'
 import { Button } from '@/components/ui/button'
 import { diaryPath, type DiaryMonth } from '@/features/diary/diaryMonth'
 import type { PlainDate } from '@/lib/dates/plainDate'
 import { monthLabel } from '@/lib/dates/plainDate'
+import { ProposalsToggle } from './ProposalsToggle'
 
 // The picker's popover (Radix Popper + floating-ui) is ~12 kB gzip that nothing else in the initial load needs.
 const MonthYearPicker = lazy(() => import('./MonthYearPicker').then((m) => ({ default: m.MonthYearPicker })))
@@ -25,6 +27,7 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
   const { t, i18n } = useTranslation('calendar')
   const { t: tRuns } = useTranslation('runs')
   const base = diaryPath(month)
+  const racesEnabled = useClientConfig().data?.races?.enabled === true
   const iconButton = 'size-11 sm:size-9'
   const label = monthLabel(month.year, month.month, i18n.language)
 
@@ -73,7 +76,16 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
         >
           <MonthYearPicker month={month} onSelect={onSelectMonth} />
         </Suspense>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <ProposalsToggle />
+          {racesEnabled ? (
+            <Button asChild variant="outline" className="h-11 sm:h-9">
+              <Link to={`${base}/races`}>
+                <Flag aria-hidden="true" />
+                {t('proposalsList')}
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline" className="h-11 sm:h-9">
             <Link to={`${base}/list`}>
               <List aria-hidden="true" />

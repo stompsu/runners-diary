@@ -130,6 +130,15 @@ jobs:
             echo "api=$(app_image api)"
             echo "web=$(app_image web)"
             echo "cleanup=$(job_image job-guest-cleanup)"
+            # job-race-import exists only after the M8 provision (gate G-R2); until then it is skipped here, in the update and
+            # in the rollback. Only "not found" is tolerated: any other az failure (auth, throttling) fails the step.
+            if raceimport=$(job_image job-race-import 2>"$RUNNER_TEMP/raceimport.err"); then
+              echo "raceimport=$raceimport"
+            elif grep -qiE 'ResourceNotFound|could not be found|not found' "$RUNNER_TEMP/raceimport.err"; then
+              echo "raceimport="
+            else
+              cat "$RUNNER_TEMP/raceimport.err" >&2; exit 1
+            fi
           } >> "$GITHUB_OUTPUT"
 
       - name: Run the database migration job
@@ -155,16 +164,20 @@ jobs:
             sleep 15
           done
 
-      - name: Update the apps and the cleanup job
+      - name: Update the apps and the jobs
         id: update
         env:
           API_IMAGE: ${{ steps.images.outputs.api }}
           WEB_IMAGE: ${{ steps.images.outputs.web }}
+          PREVIOUS_RACE_IMPORT: ${{ steps.previous.outputs.raceimport }}
         run: |
           # Marker for the rollback step: set before the first change, so a partial failure or a cancellation is covered.
           echo "started=true" >> "$GITHUB_OUTPUT"
-          # The cleanup job runs the API image, so it follows the API release.
+          # The cleanup and race import jobs run the API image, so it follows the API release.
           az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
+          if [ -n "$PREVIOUS_RACE_IMPORT" ]; then
+            az containerapp job update --name job-race-import --resource-group "$RESOURCE_GROUP" --image "$API_IMAGE" -o none
+          fi
           # Our images listen on 8080. Provisioning on the placeholder image sets the ingress to 80 (and no probes), and
           # `update --image` leaves the port alone. Set the port first, so the new revision starts (and is probed) on the
           # right port; the next azd provision after a real image also restores our probes.
@@ -195,6 +208,7 @@ jobs:
           PREVIOUS_API: ${{ steps.previous.outputs.api }}
           PREVIOUS_WEB: ${{ steps.previous.outputs.web }}
           PREVIOUS_CLEANUP: ${{ steps.previous.outputs.cleanup }}
+          PREVIOUS_RACE_IMPORT: ${{ steps.previous.outputs.raceimport }}
         run: |
           echo "::warning::The update or the smoke test failed or was cancelled; restoring the previous images."
           if [ -z "$PREVIOUS_API" ] || [ -z "$PREVIOUS_WEB" ] || [ -z "$PREVIOUS_CLEANUP" ]; then echo "::error::Previous images unknown; cannot roll back."; exit 1; fi
@@ -205,5 +219,8 @@ jobs:
           az containerapp ingress update --name api --resource-group "$RESOURCE_GROUP" --target-port "$(port_for "$PREVIOUS_API")" -o none
           az containerapp ingress update --name web --resource-group "$RESOURCE_GROUP" --target-port "$(port_for "$PREVIOUS_WEB")" -o none
           az containerapp job update --name job-guest-cleanup --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_CLEANUP" -o none
+          if [ -n "$PREVIOUS_RACE_IMPORT" ]; then
+            az containerapp job update --name job-race-import --resource-group "$RESOURCE_GROUP" --image "$PREVIOUS_RACE_IMPORT" -o none
+          fi
           echo "::error::Rolled back to $PREVIOUS_API and $PREVIOUS_WEB. A migration that already ran is not undone (forward-only, ADR 0032)."
           exit 1

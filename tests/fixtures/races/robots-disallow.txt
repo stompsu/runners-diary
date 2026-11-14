@@ -1,0 +1,7 @@
+# SYNTHETIC FIXTURE: a site that closes the event pages to our crawler (product token group) but not to everybody else.
+User-agent: *
+Disallow: /pl/map/
+
+User-agent: RunnersDiaryRaceImport
+Disallow: /pl/wydarzenie/
+Allow: /kalendarz-biegow/

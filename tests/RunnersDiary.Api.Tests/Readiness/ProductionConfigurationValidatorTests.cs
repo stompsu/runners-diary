@@ -91,4 +91,17 @@ public sealed class ProductionConfigurationValidatorTests
         ProductionConfigurationValidator.ValidateJob(WithConnections(), new Environment("Production"));
         Assert.Throws<InvalidOperationException>(() => ProductionConfigurationValidator.ValidateJob(Config(), new Environment("Production")));
     }
+
+    [Fact]
+    public void Seeding_the_demo_race_catalogue_is_rejected_in_production_for_the_api_and_the_job()
+    {
+        var config = WithConnections(("Races:DemoCatalogue:SeedOnStartup", "true"));
+
+        var api = Assert.Throws<InvalidOperationException>(() => ProductionConfigurationValidator.ValidateApi(config, new Environment("Production")));
+        Assert.Contains("Races:DemoCatalogue:SeedOnStartup", api.Message, StringComparison.Ordinal);
+        Assert.Throws<InvalidOperationException>(() => ProductionConfigurationValidator.ValidateJob(config, new Environment("Production")));
+
+        ProductionConfigurationValidator.ValidateJob(WithConnections(("Races:DemoCatalogue:SeedOnStartup", "false")), new Environment("Production"));
+        ProductionConfigurationValidator.ValidateApi(config, new Environment("Development"));
+    }
 }

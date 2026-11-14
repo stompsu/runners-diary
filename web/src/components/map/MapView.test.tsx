@@ -74,6 +74,22 @@ describe('MapView', () => {
     expect(provider).toHaveAttribute('data-dashed', 'true')
   })
 
+  it('forwards the area and the race marker props', async () => {
+    render(
+      <MapView
+        ariaLabel="Map of the race"
+        area={{ center: { latitude: 50.29, longitude: 18.68 }, radiusMeters: 30000 }}
+        marker={{ latitude: 50.29, longitude: 18.68 }}
+        markerKind="race"
+        markerLabel="Race location"
+      />,
+    )
+    const provider = await screen.findByTestId('fake-map')
+    expect(provider).toHaveAttribute('data-area', '50.29,18.68,30000')
+    expect(provider).toHaveAttribute('data-marker-kind', 'race')
+    expect(provider).toHaveAttribute('data-marker-label', 'Race location')
+  })
+
   it('uses MapLibre by default and by an unknown or incomplete configuration, never loading the Azure Maps provider', async () => {
     const { unmount } = render(
       <MapView ariaLabel="Map of the route" provider="MapLibre" azureMapsDomain="eu.atlas.microsoft.com" />,

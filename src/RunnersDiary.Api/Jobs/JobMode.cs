@@ -2,6 +2,7 @@ using Microsoft.Extensions.Hosting;
 using RunnersDiary.Api.Http;
 using RunnersDiary.Infrastructure;
 using RunnersDiary.Infrastructure.Guests;
+using RunnersDiary.Infrastructure.RaceSources;
 
 namespace RunnersDiary.Api.Jobs;
 
@@ -9,10 +10,14 @@ namespace RunnersDiary.Api.Jobs;
 /// One-shot entry mode of the API image (ADR 0032 §2): <c>dotnet RunnersDiary.Api.dll --job guest-cleanup</c> builds a host with
 /// ServiceDefaults and Infrastructure only (no Kestrel, no authentication, no endpoints, no hosted services), runs one cleanup and
 /// exits with 0 on success and 1 on failure. Used by the scheduled Container Apps job <c>job-guest-cleanup</c>.
+/// <c>--job race-import</c> (ADR 0038) is the same kind of host with the race-import profile (persistence and the race sources only, no Blob, Maps, AI or
+/// guest services): exit 0 when disabled (no SQL connection), when another execution holds the lock, or when every source completed; exit 1 on a layout change,
+/// a robots failure, an unhandled exception or a SQL failure.
 /// </summary>
 internal static partial class JobMode
 {
     public const string GuestCleanupJob = "guest-cleanup";
+    public const string RaceImportJob = "race-import";
 
     private const string JobArgument = "--job";
 
@@ -46,9 +51,10 @@ internal static partial class JobMode
     /// <returns>The process exit code: 0 on success, 1 on any failure (including an unknown job).</returns>
     public static async Task<int> RunAsync(string job, string[] args, Action<HostApplicationBuilder>? configure = null)
     {
-        if (!string.Equals(job, GuestCleanupJob, StringComparison.Ordinal))
+        var raceImport = string.Equals(job, RaceImportJob, StringComparison.Ordinal);
+        if (!raceImport && !string.Equals(job, GuestCleanupJob, StringComparison.Ordinal))
         {
-            await Console.Error.WriteLineAsync($"Unknown job '{job}'. Supported jobs: {GuestCleanupJob}.");
+            await Console.Error.WriteLineAsync($"Unknown job '{job}'. Supported jobs: {GuestCleanupJob}, {RaceImportJob}.");
             return 1;
         }
 
@@ -56,10 +62,18 @@ internal static partial class JobMode
         try
         {
             var builder = Host.CreateApplicationBuilder(args);
-            ProductionConfigurationValidator.ValidateJob(builder.Configuration, builder.Environment);
+            ProductionConfigurationValidator.ValidateJob(builder.Configuration, builder.Environment, job);
             builder.AddServiceDefaults();
             builder.ConfigureJobSettings();
-            builder.AddInfrastructure(jobMode: true);
+            if (raceImport)
+            {
+                builder.AddRaceImportJob();
+            }
+            else
+            {
+                builder.AddInfrastructure(jobMode: true);
+            }
+
             configure?.Invoke(builder);
             host = builder.Build();
 
@@ -68,6 +82,13 @@ internal static partial class JobMode
             var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(JobMode));
             try
             {
+                if (raceImport)
+                {
+                    var result = await host.Services.GetRequiredService<RaceImportService>().RunAsync(lifetime.ApplicationStopping);
+                    LogRaceImportFinished(logger, result.Outcome);
+                    return result.ExitCode;
+                }
+
                 await RunGuestCleanupAsync(host.Services.GetRequiredService<IGuestCleanupPass>(), logger, lifetime.ApplicationStopping);
                 return 0;
             }
@@ -127,9 +148,12 @@ internal static partial class JobMode
             [DependencyInjection.CreateContainerOnStartupKey] = "false",
         });
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Race import job finished: {Outcome}.")]
+    private static partial void LogRaceImportFinished(ILogger logger, RaceImportOutcome outcome);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Guest cleanup job finished; removed {Removed} expired guests.")]
     private static partial void LogCompleted(ILogger logger, int removed);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Guest cleanup job failed.")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Job failed.")]
     private static partial void LogFailed(ILogger logger, Exception exception);
 }

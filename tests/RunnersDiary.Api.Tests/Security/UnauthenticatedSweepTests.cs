@@ -61,6 +61,14 @@ public sealed class UnauthenticatedSweepTests(OfflineApiFactory factory) : IClas
         Assert.True(data.Count >= 9, $"Expected at least 9 protected endpoint/method pairs, found {data.Count}.");
     }
 
+    [Fact]
+    public void Sweep_covers_every_race_route()
+    {
+        var races = NonAllowlistedEndpoints().Select(d => d.Data).Where(d => d.Item2.StartsWith("/api/races", StringComparison.Ordinal)).ToList();
+
+        Assert.Equal(7, races.Count);
+    }
+
     [Theory]
     [MemberData(nameof(NonAllowlistedEndpoints))]
     public async Task Endpoint_WithoutToken_Returns401Problem(string method, string path)

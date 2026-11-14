@@ -19,6 +19,8 @@ COPY src/RunnersDiary.Infrastructure src/RunnersDiary.Infrastructure
 COPY src/RunnersDiary.ServiceDefaults src/RunnersDiary.ServiceDefaults
 # The demo dataset (runs.json + GPX files) is copied into the publish output by the Api project (ADR 0011).
 COPY seed/demo seed/demo
+# The synthetic demo race catalogue (M8) is content of the Api project too; it is only read when Races:DemoCatalogue:SeedOnStartup=true (never in Azure).
+COPY seed/races seed/races
 # Training Insights prompts, templates and demo fixtures are content of the Infrastructure project (ADR 0026 §6).
 COPY prompts/training-insights prompts/training-insights
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using RunnersDiary.Infrastructure.Ai;
 using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Maps;
+using RunnersDiary.Infrastructure.Races;
 
 namespace RunnersDiary.Api.Features.ClientConfig;
 
@@ -22,7 +23,13 @@ public sealed record GpxClientConfig(long MaxFileBytesUser, long MaxFileBytesGue
 /// <summary>AI summary settings (anonymous endpoint, so no quota or provider details): whether a model is configured and switched on.</summary>
 public sealed record AiClientConfig(bool SummaryGeneration);
 
-public sealed record ClientConfigResponse(EntraClientConfig? Entra, MapsClientConfig Maps, GpxClientConfig Gpx, AiClientConfig Ai);
+/// <summary>One catalogue source for the attribution list (ADR 0035): the id matches <c>RaceProposalDto.source</c>.</summary>
+public sealed record RaceSourceClientConfig(string Id, string Name, string Url);
+
+/// <summary>Race proposals (M8): the feature switch and the sources to credit. Anonymous endpoint, so no per-user data.</summary>
+public sealed record RacesClientConfig(bool Enabled, IReadOnlyList<RaceSourceClientConfig> Sources);
+
+public sealed record ClientConfigResponse(EntraClientConfig? Entra, MapsClientConfig Maps, GpxClientConfig Gpx, AiClientConfig Ai, RacesClientConfig Races);
 
 public static class GetClientConfig
 {
@@ -40,7 +47,8 @@ public static class GetClientConfig
 
     // Computed once at startup (plus whether a geocoder and an AI model are wired): no database access, no per-caller state.
     private static Microsoft.AspNetCore.Http.HttpResults.Ok<ClientConfigResponse> Handle(
-        [FromServices] ClientConfigResponse config, [FromServices] IGeocoder geocoder, [FromServices] IOptionsMonitor<AiOptions> ai, HttpContext context)
+        [FromServices] ClientConfigResponse config, [FromServices] IGeocoder geocoder, [FromServices] IOptionsMonitor<AiOptions> ai,
+        [FromServices] IOptionsMonitor<RacesOptions> races, HttpContext context)
     {
         context.Response.Headers.CacheControl = "public, max-age=300";
         return TypedResults.Ok(config with
@@ -48,8 +56,13 @@ public static class GetClientConfig
             Maps = config.Maps with { GeocodingEnabled = geocoder.IsAvailable },
             // Read per request so the Ai:Enabled kill switch shows up without a restart (within the 5-minute client cache).
             Ai = new AiClientConfig(ai.CurrentValue.GenerationAvailable),
+            // Read per request, like the AI switch; the sources are a static registry (real sources only, never the synthetic demo).
+            Races = new RacesClientConfig(races.CurrentValue.Enabled, config.Races.Sources),
         });
     }
+
+    private static RacesClientConfig DefaultRaces { get; } = new(
+        false, [.. Infrastructure.Races.RaceSourceRegistry.Sources.Select(s => new RaceSourceClientConfig(s.Id, s.Name, s.Url))]);
 
     /// <summary>Builds the response from the API's own Entra settings; null Entra unless the scheme is enabled and a SPA client id is set.</summary>
     internal static ClientConfigResponse Build(Auth.EntraAuthOptions entra, bool entraEnabled, MapsOptions maps, GpxLimitsOptions gpxLimits)
@@ -70,7 +83,7 @@ public static class GetClientConfig
         var gpxConfig = new GpxClientConfig(gpxLimits.MaxFileBytes, gpxLimits.GuestMaxFileBytes);
         if (!entraEnabled || string.IsNullOrWhiteSpace(entra.SpaClientId))
         {
-            return new ClientConfigResponse(null, mapsConfig, gpxConfig, new AiClientConfig(false));
+            return new ClientConfigResponse(null, mapsConfig, gpxConfig, new AiClientConfig(false), DefaultRaces);
         }
 
         var scope = string.IsNullOrWhiteSpace(entra.ApiScope)
@@ -79,6 +92,6 @@ public static class GetClientConfig
         return new ClientConfigResponse(new EntraClientConfig(
             entra.SpaClientId.Trim(),
             $"https://{entra.TenantSubdomain}.ciamlogin.com/",
-            scope), mapsConfig, gpxConfig, new AiClientConfig(false));
+            scope), mapsConfig, gpxConfig, new AiClientConfig(false), DefaultRaces);
     }
 }

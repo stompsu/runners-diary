@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getFakeApi, resetFakeApi } from '@/test/fake'
 import { faults } from '@/test/fakeApi'
@@ -34,6 +34,31 @@ describe('routes', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Insights' })).toBeInTheDocument()
   })
 
+  it('redirects /settings to the race interests page', async () => {
+    const { router } = renderRoute('/settings')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Race interests' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/settings/races')
+  })
+
+  it('shows Settings in the navigation only while race proposals are enabled', async () => {
+    renderRoute('/insights')
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    expect(await within(nav).findByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
+  })
+
+  it('hides Settings in the navigation when race proposals are disabled', async () => {
+    resetFakeApi({ racesEnabled: false })
+    renderRoute('/insights')
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    await screen.findByRole('heading', { level: 1, name: 'Insights' })
+    // The client config has arrived once the API status settles; the link must still be absent.
+    await waitFor(() => expect(getFakeApi().requests).toContain('GET /api/client-config'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(within(nav).queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Diary' })).toBeInTheDocument()
+  })
+
   it('shows translated navigation, not raw keys', async () => {
     renderRoute('/insights')
 
@@ -43,7 +68,7 @@ describe('routes', () => {
   })
 
   describe('auth guard', () => {
-    it.each(['/', '/diary', '/diary/2026/11', '/insights', '/nope'])(
+    it.each(['/', '/diary', '/diary/2026/11', '/insights', '/settings', '/settings/races', '/nope'])(
       'redirects anonymous %s to /signin',
       async (path) => {
         const { router } = renderRoute(path, { session: 'none' })

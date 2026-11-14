@@ -9,6 +9,7 @@ using RunnersDiary.Api.Features.GuestSessions;
 using RunnersDiary.Api.Features.Health;
 using RunnersDiary.Api.Features.Insights;
 using RunnersDiary.Api.Features.Maps;
+using RunnersDiary.Api.Features.Races;
 using RunnersDiary.Api.Features.Account;
 using RunnersDiary.Api.Features.RunTypes;
 using RunnersDiary.Api.Features.Runs;
@@ -156,6 +157,7 @@ static async Task RunApiAsync(string[] args)
     api.MapTrackEndpoints(gpxLimits);
     api.MapGeocodingEndpoints();
     api.MapMapsEndpoints();
+    api.MapRaceEndpoints();
 
     await app.RunAsync();
 }

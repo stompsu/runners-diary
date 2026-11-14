@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useMatch, useNavigate, useParams } from 'react-router'
 import { useMe } from '@/auth/useMe'
@@ -9,7 +9,9 @@ import { QueryError } from '@/features/errors/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { firstOfMonth, isValid, monthOf, todayFromMe, type PlainDate } from '@/lib/dates/plainDate'
 import { useCalendarMonth, usePrefetchAdjacentMonths, useRunTypeCodes } from './calendarQueries'
+import { bubbleProposals, useMonthProposals, usePrefetchAdjacentProposals } from '@/features/races/raceQueries'
 import { preloadPanels } from '@/features/runs/panelRoutes'
+import { CalendarLegend } from './CalendarLegend'
 import { MonthGrid, type FocusRequest } from './MonthGrid'
 import { MonthHeader } from './MonthHeader'
 
@@ -31,6 +33,13 @@ function DiaryMonthView({ month }: { month: DiaryMonth }) {
 
   const ready = !!me.data && !!calendar.data && !!runTypes.data
   usePrefetchAdjacentMonths(month, !!calendar.data)
+  // The optional proposals layer never blocks the grid: while it loads or fails the grid simply has no proposals.
+  const { query: proposalsQuery, enabled: proposalsShown } = useMonthProposals(month)
+  usePrefetchAdjacentProposals(month, proposalsShown && !!proposalsQuery.data)
+  const proposals = useMemo(
+    () => (proposalsShown ? bubbleProposals(proposalsQuery.data?.items) : []),
+    [proposalsShown, proposalsQuery.data],
+  )
   useEffect(() => {
     if (ready) preloadPanels()
   }, [ready])
@@ -97,14 +106,17 @@ function DiaryMonthView({ month }: { month: DiaryMonth }) {
           month={month}
           today={today}
           codes={codes}
+          proposals={proposals}
           selectedDate={selectedDate}
           focusRequest={focusRequest}
           onFocusHandled={clearFocusRequest}
           onMoveToMonth={(date) => goToMonth(monthOf(date), date)}
           onOpenDay={(date) => navigate(`${base}/day/${date}`)}
           onOpenRun={(runId) => navigate(`${base}/runs/${runId}`)}
+          onOpenProposal={(raceId) => navigate(`${base}/races/${raceId}`)}
         />
       ) : null}
+      {ready && today ? <CalendarLegend showProposals={proposalsShown} /> : null}
       <Outlet />
     </section>
   )

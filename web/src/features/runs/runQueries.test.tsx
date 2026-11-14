@@ -23,7 +23,10 @@ describe('useInvalidateRuns', () => {
 
     await result.current('run-1')
 
-    expect(invalidate).toHaveBeenCalledTimes(5)
+    expect(invalidate).toHaveBeenCalledTimes(7)
+    // Signed-up and dateChanged derive from runs: proposals and the linked race go stale with every run write (M8 §4.6).
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/races/proposals'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/races/{raceId}'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/insights/report'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/insights/summary'] })
   })

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
+import { useClientConfig } from '@/auth/useClientConfig'
 import { useTimeZoneSync } from '@/auth/useTimeZoneSync'
 import { Toaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
@@ -16,6 +17,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function AppShell() {
   const { t } = useTranslation()
   useTimeZoneSync()
+  // Settings only hold race interests so far (M8): hidden while race proposals are switched off.
+  const racesEnabled = useClientConfig().data?.races?.enabled === true
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -33,6 +36,11 @@ export function AppShell() {
             <NavLink to="/insights" className={navLinkClass}>
               {t('nav.insights')}
             </NavLink>
+            {racesEnabled ? (
+              <NavLink to="/settings" className={navLinkClass}>
+                {t('nav.settings')}
+              </NavLink>
+            ) : null}
           </nav>
           <div className="flex items-center gap-3">
             <ApiStatus />

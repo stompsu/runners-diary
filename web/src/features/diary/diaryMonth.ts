@@ -1,4 +1,13 @@
-import { monthOf, todayFromMe } from '@/lib/dates/plainDate'
+import {
+  addDays,
+  firstOfMonth,
+  isoWeekday,
+  lastOfMonth,
+  monthOf,
+  startOfIsoWeek,
+  todayFromMe,
+  type PlainDate,
+} from '@/lib/dates/plainDate'
 
 export interface DiaryMonth {
   year: number
@@ -35,4 +44,10 @@ export function shiftMonth({ year, month }: DiaryMonth, delta: number): DiaryMon
   const index = year * 12 + (month - 1) + delta
   const shifted = { year: Math.floor(index / 12), month: (index % 12) + 1 }
   return isInRange(shifted) ? shifted : null
+}
+
+/** The Monday-first grid of a month (what the calendar API returns as `gridStart` / `gridEnd`), for the proposals range. */
+export function gridBounds({ year, month }: DiaryMonth): { from: PlainDate; to: PlainDate } {
+  const last = lastOfMonth(year, month)
+  return { from: startOfIsoWeek(firstOfMonth(year, month)), to: addDays(last, 7 - isoWeekday(last)) }
 }

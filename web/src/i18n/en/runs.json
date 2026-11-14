@@ -80,7 +80,8 @@
   },
   "details": {
     "loading": "Loading the run…",
-    "zone": "Time zone"
+    "zone": "Time zone",
+    "fromRaceListing": "From race listing"
   },
   "form": {
     "addTitle": "Add run",

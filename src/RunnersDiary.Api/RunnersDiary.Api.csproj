@@ -32,6 +32,8 @@
     <!-- Demo dataset for guest accounts (ADR 0011): runs.json + GPX files are copied next to the binaries as seed/demo/. tools/ and README stay out. -->
     <Content Include="..\..\seed\demo\runs.json" Link="seed\demo\runs.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\seed\demo\gpx\*.gpx" Link="seed\demo\gpx\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Synthetic demo race catalogue (M8, ADR 0036): copied as seed/races/demo-races.json; only read when Races:DemoCatalogue:SeedOnStartup=true (Development/Testing). README stays out. -->
+    <Content Include="..\..\seed\races\demo-races.json" Link="seed\races\demo-races.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

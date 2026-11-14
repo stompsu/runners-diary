@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.RunTypes;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.Users;
@@ -17,6 +18,8 @@ internal sealed class RunConfiguration : IEntityTypeConfiguration<Run>
         b.HasAlternateKey(r => new { r.Id, r.UserId }).HasName("AK_Runs_Id_UserId");
         b.HasIndex(r => new { r.UserId, r.Date }).IsClustered().HasDatabaseName("CX_Runs_User_Date");
         b.HasIndex(r => r.RunTypeId).HasDatabaseName("IX_Runs_RunTypeId");
+        // One linked run per race per user (409 race-already-linked); also serves the "signed up?" lookup for a proposal window (ADR 0036 §5).
+        b.HasIndex(r => new { r.UserId, r.CatalogRaceId }).IsUnique().HasFilter("[CatalogRaceId] IS NOT NULL").HasDatabaseName("UX_Runs_User_CatalogRace");
 
         b.Property(r => r.Id).ValueGeneratedNever();
         b.Property(r => r.Date).HasColumnType("date");
@@ -39,6 +42,8 @@ internal sealed class RunConfiguration : IEntityTypeConfiguration<Run>
 
         b.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<RunType>().WithMany().HasForeignKey(r => r.RunTypeId).OnDelete(DeleteBehavior.Restrict);
+        // A purged race leaves a valid run: the link becomes NULL (ADR 0036 §5).
+        b.HasOne<Race>().WithMany().HasForeignKey(r => r.CatalogRaceId).OnDelete(DeleteBehavior.SetNull);
 
         b.Navigation(r => r.Tracks).UsePropertyAccessMode(PropertyAccessMode.Field);
 

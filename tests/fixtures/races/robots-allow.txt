@@ -1,0 +1,8 @@
+# SYNTHETIC FIXTURE: imitates a permissive robots.txt with a map exclusion and a content signal.
+User-agent: *
+Disallow: /pl/map/
+Disallow: /demo-
+Allow: /pl/map/public
+Content-Signal: ai-train=no, search=yes
+
+Sitemap: https://running.life/sitemap.xml

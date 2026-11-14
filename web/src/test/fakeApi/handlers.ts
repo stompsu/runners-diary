@@ -11,6 +11,7 @@ import {
   startOfIsoWeek,
 } from '../../lib/dates/plainDate.ts'
 import { RUN_TYPES } from './seed.ts'
+import type { RaceInterestsDto } from './races.ts'
 import type { StoredTrack } from './tracks.ts'
 
 type S = components['schemas']
@@ -45,6 +46,13 @@ export type HandledOperations = Pick<
   | 'getInsightsReport'
   | 'getInsightsSummary'
   | 'generateInsightsSummary'
+  | 'getRaceInterests'
+  | 'updateRaceInterests'
+  | 'listRaceProposals'
+  | 'markRaceProposalsSeen'
+  | 'getRace'
+  | 'setRaceProposalState'
+  | 'signUpForRace'
 >
 
 export interface Account {
@@ -58,6 +66,12 @@ export interface Account {
   runs: Map<string, RunDto>
   /** Tracks of all the account's runs by track id (each knows its run). */
   tracks: Map<string, StoredTrack>
+  /** The race interest profile; null = none saved (`configured: false` + defaults). Guests start with the demo one. */
+  raceInterests: RaceInterestsDto | null
+  /** Interested / Dismissed marks by race id; `dateWhenMarked` drives `dateChanged`. SignedUp is derived from runs. */
+  raceStates: Map<string, { state: 'Interested' | 'Dismissed'; dateWhenMarked: string }>
+  /** `ProposalsSeenUtc`: proposals updated after it are `isNew`. */
+  raceSeenUtc: string | null
 }
 
 export interface Limits {
@@ -298,6 +312,7 @@ export function buildRun(
     startTime,
     timeZoneId,
     startUtc: startTime ? toStartUtc(write.date, startTime, timeZoneId) : null,
+    catalogRaceId: previous?.catalogRaceId ?? null,
     status: write.status,
     runTypeId: write.runTypeId,
     title: write.title ?? null,

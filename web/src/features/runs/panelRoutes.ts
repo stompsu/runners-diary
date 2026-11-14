@@ -8,6 +8,8 @@ const loaders = {
   day: () => import('./DayPanel').then((m) => m.DayPanel),
   list: () => import('./MonthListPanel').then((m) => m.MonthListPanel),
   details: () => import('./RunDetailsDialog').then((m) => m.RunDetailsDialog),
+  races: () => import('@/features/races/ProposalsListPanel').then((m) => m.ProposalsListPanel),
+  race: () => import('@/features/races/RaceDetailsDialog').then((m) => m.RaceDetailsDialog),
   track: () => import('@/features/tracks/TrackViewPanel').then((m) => m.TrackViewPanel),
   runNew: () => import('./RunFormPanels').then((m) => m.RunNewPanel),
   runEdit: () => import('./RunFormPanels').then((m) => m.RunEditPanel),
@@ -21,6 +23,8 @@ const lazyRoute = (path: string, load: () => Promise<() => React.JSX.Element>): 
 export const panelRoutes: RouteObject[] = [
   lazyRoute('day/:date', loaders.day),
   lazyRoute('list', loaders.list),
+  lazyRoute('races', loaders.races),
+  lazyRoute('races/:raceId', loaders.race),
   lazyRoute('runs/new', loaders.runNew),
   lazyRoute('runs/:runId', loaders.details),
   lazyRoute('runs/:runId/edit', loaders.runEdit),

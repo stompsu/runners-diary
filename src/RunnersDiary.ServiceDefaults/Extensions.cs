@@ -25,6 +25,9 @@ public static class Extensions
     /// <summary>Trace sampling budget per second (ADR 0034).</summary>
     private const double AzureMonitorTracesPerSecond = 5;
 
+    /// <summary>Meter of the race import job (<c>RunnersDiary.Infrastructure.RaceSources</c>); a literal because ServiceDefaults must not reference Infrastructure.</summary>
+    private const string RaceImportMeterName = "RunnersDiary.RaceImport";
+
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
 
@@ -69,7 +72,9 @@ public static class Extensions
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     // M6 Training Insights: gen_ai.client.token.usage and operation duration from the chat client pipeline (ADR 0027).
-                    .AddMeter(AiTelemetrySourceName);
+                    .AddMeter(AiTelemetrySourceName)
+                    // M8 race import job (ADR 0038 section 5): races.import.requests and races.import.upserts.
+                    .AddMeter(RaceImportMeterName);
             })
             .WithTracing(tracing =>
             {

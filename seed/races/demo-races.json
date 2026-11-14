@@ -1,0 +1,1012 @@
+{
+  "version": 1,
+  "comment": "Synthetic demo catalogue (invented races; no real events, organisers or URLs). Dates are relative to the current ISO week in the time zone below.",
+  "timeZoneId": "Europe/Warsaw",
+  "races": [
+    {
+      "id": "demo-01",
+      "name": "Demo Gliwice Night 10K",
+      "date": {
+        "week": -2,
+        "day": "Sat"
+      },
+      "startTime": "20:00",
+      "locationName": "Gliwice",
+      "latitude": 50.2945,
+      "longitude": 18.6714,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 20,
+      "priceAmount": 60,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-02",
+      "name": "Demo Gliwice Spring Half Marathon",
+      "date": {
+        "week": 3,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Gliwice",
+      "latitude": 50.2945,
+      "longitude": 18.6714,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        21097.5,
+        10000,
+        5000
+      ],
+      "elevationGainMeters": 35,
+      "priceAmount": 120,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-03",
+      "name": "Demo Gliwice Park Cross 6K",
+      "date": {
+        "week": 5,
+        "day": "Sun"
+      },
+      "startTime": "11:00",
+      "locationName": "Gliwice",
+      "latitude": 50.2945,
+      "longitude": 18.6714,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "CrossCountry",
+      "surface": "Trail",
+      "distancesMeters": [
+        6000
+      ],
+      "elevationGainMeters": 15,
+      "priceAmount": 30,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-04",
+      "name": "Demo Gliwice City Marathon",
+      "date": {
+        "week": 12,
+        "day": "Sun"
+      },
+      "startTime": "09:00",
+      "locationName": "Gliwice",
+      "latitude": 50.2945,
+      "longitude": 18.6714,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        42195,
+        21097.5
+      ],
+      "elevationGainMeters": 60,
+      "priceAmount": 160,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-05",
+      "name": "Demo Gliwice Autumn 15K",
+      "date": {
+        "week": 20,
+        "day": "Sun"
+      },
+      "startTime": "10:30",
+      "locationName": "Gliwice",
+      "latitude": 50.2945,
+      "longitude": 18.6714,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        15000
+      ],
+      "elevationGainMeters": 25,
+      "priceAmount": 70,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-06",
+      "name": "Demo Katowice Spodek 5K",
+      "date": {
+        "week": -1,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Katowice",
+      "latitude": 50.2649,
+      "longitude": 19.0238,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        5000
+      ],
+      "elevationGainMeters": 8,
+      "priceAmount": 40,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-07",
+      "name": "Demo Katowice Forest Trail 12K",
+      "date": {
+        "week": 2,
+        "day": "Sat"
+      },
+      "startTime": "10:00",
+      "locationName": "Katowice",
+      "latitude": 50.2649,
+      "longitude": 19.0238,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Trail",
+      "surface": "Trail",
+      "distancesMeters": [
+        12000
+      ],
+      "elevationGainMeters": 240,
+      "priceAmount": 70,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-08",
+      "name": "Demo Katowice Half Marathon",
+      "date": {
+        "week": 6,
+        "day": "Sun"
+      },
+      "startTime": "09:30",
+      "locationName": "Katowice",
+      "latitude": 50.2649,
+      "longitude": 19.0238,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        21097.5
+      ],
+      "elevationGainMeters": 45,
+      "priceAmount": 130,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-09",
+      "name": "Demo Katowice Urban Mud Run",
+      "date": {
+        "week": 9,
+        "day": "Sat"
+      },
+      "startTime": "12:00",
+      "locationName": "Katowice",
+      "latitude": 50.2649,
+      "longitude": 19.0238,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Ocr",
+      "surface": "Trail",
+      "distancesMeters": [
+        8000
+      ],
+      "elevationGainMeters": 120,
+      "priceAmount": 110,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-10",
+      "name": "Demo Katowice 10K Night Lights",
+      "date": {
+        "week": 15,
+        "day": "Sat"
+      },
+      "startTime": "19:30",
+      "locationName": "Katowice",
+      "latitude": 50.2649,
+      "longitude": 19.0238,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 18,
+      "priceAmount": 65,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-11",
+      "name": "Demo Katowice Marathon",
+      "date": {
+        "week": 22,
+        "day": "Sun"
+      },
+      "startTime": "09:00",
+      "locationName": "Katowice",
+      "latitude": 50.2649,
+      "longitude": 19.0238,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        42195
+      ],
+      "elevationGainMeters": 55,
+      "priceAmount": 170,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-12",
+      "name": "Demo Bielsko Hills Trail 21K",
+      "date": {
+        "week": 1,
+        "day": "Sat"
+      },
+      "startTime": "09:00",
+      "locationName": "Bielsko-Biała",
+      "latitude": 49.8224,
+      "longitude": 19.0584,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Trail",
+      "surface": "Trail",
+      "distancesMeters": [
+        21000,
+        10000
+      ],
+      "elevationGainMeters": 780,
+      "priceAmount": 100,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-13",
+      "name": "Demo Bielsko Beskid Mountain 30K",
+      "date": {
+        "week": 7,
+        "day": "Sat"
+      },
+      "startTime": "08:00",
+      "locationName": "Bielsko-Biała",
+      "latitude": 49.8224,
+      "longitude": 19.0584,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Mountain",
+      "surface": "Trail",
+      "distancesMeters": [
+        30000
+      ],
+      "elevationGainMeters": 1650,
+      "priceAmount": 130,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-14",
+      "name": "Demo Bielsko 10K",
+      "date": {
+        "week": 11,
+        "day": "Sun"
+      },
+      "startTime": "11:00",
+      "locationName": "Bielsko-Biała",
+      "latitude": 49.8224,
+      "longitude": 19.0584,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 40,
+      "priceAmount": 55,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-15",
+      "name": "Demo Bielsko Ultra 50K",
+      "date": {
+        "week": 18,
+        "day": "Sat"
+      },
+      "startTime": "06:00",
+      "locationName": "Bielsko-Biała",
+      "latitude": 49.8224,
+      "longitude": 19.0584,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Ultra",
+      "surface": "Trail",
+      "distancesMeters": [
+        50000
+      ],
+      "elevationGainMeters": 2300,
+      "priceAmount": 200,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-16",
+      "name": "Demo Rybnik Lake 10K",
+      "date": {
+        "week": 0,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Rybnik",
+      "latitude": 50.0971,
+      "longitude": 18.5463,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 12,
+      "priceAmount": 50,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-17",
+      "name": "Demo Rybnik Lake Half Marathon",
+      "date": {
+        "week": 8,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Rybnik",
+      "latitude": 50.0971,
+      "longitude": 18.5463,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        21097.5
+      ],
+      "elevationGainMeters": 22,
+      "priceAmount": 110,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-18",
+      "name": "Demo Rybnik Trail Night 8K",
+      "date": {
+        "week": 13,
+        "day": "Sat"
+      },
+      "startTime": "20:30",
+      "locationName": "Rybnik",
+      "latitude": 50.0971,
+      "longitude": 18.5463,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Trail",
+      "surface": "Trail",
+      "distancesMeters": [
+        8000
+      ],
+      "elevationGainMeters": 90,
+      "priceAmount": 60,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-19",
+      "name": "Demo Rybnik Obstacle Challenge",
+      "date": {
+        "week": 19,
+        "day": "Sat"
+      },
+      "startTime": "11:00",
+      "locationName": "Rybnik",
+      "latitude": 50.0971,
+      "longitude": 18.5463,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Ocr",
+      "surface": "Trail",
+      "distancesMeters": [
+        6000
+      ],
+      "elevationGainMeters": 60,
+      "priceAmount": 95,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-20",
+      "name": "Demo Zabrze Mine Heritage 7K",
+      "date": {
+        "week": 4,
+        "day": "Sun"
+      },
+      "startTime": "11:00",
+      "locationName": "Zabrze",
+      "latitude": 50.3249,
+      "longitude": 18.7857,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Other",
+      "surface": "Mixed",
+      "distancesMeters": [
+        7000
+      ],
+      "elevationGainMeters": 30,
+      "priceAmount": 45,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-21",
+      "name": "Demo Zabrze Marathon Relay Day 10K",
+      "date": {
+        "week": 16,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Zabrze",
+      "latitude": 50.3249,
+      "longitude": 18.7857,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 14,
+      "priceAmount": 60,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-22",
+      "name": "Demo Tychy Brewery 10K",
+      "date": {
+        "week": 10,
+        "day": "Sun"
+      },
+      "startTime": "11:30",
+      "locationName": "Tychy",
+      "latitude": 50.1218,
+      "longitude": 18.9966,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 16,
+      "priceAmount": 55,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-23",
+      "name": "Demo Tychy Cross Country 5K",
+      "date": {
+        "week": 14,
+        "day": "Sat"
+      },
+      "startTime": "12:00",
+      "locationName": "Tychy",
+      "latitude": 50.1218,
+      "longitude": 18.9966,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "CrossCountry",
+      "surface": "Trail",
+      "distancesMeters": [
+        5000
+      ],
+      "elevationGainMeters": 10,
+      "priceAmount": 25,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-24",
+      "name": "Demo Ustroń Mountain Run 25K",
+      "date": {
+        "week": 17,
+        "day": "Sat"
+      },
+      "startTime": "08:30",
+      "locationName": "Ustroń",
+      "latitude": 49.7167,
+      "longitude": 18.8167,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Mountain",
+      "surface": "Trail",
+      "distancesMeters": [
+        25000,
+        12000
+      ],
+      "elevationGainMeters": 1400,
+      "priceAmount": 120,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-25",
+      "name": "Demo Częstochowa Pilgrim 10K",
+      "date": {
+        "week": 21,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Częstochowa",
+      "latitude": 50.8118,
+      "longitude": 19.1203,
+      "countryCode": "PL",
+      "regionCode": "PL-24",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 20,
+      "priceAmount": 50,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-26",
+      "name": "Demo Gdańsk Bay Half Marathon",
+      "date": {
+        "week": 6,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Gdańsk",
+      "latitude": 54.352,
+      "longitude": 18.6466,
+      "countryCode": "PL",
+      "regionCode": "PL-22",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        21097.5
+      ],
+      "elevationGainMeters": 25,
+      "priceAmount": 125,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-27",
+      "name": "Demo Gdańsk Dunes Trail 15K",
+      "date": {
+        "week": 14,
+        "day": "Sat"
+      },
+      "startTime": "10:00",
+      "locationName": "Gdańsk",
+      "latitude": 54.352,
+      "longitude": 18.6466,
+      "countryCode": "PL",
+      "regionCode": "PL-22",
+      "kind": "Trail",
+      "surface": "Trail",
+      "distancesMeters": [
+        15000
+      ],
+      "elevationGainMeters": 150,
+      "priceAmount": 80,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-28",
+      "name": "Demo Wrocław Marathon",
+      "date": {
+        "week": 18,
+        "day": "Sun"
+      },
+      "startTime": "09:00",
+      "locationName": "Wrocław",
+      "latitude": 51.1079,
+      "longitude": 17.0385,
+      "countryCode": "PL",
+      "regionCode": "PL-02",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        42195
+      ],
+      "elevationGainMeters": 70,
+      "priceAmount": 175,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-29",
+      "name": "Demo Wrocław Odra 10K",
+      "date": {
+        "week": 4,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Wrocław",
+      "latitude": 51.1079,
+      "longitude": 17.0385,
+      "countryCode": "PL",
+      "regionCode": "PL-02",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 15,
+      "priceAmount": 55,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-30",
+      "name": "Demo Zakopane Tatra Mountain 20K",
+      "date": {
+        "week": 9,
+        "day": "Sat"
+      },
+      "startTime": "07:00",
+      "locationName": "Zakopane",
+      "latitude": 49.2992,
+      "longitude": 19.9496,
+      "countryCode": "PL",
+      "regionCode": "PL-12",
+      "kind": "Mountain",
+      "surface": "Trail",
+      "distancesMeters": [
+        20000
+      ],
+      "elevationGainMeters": 1300,
+      "priceAmount": 115,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-31",
+      "name": "Demo Zakopane Peaks Ultra 70K",
+      "date": {
+        "week": 23,
+        "day": "Fri"
+      },
+      "startTime": "05:00",
+      "locationName": "Zakopane",
+      "latitude": 49.2992,
+      "longitude": 19.9496,
+      "countryCode": "PL",
+      "regionCode": "PL-12",
+      "kind": "Ultra",
+      "surface": "Trail",
+      "distancesMeters": [
+        70000
+      ],
+      "elevationGainMeters": 4100,
+      "priceAmount": 260,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-32",
+      "name": "Demo Kraków Old Town 10K",
+      "date": {
+        "week": 3,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Kraków",
+      "latitude": 50.0647,
+      "longitude": 19.945,
+      "countryCode": "PL",
+      "regionCode": "PL-12",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 20,
+      "priceAmount": 60,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-33",
+      "name": "Demo Kraków Half Marathon",
+      "date": {
+        "week": 12,
+        "day": "Sun"
+      },
+      "startTime": "09:30",
+      "locationName": "Kraków",
+      "latitude": 50.0647,
+      "longitude": 19.945,
+      "countryCode": "PL",
+      "regionCode": "PL-12",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        21097.5
+      ],
+      "elevationGainMeters": 35,
+      "priceAmount": 120,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-34",
+      "name": "Demo Opole Venice 10K",
+      "date": {
+        "week": 7,
+        "day": "Sun"
+      },
+      "startTime": "11:00",
+      "locationName": "Opole",
+      "latitude": 50.6751,
+      "longitude": 17.9213,
+      "countryCode": "PL",
+      "regionCode": "PL-16",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 10,
+      "priceAmount": 50,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-35",
+      "name": "Demo Opole Forest Trail 15K",
+      "date": {
+        "week": 15,
+        "day": "Sat"
+      },
+      "startTime": "10:00",
+      "locationName": "Opole",
+      "latitude": 50.6751,
+      "longitude": 17.9213,
+      "countryCode": "PL",
+      "regionCode": "PL-16",
+      "kind": "Trail",
+      "surface": "Trail",
+      "distancesMeters": [
+        15000
+      ],
+      "elevationGainMeters": 180,
+      "priceAmount": 75,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-36",
+      "name": "Demo Warszawa Vistula 10K",
+      "date": {
+        "week": 5,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Warszawa",
+      "latitude": 52.2297,
+      "longitude": 21.0122,
+      "countryCode": "PL",
+      "regionCode": "PL-14",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        10000
+      ],
+      "elevationGainMeters": 12,
+      "priceAmount": 60,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-37",
+      "name": "Demo Warszawa Marathon",
+      "date": {
+        "week": 24,
+        "day": "Sun"
+      },
+      "startTime": "09:00",
+      "locationName": "Warszawa",
+      "latitude": 52.2297,
+      "longitude": 21.0122,
+      "countryCode": "PL",
+      "regionCode": "PL-14",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        42195
+      ],
+      "elevationGainMeters": 45,
+      "priceAmount": 180,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-38",
+      "name": "Demo Poznań Lakes Half Marathon",
+      "date": {
+        "week": 10,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Poznań",
+      "latitude": 52.4064,
+      "longitude": 16.9252,
+      "countryCode": "PL",
+      "regionCode": "PL-30",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        21097.5
+      ],
+      "elevationGainMeters": 20,
+      "priceAmount": 115,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-39",
+      "name": "Demo Łódź Factory Cross 6K",
+      "date": {
+        "week": 1,
+        "day": "Sun"
+      },
+      "startTime": "11:00",
+      "locationName": "Łódź",
+      "latitude": 51.7592,
+      "longitude": 19.456,
+      "countryCode": "PL",
+      "regionCode": "PL-10",
+      "kind": "CrossCountry",
+      "surface": "Trail",
+      "distancesMeters": [
+        6000
+      ],
+      "elevationGainMeters": 20,
+      "priceAmount": 30,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    },
+    {
+      "id": "demo-40",
+      "name": "Demo Łódź Textile 5K",
+      "date": {
+        "week": -2,
+        "day": "Sun"
+      },
+      "startTime": "10:00",
+      "locationName": "Łódź",
+      "latitude": 51.7592,
+      "longitude": 19.456,
+      "countryCode": "PL",
+      "regionCode": "PL-10",
+      "kind": "Road",
+      "surface": "Road",
+      "distancesMeters": [
+        5000
+      ],
+      "elevationGainMeters": 6,
+      "priceAmount": 35,
+      "priceCurrency": "PLN",
+      "signupUrl": "https://example.org/demo-signup",
+      "sourceUrl": null,
+      "organizerName": "Demo Running Club"
+    }
+  ]
+}

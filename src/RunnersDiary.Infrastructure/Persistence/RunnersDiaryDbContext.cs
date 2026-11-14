@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RunnersDiary.Domain.Ai;
+using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.RunTypes;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.Tracks;
@@ -36,6 +37,16 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
     /// <summary>The durable daily geocode budget: a system table without the Owner filter, only used by <see cref="GeocodeBudget"/> (and the cleanup's purge through it). Holds no user data.</summary>
     public DbSet<GeocodeUsage> GeocodeUsages => Set<GeocodeUsage>();
 
+    /// <summary>
+    /// The shared race catalogue: reference data without a user id and without the Owner filter (documented exception, ADR 0010 §6 / 0036 §1).
+    /// The API only reads it; writes come from the import job and the Development/Testing demo seeder.
+    /// </summary>
+    public DbSet<Race> Races => Set<Race>();
+
+    public DbSet<RaceInterestProfile> RaceInterestProfiles => Set<RaceInterestProfile>();
+
+    public DbSet<RaceProposalState> RaceProposalStates => Set<RaceProposalState>();
+
     /// <summary>Read by the query filter on every query (EF parameterizes it per context instance) and by the ownership guard.</summary>
     internal Guid? CurrentUserId => currentUser.UserIdOrNull;
 
@@ -47,6 +58,8 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
         modelBuilder.Entity<Run>().HasQueryFilter(OwnerFilter, r => r.UserId == CurrentUserId);
         modelBuilder.Entity<GpxTrack>().HasQueryFilter(OwnerFilter, t => t.UserId == CurrentUserId);
         modelBuilder.Entity<AiSummary>().HasQueryFilter(OwnerFilter, s => s.UserId == CurrentUserId);
+        modelBuilder.Entity<RaceInterestProfile>().HasQueryFilter(OwnerFilter, p => p.UserId == CurrentUserId);
+        modelBuilder.Entity<RaceProposalState>().HasQueryFilter(OwnerFilter, s => s.UserId == CurrentUserId);
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
