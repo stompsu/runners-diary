@@ -31,7 +31,7 @@ RUN dotnet publish src/RunnersDiary.Api/RunnersDiary.Api.csproj -c Release \
 
 # chiseled-extra: distroless, non-root (UID 1654 "app"), no shell, with ICU and tzdata, so IANA zones such as
 # Europe/Warsaw resolve (ADR 0008) and culture data works without InvariantGlobalization.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:9b755ea799ae649141a073e30d8b62d8095a5465af2b7694d17866e8c05131d8 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:cae5b962bfb786606def03d250c6a645cc98839095c89e806e4bd8978a68115b AS final
 WORKDIR /app
 COPY --from=build /app .
 # The base image already sets ASPNETCORE_HTTP_PORTS=8080 and runs as the non-root user `app`.
