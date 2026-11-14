@@ -273,6 +273,8 @@ public sealed class PoliteHttpClientTests
     [Fact]
     public async Task The_body_is_decoded_with_the_declared_charset_and_falls_back_to_utf8()
     {
+        // The test host registers the code pages itself: on Linux the runtime knows only the Unicode encodings until a provider is added.
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         var latin2 = System.Text.Encoding.GetEncoding("iso-8859-2");
         var (clock, handler) = Setup(r =>
         {

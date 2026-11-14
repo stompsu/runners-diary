@@ -18,6 +18,8 @@ COPY src/RunnersDiary.Domain src/RunnersDiary.Domain
 COPY src/RunnersDiary.Infrastructure src/RunnersDiary.Infrastructure
 COPY src/RunnersDiary.ServiceDefaults src/RunnersDiary.ServiceDefaults
 COPY seed/demo seed/demo
+# The synthetic demo race catalogue is content of the Api project too (M8); the bundle build needs the file to exist.
+COPY seed/races seed/races
 COPY prompts/training-insights prompts/training-insights
 
 # The bundle command builds and publishes the startup project for the target runtime itself. OpenApiGenerateDocuments=false

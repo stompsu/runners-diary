@@ -285,12 +285,23 @@ internal sealed partial class PoliteHttpClient
         return ResponseEncoding(response).GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
     }
 
+    /// <summary>
+    /// Makes the legacy code pages (iso-8859-2, windows-1250: common on Polish sites) resolvable on every platform.
+    /// Without the provider, Linux only knows the Unicode encodings and <c>GetEncoding("iso-8859-2")</c> throws.
+    /// </summary>
+    private static readonly Lazy<bool> CodePagesRegistered = new(() =>
+    {
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        return true;
+    });
+
     /// <summary>The response's declared charset when .NET knows it, else UTF-8.</summary>
     private static System.Text.Encoding ResponseEncoding(HttpResponseMessage response)
     {
         var charset = response.Content.Headers.ContentType?.CharSet?.Trim('"', ' ');
         if (!string.IsNullOrEmpty(charset))
         {
+            _ = CodePagesRegistered.Value;
             try
             {
                 return System.Text.Encoding.GetEncoding(charset);
