@@ -130,8 +130,15 @@ jobs:
             echo "api=$(app_image api)"
             echo "web=$(app_image web)"
             echo "cleanup=$(job_image job-guest-cleanup)"
-            # job-race-import exists only after the M8 provision (gate G-R2); until then it is skipped here, in the update and in the rollback.
-            echo "raceimport=$(job_image job-race-import 2>/dev/null || true)"
+            # job-race-import exists only after the M8 provision (gate G-R2); until then it is skipped here, in the update and
+            # in the rollback. Only "not found" is tolerated: any other az failure (auth, throttling) fails the step.
+            if raceimport=$(job_image job-race-import 2>"$RUNNER_TEMP/raceimport.err"); then
+              echo "raceimport=$raceimport"
+            elif grep -qiE 'ResourceNotFound|could not be found|not found' "$RUNNER_TEMP/raceimport.err"; then
+              echo "raceimport="
+            else
+              cat "$RUNNER_TEMP/raceimport.err" >&2; exit 1
+            fi
           } >> "$GITHUB_OUTPUT"
 
       - name: Run the database migration job

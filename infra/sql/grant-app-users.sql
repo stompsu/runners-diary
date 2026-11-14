@@ -46,6 +46,13 @@ GO
 -- The race import job's user (ADR 0038 section 2): no database roles, only SELECT/INSERT/UPDATE/DELETE on the two
 -- catalogue tables (they exist: this script runs after the EF bundle). The ON DELETE cascade to RaceProposalStates and
 -- the SET NULL on Runs.CatalogRaceId are performed by the engine and need no rights on those tables (ADR 0036).
+-- Skipped while RACE_IMPORT_IDENTITY_NAME is empty: the identity exists only after the M8 provision (gate G-R2).
+IF N'$(RACE_IMPORT_IDENTITY_NAME)' = N''
+BEGIN
+  PRINT N'RACE_IMPORT_IDENTITY_NAME is not set: the race import user is skipped (job-race-import not provisioned yet).';
+END
+ELSE
+BEGIN
 DECLARE @importName sysname = N'$(RACE_IMPORT_IDENTITY_NAME)';
 DECLARE @importSid varbinary(16) = CONVERT(varbinary(16), CAST(N'$(RACE_IMPORT_IDENTITY_CLIENT_ID)' AS uniqueidentifier));
 DECLARE @importSql nvarchar(max);
@@ -70,4 +77,5 @@ SET @importSql = N'GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.RaceDistances TO 
 EXEC (@importSql);
 
 PRINT N'Database user ' + @importName + N' is ready.';
+END;
 GO

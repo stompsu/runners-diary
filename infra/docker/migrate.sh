@@ -8,8 +8,13 @@ set -eu
 : "${AZURE_CLIENT_ID:?AZURE_CLIENT_ID (client id of the migrator identity) is required}"
 : "${API_IDENTITY_NAME:?API_IDENTITY_NAME is required}"
 : "${API_IDENTITY_CLIENT_ID:?API_IDENTITY_CLIENT_ID is required}"
-: "${RACE_IMPORT_IDENTITY_NAME:?RACE_IMPORT_IDENTITY_NAME is required}"
-: "${RACE_IMPORT_IDENTITY_CLIENT_ID:?RACE_IMPORT_IDENTITY_CLIENT_ID is required}"
+# The race import identity (M8, ADR 0038) exists only after the M8 provision (gate G-R2); until then the grant script
+# skips that user, so a deploy of the M8 code before the provision still succeeds.
+RACE_IMPORT_IDENTITY_NAME="${RACE_IMPORT_IDENTITY_NAME:-}"
+RACE_IMPORT_IDENTITY_CLIENT_ID="${RACE_IMPORT_IDENTITY_CLIENT_ID:-}"
+if [ -n "$RACE_IMPORT_IDENTITY_NAME" ] && [ -z "$RACE_IMPORT_IDENTITY_CLIENT_ID" ]; then
+  echo "migrate: RACE_IMPORT_IDENTITY_CLIENT_ID is required when RACE_IMPORT_IDENTITY_NAME is set" >&2; exit 1
+fi
 export API_IDENTITY_NAME API_IDENTITY_CLIENT_ID RACE_IMPORT_IDENTITY_NAME RACE_IMPORT_IDENTITY_CLIENT_ID
 
 # Serverless SQL on the free offer may be paused: the first connection resumes it, which takes up to about a minute and
@@ -33,7 +38,7 @@ connection="Server=tcp:${SQL_SERVER},1433;Database=${SQL_DATABASE};Authenticatio
 echo "migrate: applying EF Core migrations"
 retry 5 20 ./efbundle --connection "$connection"
 
-echo "migrate: granting the API and race import database users"
+echo "migrate: granting the API database user (and the race import user when its identity is set)"
 retry 5 20 ./sqlcmd -S "tcp:${SQL_SERVER},1433" -d "$SQL_DATABASE" \
   --authentication-method ActiveDirectoryManagedIdentity -U "$AZURE_CLIENT_ID" \
   -i ./grant-app-users.sql -b

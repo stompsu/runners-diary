@@ -209,7 +209,7 @@ resource raceImportJob 'Microsoft.App/jobs@2025-01-01' existing = {
   name: raceImportJobName
 }
 
-// Weekly job: evaluated once a day over a 24 h window; a failed execution alerts within a day (ADR 0038 section 5).
+// Weekly job: evaluated hourly (PT1H, the maximum frequency) over a 24 h window; a failed execution alerts within about an hour (ADR 0038 section 5).
 // Metric `Executions` (display name "Job Executions"), dimension `state`:
 // https://learn.microsoft.com/azure/azure-monitor/reference/supported-metrics/microsoft-app-jobs-metrics
 // The page does not list the dimension values; `Failed` matches the execution status the platform reports
