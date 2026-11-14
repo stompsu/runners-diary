@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.Runs;
@@ -37,7 +38,8 @@ public sealed record SetRaceStateResult(SetRaceStateStatus Status, RaceUserState
 /// window, the caller's states, the caller's linked runs) and hand them to the pure <see cref="RaceProposalBuilder"/>. Everything per user
 /// goes through the Owner-filtered sets; the catalogue is shared reference data.
 /// </summary>
-public sealed class RaceProposalService(RunnersDiaryDbContext db, ICurrentUser currentUser, TimeProvider clock, IOptions<RacesOptions> options)
+public sealed partial class RaceProposalService(
+    RunnersDiaryDbContext db, ICurrentUser currentUser, TimeProvider clock, IOptions<RacesOptions> options, ILogger<RaceProposalService> logger)
 {
     private const int StateWriteAttempts = 2;
 
@@ -49,9 +51,12 @@ public sealed class RaceProposalService(RunnersDiaryDbContext db, ICurrentUser c
         var horizonEnd = today.AddDays(horizon);
         var effectiveFrom = windowFrom > today ? windowFrom : today;
         var effectiveTo = windowTo < horizonEnd ? windowTo : horizonEnd;
+
+        // LastSeenUtc has no index (no migration here) and the catalogue is small, so this is a cheap scan. The "catalogue updated" stamp is part of the
+        // contract even for callers without a profile (RaceEndpointTests pins it), hence it is read before the early return.
         var updated = await db.Races.MaxAsync(r => (DateTime?)r.LastSeenUtc, cancellationToken);
 
-        // No profile means proposals are off for this caller: no catalogue read at all.
+        // No profile means proposals are off for this caller: no catalogue window read.
         if (profile is null)
         {
             return new RaceProposalList(effectiveFrom, effectiveTo, false, updated, false, []);
@@ -77,6 +82,11 @@ public sealed class RaceProposalService(RunnersDiaryDbContext db, ICurrentUser c
                     .OrderBy(r => r.Date).Take(max + 1),
                 cancellationToken);
             truncated = window.Count > max;
+            if (truncated)
+            {
+                LogTruncated(max, effectiveFrom, effectiveTo);
+            }
+
             snapshots.AddRange(truncated ? window.Take(max) : window);
         }
 
@@ -250,4 +260,7 @@ public sealed class RaceProposalService(RunnersDiaryDbContext db, ICurrentUser c
             r.Id, r.Source, r.Name, r.Date, r.StartTime, r.TimeZoneId, r.LocationName, r.Point, r.CountryCode, r.RegionCode, r.Kind, r.Surface,
             r.Distances.Order().ToList(), r.ElevationGainMeters, r.ImportedUtc, r.RemovedUtc, r.DuplicateOfRaceId));
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Race proposals truncated to {Max} catalogue rows for the window {From} to {To}.")]
+    private partial void LogTruncated(int max, DateOnly from, DateOnly to);
 }

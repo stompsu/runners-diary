@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RunnersDiary.Domain.Common;
 using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.Time;
 using RunnersDiary.Infrastructure.Persistence;
@@ -195,7 +196,7 @@ public sealed partial class RaceImportService
             source.Id, scanOutcome, stats, a.New, a.Updated, a.DateChanged, a.Removed, a.Restored, a.Duplicates, a.Purged, elapsedMs, outcome);
         LogSourceCompleted(
             source.Id, stats.ListingPages, stats.DetailPages, stats.NotModified, a.New, a.Updated, a.DateChanged, a.Removed, a.Restored,
-            a.Duplicates, a.Purged, elapsedMs, outcome == nameof(RaceImportOutcome.Failed) ? $"{outcome}:{scanOutcome}" : scanOutcome.ToString());
+            a.Duplicates, a.Purged, stats.Rejected + a.Rejected, elapsedMs, outcome == nameof(RaceImportOutcome.Failed) ? $"{outcome}:{scanOutcome}" : scanOutcome.ToString());
         return summary;
     }
 
@@ -218,16 +219,38 @@ public sealed partial class RaceImportService
             var byId = rows.ToDictionary(r => r.Id);
             var byExternalId = rows.ToDictionary(r => r.ExternalId, StringComparer.Ordinal);
 
+            // Defence in depth: a source adapter validates its facts, but one item that still breaks a domain rule must cost that race only, not the source's transaction.
+            var rejected = 0;
+            var inserted = 0;
+            var updated = 0;
             foreach (var facts in plan.Inserts)
             {
-                var race = Race.Create(facts, now);
-                db.Races.Add(race);
-                byExternalId[race.ExternalId] = race;
+                try
+                {
+                    var race = Race.Create(facts, now);
+                    db.Races.Add(race);
+                    byExternalId[race.ExternalId] = race;
+                    inserted++;
+                }
+                catch (DomainRuleException ex)
+                {
+                    rejected++;
+                    LogRaceRejected(source.Id, facts.ExternalId, RulePaths(ex));
+                }
             }
 
             foreach (var update in plan.Updates)
             {
-                byId[update.Id].ApplyFacts(update.Facts, now);
+                try
+                {
+                    byId[update.Id].ApplyFacts(update.Facts, now);
+                    updated++;
+                }
+                catch (DomainRuleException ex)
+                {
+                    rejected++;
+                    LogRaceRejected(source.Id, update.Facts.ExternalId, RulePaths(ex));
+                }
             }
 
             foreach (var id in plan.Seen)
@@ -256,7 +279,7 @@ public sealed partial class RaceImportService
                 : 0;
 
             await transaction.CommitAsync(cancellationToken);
-            return new Applied(plan.Inserts.Count, plan.Updates.Count, plan.DateChanges.Count, plan.Removals.Count, plan.Restores.Count, duplicates, purged);
+            return new Applied(inserted, updated, plan.DateChanges.Count, plan.Removals.Count, plan.Restores.Count, duplicates, purged, rejected);
         });
     }
 
@@ -374,7 +397,7 @@ public sealed partial class RaceImportService
         }
     }
 
-    private readonly record struct Applied(int New, int Updated, int DateChanged, int Removed, int Restored, int Duplicates, int Purged);
+    private readonly record struct Applied(int New, int Updated, int DateChanged, int Removed, int Restored, int Duplicates, int Purged, int Rejected);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Race import disabled (RaceImport:Enabled={Enabled}, enabled sources: {EnabledSources}); no SQL connection was opened.")]
     private partial void LogDisabled(bool enabled, int enabledSources);
@@ -395,8 +418,13 @@ public sealed partial class RaceImportService
     private partial void LogReleaseFailed(string errorType);
 
     [LoggerMessage(Level = LogLevel.Information, Message =
-        "RaceImportSourceCompleted {Source} {ListingPages} {DetailPages} {NotModified} {New} {Updated} {DateChanged} {Removed} {Restored} {Duplicates} {Purged} {DurationMs} {Outcome}")]
+        "RaceImportSourceCompleted {Source} {ListingPages} {DetailPages} {NotModified} {New} {Updated} {DateChanged} {Removed} {Restored} {Duplicates} {Purged} {Rejected} {DurationMs} {Outcome}")]
     private partial void LogSourceCompleted(
         string source, int listingPages, int detailPages, int notModified, int @new, int updated, int dateChanged, int removed, int restored,
-        int duplicates, int purged, long durationMs, string outcome);
+        int duplicates, int purged, int rejected, long durationMs, string outcome);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Race import: source {Source} race {ExternalId} rejected by the domain rules ({Rules}); the other races are kept.")]
+    private partial void LogRaceRejected(string source, string externalId, string rules);
+
+    private static string RulePaths(DomainRuleException ex) => string.Join(',', ex.Errors.Select(e => e.Path).Distinct());
 }

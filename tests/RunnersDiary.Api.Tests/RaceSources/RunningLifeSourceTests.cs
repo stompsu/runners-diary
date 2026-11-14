@@ -308,6 +308,52 @@ public sealed class RunningLifeSourceTests
     }
 
     [Fact]
+    public async Task One_invalid_listing_item_is_counted_and_the_others_still_import_without_an_incomplete_scan()
+    {
+        var (clock, handler) = Server(r => RequestPath(r) == "/kalendarz-biegow/polska" ? Html(Fixture("listing-one-invalid.html")) : Html(DetailHtml()));
+        var source = Source(handler, clock);
+
+        var result = await WithClockAsync(clock, () => source.ScanAsync(Context(), Ct));
+
+        Assert.Equal(RaceScanOutcome.Completed, result.Outcome);
+        Assert.True(result.Complete);
+        Assert.Equal(["alpha", "gamma"], result.Facts.Select(f => f.ExternalId).Order());
+        Assert.Equal(1, result.Stats.Rejected);
+        Assert.DoesNotContain(handler.Requests, r => r.Url.AbsolutePath.Contains("far-future", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_listing_where_every_item_is_invalid_is_not_a_layout_change()
+    {
+        var (clock, handler) = Server(r => Html(ListingHtml(1, ("a", new string('N', 201), "2027-03-01"), ("b", "B Run", "2101-01-01"))));
+        var source = Source(handler, clock);
+
+        var result = await WithClockAsync(clock, () => source.ScanAsync(Context(), Ct));
+
+        Assert.Equal(RaceScanOutcome.Completed, result.Outcome);
+        Assert.False(result.IsFailure);
+        Assert.Empty(result.Facts);
+        Assert.Equal(2, result.Stats.Rejected);
+    }
+
+    [Fact]
+    public async Task A_detail_page_whose_link_is_too_long_still_yields_the_race_without_that_link()
+    {
+        var (clock, handler) = Server(r => RequestPath(r) switch
+        {
+            "/kalendarz-biegow/polska" => Html(ListingHtml(1, ("alpha", "Alpha Run", "2027-03-08"))),
+            _ => Html(DetailHtml(website: "https://club.example/" + new string('é', 1500))),
+        });
+        var source = Source(handler, clock);
+
+        var result = await WithClockAsync(clock, () => source.ScanAsync(Context(), Ct));
+
+        var fact = Assert.Single(result.Facts);
+        Assert.Null(fact.EventUrl);
+        Assert.Equal(RaceScanOutcome.Completed, result.Outcome);
+    }
+
+    [Fact]
     public async Task A_detail_page_that_lost_all_its_facts_does_not_wipe_the_stored_ones()
     {
         var (clock, handler) = Server(r => RequestPath(r) switch

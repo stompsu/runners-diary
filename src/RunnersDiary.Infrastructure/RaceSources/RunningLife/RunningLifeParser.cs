@@ -30,6 +30,9 @@ internal sealed record RunningLifeListingPage(IReadOnlyList<RunningLifeListingIt
 {
     /// <summary>Cards of non-running sports (triathlon, duathlon, aquathlon, fitness, multisport): never races.</summary>
     public int NonRunning { get; init; }
+
+    /// <summary>Items that were readable but whose facts break a domain rule (already part of <see cref="Rejected"/>); they say nothing about the page layout.</summary>
+    public int Invalid { get; init; }
 }
 
 internal sealed record RunningLifeDetailPage(
@@ -71,6 +74,7 @@ internal static partial class RunningLifeParser
         var eventCount = 0;
         var rejected = 0;
         var nonRunning = 0;
+        var invalid = 0;
         foreach (var list in objects.Where(o => JsonLd.HasType(o, "ItemList")))
         {
             if (!list.TryGetProperty("itemListElement", out var elements) || elements.ValueKind != JsonValueKind.Array)
@@ -89,6 +93,14 @@ internal static partial class RunningLifeParser
                 eventCount++;
                 if (TryReadItem(evt) is { } item)
                 {
+                    // One item that cannot be stored (over-long name, date out of range, over-long link) is dropped on its own; it must not fail the source.
+                    if (!IsStorable(ToFacts(item, null)))
+                    {
+                        rejected++;
+                        invalid++;
+                        continue;
+                    }
+
                     if (cards.TryGetValue(item.ExternalId, out var card))
                     {
                         if (card.NonRunning)
@@ -109,7 +121,7 @@ internal static partial class RunningLifeParser
             }
         }
 
-        return new RunningLifeListingPage(items, eventCount, ReadMaxPage(document), rejected, malformed) { NonRunning = nonRunning };
+        return new RunningLifeListingPage(items, eventCount, ReadMaxPage(document), rejected, malformed) { NonRunning = nonRunning, Invalid = invalid };
     }
 
     public static RunningLifeDetailPage ParseDetail(string html)
@@ -134,6 +146,9 @@ internal static partial class RunningLifeParser
             LinkOf(document, "registration"),
             malformed);
     }
+
+    /// <summary>Whether the facts pass the domain's normalisation and validation (the same rules <c>Race.Create</c> enforces).</summary>
+    internal static bool IsStorable(RaceFacts facts) => RaceFacts.TryNormalize(facts, out _, out _);
 
     /// <summary>Facts from a listing item and the detail page (null: listing-only values, kind <see cref="RaceKind.Other"/>).</summary>
     public static RaceFacts ToFacts(RunningLifeListingItem item, RunningLifeDetailPage? detail)
@@ -306,7 +321,8 @@ internal static partial class RunningLifeParser
             if (href is { Length: > 0 and <= RaceFacts.UrlMaxLength }
                 && Uri.TryCreate(href, UriKind.Absolute, out var uri)
                 && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
-                && string.IsNullOrEmpty(uri.UserInfo))
+                && string.IsNullOrEmpty(uri.UserInfo)
+                && uri.AbsoluteUri.Length <= RaceFacts.UrlMaxLength)
             {
                 return uri.AbsoluteUri;
             }

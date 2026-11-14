@@ -92,12 +92,13 @@ internal sealed partial class RunningLifeSource : IRaceSource
             counters.ListingPages++;
             counters.MalformedJsonLd += parsed.MalformedJsonLd;
             counters.Skipped += parsed.Rejected;
+            counters.Rejected += parsed.Rejected;
             if (parsed.MalformedJsonLd > 0)
             {
                 LogMalformedJsonLd(page, parsed.MalformedJsonLd);
             }
 
-            if (parsed.EventCount == 0 || parsed.Items.Count + parsed.NonRunning == 0)
+            if (parsed.EventCount == 0 || parsed.Items.Count + parsed.NonRunning + parsed.Invalid == 0)
             {
                 LogLayoutChanged(page);
                 state.LayoutChanged = true;
@@ -165,7 +166,16 @@ internal sealed partial class RunningLifeSource : IRaceSource
                         break;
                     }
 
-                    detailed[item.ExternalId] = RunningLifeParser.ToFacts(item, page);
+                    var fresh = RunningLifeParser.ToFacts(item, page);
+                    if (!RunningLifeParser.IsStorable(fresh))
+                    {
+                        // The detail values break a domain rule: keep the stored (or listing-only) facts and read the page again in a later run.
+                        counters.Skipped++;
+                        counters.Rejected++;
+                        break;
+                    }
+
+                    detailed[item.ExternalId] = fresh;
                     records.Add(new DetailFetchRecord(item.ExternalId, response.ETag, response.LastModified));
                     break;
                 case PoliteOutcome.NotModified when known is not null:
@@ -191,7 +201,16 @@ internal sealed partial class RunningLifeSource : IRaceSource
             }
             else if (context.Known.TryGetValue(id, out var known))
             {
-                facts.Add(RunningLifeParser.WithListing(known.Facts, item));
+                var merged = RunningLifeParser.WithListing(known.Facts, item);
+                if (RunningLifeParser.IsStorable(merged))
+                {
+                    facts.Add(merged);
+                }
+                else
+                {
+                    counters.Skipped++;
+                    counters.Rejected++;
+                }
             }
             else
             {
@@ -225,6 +244,8 @@ internal sealed partial class RunningLifeSource : IRaceSource
 
         public int MalformedJsonLd { get; set; }
 
+        public int Rejected { get; set; }
+
         public RaceFetchStats ToStats(int requests) => new()
         {
             ListingPages = ListingPages,
@@ -234,6 +255,7 @@ internal sealed partial class RunningLifeSource : IRaceSource
             Skipped = Skipped,
             Deferred = Deferred,
             MalformedJsonLd = MalformedJsonLd,
+            Rejected = Rejected,
         };
     }
 

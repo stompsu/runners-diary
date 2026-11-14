@@ -258,6 +258,7 @@ public sealed class PoliteHttpClientTests
     [InlineData("https://elsewhere.example/page")]
     [InlineData("http://running.life/page")]
     [InlineData("https://running.life.evil.example/page")]
+    [InlineData("https://running.life:8443/page")]
     public async Task A_redirect_off_the_host_or_to_http_is_refused_and_not_followed(string target)
     {
         var (clock, handler) = Setup(_ => new HttpResponseMessage(HttpStatusCode.Found) { Headers = { Location = new Uri(target) } });
@@ -267,6 +268,28 @@ public sealed class PoliteHttpClientTests
 
         Assert.Equal(PoliteOutcome.Refused, response.Outcome);
         Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task The_body_is_decoded_with_the_declared_charset_and_falls_back_to_utf8()
+    {
+        var latin2 = System.Text.Encoding.GetEncoding("iso-8859-2");
+        var (clock, handler) = Setup(r =>
+        {
+            var declared = RequestPath(r) == "/latin";
+            var content = new ByteArrayContent(declared ? latin2.GetBytes("Żółć") : System.Text.Encoding.UTF8.GetBytes("Żółć"));
+            content.Headers.ContentType = new MediaTypeHeaderValue("text/html") { CharSet = declared ? "iso-8859-2" : (RequestPath(r) == "/bogus" ? "no-such-charset" : null) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        });
+        var client = Polite(handler, clock);
+
+        var declared = await WithClockAsync(clock, () => client.GetAsync(new Uri("https://running.life/latin"), null, Ct));
+        var none = await WithClockAsync(clock, () => client.GetAsync(new Uri("https://running.life/none"), null, Ct));
+        var bogus = await WithClockAsync(clock, () => client.GetAsync(new Uri("https://running.life/bogus"), null, Ct));
+
+        Assert.Equal("Żółć", declared.Body);
+        Assert.Equal("Żółć", none.Body);
+        Assert.Equal("Żółć", bogus.Body);
     }
 
     [Fact]
@@ -285,6 +308,7 @@ public sealed class PoliteHttpClientTests
     [InlineData("https://elsewhere.example/pl/wydarzenie/x")]
     [InlineData("http://running.life/pl/wydarzenie/x")]
     [InlineData("https://user:pw@running.life/pl/wydarzenie/x")]
+    [InlineData("https://running.life:8443/pl/wydarzenie/x")]
     public async Task A_url_outside_the_allow_list_is_never_requested(string url)
     {
         var (clock, handler) = Setup();

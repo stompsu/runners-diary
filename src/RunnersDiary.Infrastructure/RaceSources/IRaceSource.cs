@@ -57,6 +57,9 @@ public sealed record RaceFetchStats
     /// <summary>New races whose detail page was not fetched (budget or failure); they are picked up by a later run.</summary>
     public int Deferred { get; init; }
 
+    /// <summary>Items whose facts broke a domain rule (too long, date out of range, bad URL) and were dropped; also part of <see cref="Skipped"/> for listing items.</summary>
+    public int Rejected { get; init; }
+
     public int MalformedJsonLd { get; init; }
 
     public static RaceFetchStats Empty { get; } = new();

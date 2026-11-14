@@ -42,6 +42,51 @@ public sealed class RunningLifeParserTests
     }
 
     [Fact]
+    public void An_item_that_breaks_a_domain_rule_is_rejected_alone_and_does_not_look_like_a_layout_change()
+    {
+        var page = RunningLifeParser.ParseListing(Fixture("listing-one-invalid.html")); // the middle item is dated 2101-01-01
+
+        Assert.Equal(3, page.EventCount);
+        Assert.Equal(["alpha", "gamma"], page.Items.Select(i => i.ExternalId));
+        Assert.Equal(1, page.Rejected);
+        Assert.Equal(1, page.Invalid);
+    }
+
+    [Theory]
+    [InlineData(201, "2027-03-01")]
+    [InlineData(10, "2101-01-01")]
+    [InlineData(10, "1949-12-31")]
+    public void A_too_long_name_or_a_date_out_of_range_is_rejected(int nameLength, string date)
+    {
+        var page = RunningLifeParser.ParseListing(ListingHtml(1, ("ok", "Ok Run", "2027-03-01"), ("bad", new string('N', nameLength), date)));
+
+        Assert.Equal(["ok"], page.Items.Select(i => i.ExternalId));
+        Assert.Equal(1, page.Rejected);
+    }
+
+    [Fact]
+    public void A_locality_over_200_characters_is_rejected()
+    {
+        var html = ListingHtml(1, ("ok", "Ok Run", "2027-03-01"), ("bad", "Bad Run", "2027-03-02"))
+            .Replace("\"addressLocality\":\"Gliwice\"", $"\"addressLocality\":\"{new string('L', 201)}\"", StringComparison.Ordinal);
+
+        var page = RunningLifeParser.ParseListing(html);
+
+        Assert.Empty(page.Items); // the replacement hits both items; none is storable, none crashes
+        Assert.Equal(2, page.Rejected);
+    }
+
+    [Fact]
+    public void A_data_out_link_that_is_over_2048_characters_after_escaping_is_ignored()
+    {
+        // 1500 characters of "é" are short enough raw (< 2048) but escape to 9000 characters in the absolute URI.
+        var detail = RunningLifeParser.ParseDetail(DetailHtml(website: "https://club.example/" + new string('é', 1500), registration: "https://zapisy.example/x"));
+
+        Assert.Null(detail.WebsiteUrl);
+        Assert.Equal("https://zapisy.example/x", detail.SignupUrl);
+    }
+
+    [Fact]
     public void The_card_type_gives_the_kind_and_a_detail_type_label_overrides_it()
     {
         var item = RunningLifeParser.ParseListing(Fixture("listing-p1.html")).Items[2]; // card: Bieg terenowy

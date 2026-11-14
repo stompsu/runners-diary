@@ -40,6 +40,72 @@ public sealed class RaceImportServiceTests(ContainersApiFactory factory)
     }
 
     [Fact]
+    public async Task A_race_that_breaks_a_domain_rule_is_rejected_alone_and_the_others_are_stored()
+    {
+        await using var h = await CreateAsync(factory);
+        var source = new ScriptedSource(RaceSource.Demo, _ => Scan(
+        [
+            Facts("good-1", Today.AddDays(10)),
+            Facts("too-long", Today.AddDays(11), name: new string('N', 201)),
+            Facts("far-future", new DateOnly(2101, 1, 1)),
+            Facts("good-2", Today.AddDays(12)),
+        ]));
+
+        var run = await h.Service(DemoOptions(), source).RunAsync(Ct);
+
+        Assert.Equal(RaceImportOutcome.Completed, run.Outcome);
+        var summary = Assert.Single(run.Sources);
+        Assert.Equal(2, summary.New);
+        Assert.Equal(["good-1", "good-2"], (await h.RacesAsync()).Select(r => r.ExternalId));
+    }
+
+    [Fact]
+    public async Task A_stored_race_whose_new_facts_break_a_rule_keeps_its_row_and_the_others_update()
+    {
+        await using var h = await CreateAsync(factory);
+        var first = new ScriptedSource(RaceSource.Demo, _ => Scan([Facts("a", Today.AddDays(10)), Facts("b", Today.AddDays(11))]));
+        await h.Service(DemoOptions(), first).RunAsync(Ct);
+        var second = new ScriptedSource(RaceSource.Demo, _ => Scan([Facts("a", Today.AddDays(10), name: new string('N', 201)), Facts("b", Today.AddDays(11), name: "Renamed Zebra")]));
+
+        var run = await h.Service(DemoOptions(), second).RunAsync(Ct);
+
+        Assert.Equal(RaceImportOutcome.Completed, run.Outcome);
+        Assert.Equal(1, Assert.Single(run.Sources).Updated);
+        var races = await h.RacesAsync();
+        Assert.Equal("Zebra a", races.Single(r => r.ExternalId == "a").Name);
+        Assert.Equal("Renamed Zebra", races.Single(r => r.ExternalId == "b").Name);
+    }
+
+    [Fact]
+    public async Task A_listing_with_one_invalid_item_imports_the_other_two_through_the_real_source_and_service()
+    {
+        await using var h = await CreateAsync(factory);
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(ImportHarness.Start);
+        var handler = new FakeRaceHandler(clock)
+        {
+            Respond = r => RaceSourceTestSupport.RequestPath(r) switch
+            {
+                "/robots.txt" => RaceSourceTestSupport.Text(RaceSourceTestSupport.Fixture("robots-allow.txt")),
+                "/kalendarz-biegow/polska" => RaceSourceTestSupport.Html(RaceSourceTestSupport.Fixture("listing-one-invalid.html")),
+                _ => RaceSourceTestSupport.Html(RaceSourceTestSupport.DetailHtml()),
+            },
+        };
+        var options = RaceSourceTestSupport.Options();
+        var source = RaceSourceTestSupport.Source(handler, clock, options);
+
+        var run = await WithClockAsync(clock, () => h.Service(options, source).RunAsync(Ct));
+
+        Assert.Equal(RaceImportOutcome.Completed, run.Outcome);
+        var summary = Assert.Single(run.Sources);
+        Assert.Equal(2, summary.New);
+        Assert.Equal(1, summary.Stats.Rejected);
+        Assert.Equal(["alpha", "gamma"], (await h.RacesAsync()).Select(r => r.ExternalId));
+    }
+
+    private static Task<T> WithClockAsync<T>(Microsoft.Extensions.Time.Testing.FakeTimeProvider clock, Func<Task<T>> work) =>
+        RaceSourceTestSupport.WithClockAsync(clock, work);
+
+    [Fact]
     public async Task A_disabled_import_opens_no_sql_connection()
     {
         await using var h = await CreateAsync(factory);

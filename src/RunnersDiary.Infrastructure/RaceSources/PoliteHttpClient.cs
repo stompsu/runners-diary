@@ -155,6 +155,7 @@ internal sealed partial class PoliteHttpClient
         url.IsAbsoluteUri
         && url.Scheme == Uri.UriSchemeHttps
         && string.IsNullOrEmpty(url.UserInfo)
+        && url.IsDefaultPort
         && string.Equals(url.Host, _host, StringComparison.OrdinalIgnoreCase);
 
     private async Task<(PoliteResponse Response, Uri? Redirect)> SendOnceAsync(Uri url, ConditionalRequest? conditional, CancellationToken cancellationToken)
@@ -205,8 +206,8 @@ internal sealed partial class PoliteHttpClient
         RaceImportMetrics.RecordRequest(_sourceId, $"{code / 100}xx");
         if (response.Headers.TryGetValues("Content-Signal", out var signals))
         {
-            var joined = string.Join(", ", signals);
-            LogContentSignal(_sourceId, joined);
+            var joined = string.Concat(string.Join(", ", signals).Where(c => !char.IsControl(c)));
+            LogContentSignal(_sourceId, joined.Length > 200 ? joined[..200] : joined);
         }
 
         if (status is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
@@ -281,7 +282,26 @@ internal sealed partial class PoliteHttpClient
             buffer.Write(chunk, 0, read);
         }
 
-        return System.Text.Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        return ResponseEncoding(response).GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+    }
+
+    /// <summary>The response's declared charset when .NET knows it, else UTF-8.</summary>
+    private static System.Text.Encoding ResponseEncoding(HttpResponseMessage response)
+    {
+        var charset = response.Content.Headers.ContentType?.CharSet?.Trim('"', ' ');
+        if (!string.IsNullOrEmpty(charset))
+        {
+            try
+            {
+                return System.Text.Encoding.GetEncoding(charset);
+            }
+            catch (ArgumentException)
+            {
+                // Unknown charset name: fall through to UTF-8.
+            }
+        }
+
+        return System.Text.Encoding.UTF8;
     }
 
     private PoliteResponse RecordFailure(string reason)
