@@ -1,4 +1,4 @@
-import { ExternalLink, Star } from 'lucide-react'
+import { ExternalLink, Flag, Star } from 'lucide-react'
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router'
@@ -210,6 +210,15 @@ function RunDetailsBody({
           </span>
         ) : null}
       </p>
+
+      {run.catalogRaceId ? (
+        <p>
+          <Link className="inline-flex items-center gap-1 text-sm underline" to={`${base}/races/${run.catalogRaceId}`}>
+            <Flag className="size-3.5" aria-hidden="true" />
+            {t('details.fromRaceListing')}
+          </Link>
+        </p>
+      ) : null}
 
       {run.location ? <LocationSummary location={run.location} /> : null}
 

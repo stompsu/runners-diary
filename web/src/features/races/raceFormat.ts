@@ -28,3 +28,19 @@ export function formatRacePrice(amount: number, currency: string, locale: string
 export function sourceName(sources: RacesClientConfig['sources'] | undefined, id: string): string {
   return sources?.find((source) => source.id === id)?.name ?? id
 }
+
+/** The calendar date of an instant in a zone, as `YYYY-MM-DD`; an unknown zone falls back to UTC. */
+export function plainDateIn(instant: string, timeZone: string): string {
+  const format = (zone: string) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+      new Date(instant),
+    )
+  try {
+    return format(timeZone)
+  } catch {
+    return format('UTC')
+  }
+}
+
+/** The catalogue is stale after this many days without a refresh (plan §5). */
+export const CATALOGUE_STALE_DAYS = 21

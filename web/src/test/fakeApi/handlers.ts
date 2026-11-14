@@ -48,6 +48,11 @@ export type HandledOperations = Pick<
   | 'generateInsightsSummary'
   | 'getRaceInterests'
   | 'updateRaceInterests'
+  | 'listRaceProposals'
+  | 'markRaceProposalsSeen'
+  | 'getRace'
+  | 'setRaceProposalState'
+  | 'signUpForRace'
 >
 
 export interface Account {
@@ -63,6 +68,10 @@ export interface Account {
   tracks: Map<string, StoredTrack>
   /** The race interest profile; null = none saved (`configured: false` + defaults). Guests start with the demo one. */
   raceInterests: RaceInterestsDto | null
+  /** Interested / Dismissed marks by race id; `dateWhenMarked` drives `dateChanged`. SignedUp is derived from runs. */
+  raceStates: Map<string, { state: 'Interested' | 'Dismissed'; dateWhenMarked: string }>
+  /** `ProposalsSeenUtc`: proposals updated after it are `isNew`. */
+  raceSeenUtc: string | null
 }
 
 export interface Limits {

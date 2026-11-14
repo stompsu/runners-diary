@@ -22,3 +22,6 @@ export const POLISH_REGION_CODES = [
 ] as const
 
 export type PolishRegionCode = (typeof POLISH_REGION_CODES)[number]
+
+export const isPolishRegionCode = (code: string | null | undefined): code is PolishRegionCode =>
+  POLISH_REGION_CODES.some((known) => known === code)

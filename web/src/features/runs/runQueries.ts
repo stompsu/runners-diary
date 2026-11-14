@@ -2,6 +2,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { getSessionEpoch } from '@/auth/session'
 import { $api } from '@/api/client'
+import { RACE_DETAILS_QUERY_KEY, RACE_PROPOSALS_QUERY_KEY } from '@/features/races/raceQueries'
 import type { RunDto } from './runFormTypes'
 
 const runInit = (id: string) => ({ params: { path: { id } } })
@@ -36,6 +37,9 @@ export function useInvalidateRuns() {
         queryClient.invalidateQueries({ queryKey: ['get', '/api/insights/report'] }),
         // A stored summary is stale once the runs change (M6 AC7); the card shows it with a note.
         queryClient.invalidateQueries({ queryKey: ['get', '/api/insights/summary'] }),
+        // Signed-up and dateChanged derive from runs, so a run write changes the proposals and the linked race (M8 §4.6).
+        queryClient.invalidateQueries({ queryKey: RACE_PROPOSALS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: RACE_DETAILS_QUERY_KEY }),
       ]
       if (runId) {
         jobs.push(

@@ -162,5 +162,119 @@
   "attribution": {
     "source": "Source: {{name}}",
     "disclaimer": "Race facts come from public calendars; always check the organiser's page."
+  },
+  "proposals": {
+    "title": "Race proposals – {{month}}",
+    "empty": "No race proposals for this month.",
+    "loading": "Loading race proposals…",
+    "notConfigured": "Choose which races to suggest first.",
+    "setup": "Set up race proposals",
+    "window": "Proposals cover {{range}}.",
+    "outsideWindow": "This month is outside your look-ahead window, so no proposals are listed.",
+    "truncated": "Only the first races are listed. Narrow your interests to see the rest.",
+    "updated": "Race list updated {{date}}",
+    "stale": "The race list has not been refreshed for more than 3 weeks, so some details may be out of date.",
+    "showDismissed": "Show dismissed",
+    "new": "New",
+    "noDistance": "Distance not listed",
+    "daySection": "Race proposals",
+    "state": {
+      "Interested": "Interested",
+      "Dismissed": "Not interested",
+      "SignedUp": "Signed up",
+      "dateChanged": "Date changed"
+    },
+    "actions": {
+      "details": "Details",
+      "interested": "Interested",
+      "notInterested": "Not interested",
+      "undo": "Undo",
+      "viewRun": "View my planned run"
+    },
+    "toast": {
+      "dismissed": "Hidden from your proposals: {{name}}",
+      "stateLimit": "You have marked the maximum number of races.",
+      "stateFailed": "Could not save the change. Please try again."
+    }
+  },
+  "details": {
+    "loading": "Loading race…",
+    "goneTitle": "Race not found",
+    "goneBody": "This race is no longer in the list.",
+    "facts": {
+      "date": "Date",
+      "place": "Place",
+      "kind": "Kind",
+      "distances": "Distances",
+      "elevation": "Elevation gain",
+      "price": "Entry fee",
+      "organizer": "Organiser",
+      "deadline": "Signup deadline"
+    },
+    "deadline": {
+      "closesIn_one": "{{date}} (closes in {{count}} day)",
+      "closesIn_other": "{{date}} (closes in {{count}} days)",
+      "closesToday": "{{date}} (closes today)",
+      "closed": "{{date}} (closed)"
+    },
+    "map": {
+      "label": "Map position of the race",
+      "marker": "Race: {{name}}",
+      "none": "No map position from the source",
+      "coordinates": "Coordinates: {{coordinates}}"
+    },
+    "actions": {
+      "signupPage": "Open signup page",
+      "eventSite": "Event website",
+      "signedUp": "I signed up",
+      "interested": "Interested",
+      "notInterested": "Not interested",
+      "undo": "Undo",
+      "viewRun": "View my planned run",
+      "close": "Close",
+      "opensNewTab": "(opens in a new tab)"
+    },
+    "signupUnavailable": {
+      "noUrl": "The source did not provide a signup link.",
+      "removed": "The race is no longer listed.",
+      "past": "The race has already taken place.",
+      "duplicate": "This is a duplicate listing."
+    },
+    "signedUpNote": "You have a planned run for this race."
+  },
+  "signup": {
+    "title": "I signed up",
+    "intro": "This adds a planned race run to your diary on {{date}}.",
+    "distance": "Distance",
+    "distanceSingle": "Distance: {{distance}}",
+    "startTime": "Start time (optional)",
+    "targetTime": "Target time (optional, h:mm:ss)",
+    "submit": "Add to my diary",
+    "submitting": "Adding…",
+    "cancel": "Cancel",
+    "success": "Planned race added to your diary",
+    "alreadyLinked": "This race is already in your diary.",
+    "past": "This race has already taken place.",
+    "gone": "This race is no longer available.",
+    "validation": {
+      "distanceRequired": "Choose a distance.",
+      "startTime": "Enter a time like 09:30.",
+      "targetTime": "Enter a time like 1:45:00."
+    },
+    "targetTimePlaceholder": "1:45:00"
+  },
+  "banners": {
+    "dateChangedSignedUp": "The race listing says {{newDate}}; your planned run is on {{oldDate}}.",
+    "moveRun": "Move my run to {{date}}",
+    "moving": "Moving…",
+    "moved": "Your run moved to {{date}}",
+    "conflict": "Your run was changed elsewhere since you opened it.",
+    "reload": "Reload",
+    "dateChangedInterested": "The listing now says {{newDate}} (it said {{oldDate}} when you marked the race).",
+    "dateChangedInterestedNoOld": "The listing date changed to {{newDate}} since you marked the race.",
+    "ok": "OK",
+    "removed": "No longer listed by the source. Check the organiser's page before you plan around this race.",
+    "duplicate": "This race is listed twice.",
+    "openCanonical": "Open the main listing"
   }
 }

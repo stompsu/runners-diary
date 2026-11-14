@@ -33,12 +33,29 @@
     "runs_other": "{{date}}, {{count}} runs: {{runs}}",
     "run": "{{type}}, {{status}}",
     "runWithDistance": "{{type}}, {{status}}, {{distance}}",
-    "bubble": "{{type}}, {{status}}"
+    "bubble": "{{type}}, {{status}}",
+    "proposals_one": "{{count}} race proposal: {{proposals}}",
+    "proposals_other": "{{count}} race proposals: {{proposals}}",
+    "proposalInterested": "interested"
   },
   "status": {
     "planned": "Planned",
     "completed": "Completed"
   },
   "race": "Race",
-  "loading": "Loading the calendar…"
+  "loading": "Loading the calendar…",
+  "proposalsList": "Race proposals",
+  "proposalBubble": "Race proposal: {{name}}",
+  "legend": {
+    "title": "Legend",
+    "completed": "Completed",
+    "planned": "Planned",
+    "race": "Race",
+    "proposal": "Race proposal"
+  },
+  "proposalsToggle": {
+    "label": "Show race proposals",
+    "setup": "Set up race proposals",
+    "failed": "Could not save the setting. Please try again."
+  }
 }

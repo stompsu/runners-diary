@@ -19,7 +19,28 @@ import {
 } from './handlers.ts'
 import { matches, type Fault } from './faults.ts'
 import { buildInsightsReport, validateInsightsQuery, type InsightsScenario } from './insights.ts'
-import { defaultRaceInterests, demoRaceInterests, validateRaceInterests, type RaceInterestsDto } from './races.ts'
+import {
+  defaultRaceInterests,
+  demoCatalogue,
+  demoRaceInterests,
+  demoRaceStates,
+  distanceCategory,
+  FEATURE_UNAVAILABLE,
+  findRace,
+  getRace,
+  linkedRun,
+  listProposals,
+  markSeen,
+  raceAlreadyLinked,
+  raceRunTypeId,
+  setRaceState,
+  userView,
+  validateRaceInterests,
+  validateSignup,
+  type CatalogueRace,
+  type RaceInterestsDto,
+  type RaceRouteContext,
+} from './races.ts'
 import { demoRuns, RUN_TYPES } from './seed.ts'
 import { createSummaryService, type SummaryOptions, type SummaryPostOutcome, type SummaryScenario } from './summary.ts'
 import {
@@ -43,7 +64,8 @@ export type { ClientConfigResponse, RunDto, RunWriteRequest } from './handlers.t
 export { sampleGpx, type TrackDto } from './tracks.ts'
 export { GUEST_LIMIT, USER_LIMIT, sampleSummaryContent } from './summary.ts'
 export type { InsightsSummaryDto, SummaryOptions, SummaryPostOutcome, SummaryScenario } from './summary.ts'
-export type { RaceInterestsDto } from './races.ts'
+export type { CatalogueRace, RaceInterestsDto } from './races.ts'
+export { DEMO_RACE_IDS } from './races.ts'
 export { DEMO_REPORT_TODAY, demoReport, type InsightsReportDto, type InsightsScenario } from './insights.ts'
 
 /** A track to put straight into an account (test setup; the upload path is `POST /api/runs/{id}/tracks`). */
@@ -78,6 +100,10 @@ export interface FakeApiOptions {
   racesEnabled?: boolean
   /** Give each new guest the demo race interest profile (M8 plan §3.2). Default true; false = no profile saved. */
   guestRaceProfile?: boolean
+  /** The race catalogue. Default `demoCatalogue(today)`; pass `[]` for an empty one. */
+  raceCatalogue?: CatalogueRace[]
+  /** `catalogueUpdatedUtc` of the proposals response. Default = creation time. */
+  catalogueUpdatedUtc?: string | null
   limits?: Partial<Limits>
   /** Clock in ms, for token expiry and timestamps. Default `Date.now`. */
   now?: () => number
@@ -123,6 +149,13 @@ export interface FakeApi {
   setRacesEnabled(enabled: boolean): void
   /** Test inspection: the saved race interests of the account behind a token (null = none saved). */
   raceInterestsOf(token: string): RaceInterestsDto | null
+  /** Test inspection: the caller's state of a race (`None` when unmarked). */
+  raceStateOf(token: string, raceId: string): 'None' | 'Interested' | 'Dismissed' | 'SignedUp'
+  /** `ProposalsSeenUtc` of the account behind a token. */
+  raceSeenOf(token: string): string | null
+  /** Changes a catalogue race (as a source rescan would): a new date, a removal, another URL. */
+  patchRace(raceId: string, patch: Partial<CatalogueRace>): void
+  setCatalogueUpdated(utc: string | null): void
   setInsightsScenario(scenario: InsightsScenario): void
   /** Changes what the summary endpoints answer with; `outcome` also sets how the next POSTs end. */
   setSummaryScenario(scenario: SummaryScenario, outcome?: SummaryPostOutcome, options?: { slowMs?: number }): void
@@ -162,6 +195,11 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         .join(','),
   })
 
+  let catalogue: CatalogueRace[] = options.raceCatalogue ?? demoCatalogue(today, new Date(now()).toISOString())
+  let catalogueUpdatedUtc: string | null =
+    options.catalogueUpdatedUtc === undefined ? new Date(now()).toISOString() : options.catalogueUpdatedUtc
+  const raceContext = (): RaceRouteContext => ({ today, catalogue, catalogueUpdatedUtc })
+
   const accounts = new Map<string, Account>() // token -> account
   const faultList: Fault[] = []
   const requests: string[] = []
@@ -190,6 +228,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         kind === 'Guest' && (options.guestRaceProfile ?? true)
           ? demoRaceInterests(new Date(now()).toISOString())
           : null,
+      raceStates: kind === 'Guest' && (options.guestRaceProfile ?? true) ? demoRaceStates(catalogue) : new Map(),
+      raceSeenUtc: null,
     }
     accounts.set(token, account)
     const seed = overrides.seed ?? (kind === 'Guest' ? (options.guestSeed ?? demoRuns(today)) : [])
@@ -449,28 +489,13 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       }
     }
 
-    if (path === '/api/races/interests') {
+    if (path.startsWith('/api/races/') || path === '/api/races') {
       // The real API answers 503 feature-unavailable for the whole /api/races group while Races:Enabled is false.
       if (!racesEnabled) {
-        return problem(503, 'Race proposals are not available.', {
-          type: 'urn:runnersdiary:problem:feature-unavailable',
-        })
+        return problem(503, 'Race proposals are not available.', { type: FEATURE_UNAVAILABLE })
       }
-      if (method === 'GET') {
-        return json(account.raceInterests ?? defaultRaceInterests(), 200, { 'Cache-Control': 'private, no-store' })
-      }
-      if (method === 'PUT') {
-        const body = await readJson(request)
-        if ('response' in body) return body.response
-        const result = validateRaceInterests(body.value)
-        if ('errors' in result) return validation(result.errors)
-        account.raceInterests = {
-          ...result.value,
-          configured: true,
-          updatedAt: new Date(now()).toISOString(),
-        } as RaceInterestsDto
-        return json(account.raceInterests)
-      }
+      const raceResponse = await routeRaces(request, account, path)
+      if (raceResponse) return raceResponse
     }
 
     if (method === 'GET' && path === '/api/insights/report') {
@@ -518,6 +543,91 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     }
 
     return notFound()
+  }
+
+  async function routeRaces(request: Request, account: Account, path: string): Promise<Response | null> {
+    const method = request.method.toUpperCase()
+    const ctx = raceContext()
+
+    if (path === '/api/races/interests') {
+      if (method === 'GET') {
+        return json(account.raceInterests ?? defaultRaceInterests(), 200, { 'Cache-Control': 'private, no-store' })
+      }
+      if (method === 'PUT') {
+        const body = await readJson(request)
+        if ('response' in body) return body.response
+        const result = validateRaceInterests(body.value)
+        if ('errors' in result) return validation(result.errors)
+        account.raceInterests = {
+          ...result.value,
+          configured: true,
+          updatedAt: new Date(now()).toISOString(),
+        } as RaceInterestsDto
+        return json(account.raceInterests)
+      }
+    }
+    if (path === '/api/races/proposals' && method === 'GET') return listProposals(ctx, account, new URL(request.url))
+    if (path === '/api/races/proposals/seen' && method === 'POST')
+      return markSeen(account, new Date(now()).toISOString())
+
+    const one = /^\/api\/races\/([^/]+)(?:\/(state|signup))?$/.exec(path)
+    if (!one) return null
+    const raceId = one[1]!
+    const sub = one[2]
+    if (!sub && method === 'GET') return getRace(ctx, account, raceId)
+    if (sub === 'state' && method === 'PUT') {
+      const body = await readJson(request)
+      if ('response' in body) return body.response
+      return setRaceState(ctx, account, raceId, body.value)
+    }
+    if (sub === 'signup' && method === 'POST') {
+      const race = findRace(ctx, raceId)
+      if (!race || race.removed || race.canonicalId) return notFound()
+      const text = await request.text()
+      let parsed: unknown = {}
+      if (text.trim() !== '') {
+        try {
+          parsed = JSON.parse(text)
+        } catch {
+          return validation({ body: ['The request body is invalid.'] })
+        }
+      }
+      const existing = linkedRun(account, race.raceId)
+      if (existing) return raceAlreadyLinked(existing.id)
+      const result = validateSignup(ctx, race, parsed)
+      if ('errors' in result) return validation(result.errors)
+      const { distanceMeters, startTime, targetTimeSeconds, runTypeId } = result.value
+      const limit = limitProblem(account, race.date)
+      if (limit) return limit
+      const write: RunWriteRequest = {
+        date: race.date,
+        startTime: startTime ?? race.startTime,
+        timeZoneId: race.timeZoneId ?? account.timeZoneId,
+        status: 'Planned',
+        runTypeId: runTypeId ?? raceRunTypeId(race, distanceMeters ?? null),
+        title: null,
+        notes: null,
+        location: race.location ? { ...race.location, name: race.locationName } : null,
+        distanceMeters: distanceMeters ?? null,
+        surface: race.surface,
+        elevationGainMeters: race.elevationGainMeters,
+        race: {
+          name: race.name,
+          distanceCategory: distanceMeters ? distanceCategory(distanceMeters) : 'Other',
+          officialDistanceMeters:
+            distanceMeters && distanceCategory(distanceMeters) === 'Other' ? distanceMeters : null,
+          targetTimeSeconds: targetTimeSeconds ?? null,
+        },
+      }
+      const runId = nextId()
+      const run = {
+        ...buildRun(runId, write, account, new Date(now()).toISOString(), ++versionCounter),
+        catalogRaceId: race.raceId,
+      }
+      account.runs.set(runId, run)
+      return json(run, 201, { Location: `/api/runs/${runId}` })
+    }
+    return null
   }
 
   const INVALID_GPX = 'urn:runnersdiary:problem:invalid-gpx'
@@ -675,6 +785,16 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     setGeocodingEnabled: (enabled) => void (geocodingEnabled = enabled),
     setRacesEnabled: (enabled) => void (racesEnabled = enabled),
     raceInterestsOf: (token) => accounts.get(token)?.raceInterests ?? null,
+    raceStateOf: (token, raceId) => {
+      const account = accounts.get(token)
+      const race = findRace(raceContext(), raceId)
+      return account && race ? userView(race, account).state : 'None'
+    },
+    raceSeenOf: (token) => accounts.get(token)?.raceSeenUtc ?? null,
+    patchRace: (raceId, patch) => {
+      catalogue = catalogue.map((race) => (race.raceId === raceId ? { ...race, ...patch } : race))
+    },
+    setCatalogueUpdated: (utc) => void (catalogueUpdatedUtc = utc),
     setInsightsScenario: (scenario) => void (insightsScenario = scenario),
     setSummaryScenario: (scenario, outcome, opts) => summaryService.set(scenario, outcome, opts),
     setSummaryOutcome: (outcome, opts) => summaryService.setPost(outcome, opts),
