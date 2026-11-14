@@ -1,6 +1,6 @@
 # M8 – Race proposals: plan
 
-**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13). **Part A implemented 2026-11-14** on `m8-race-proposals` (all steps 1–10 of §6.1, incl. the UI, E2E, review and its fixes); **awaiting approval and merge**; part B (G-R1…G-R4) untouched, nothing provisioned (§12, follow-ups §13) · **Date:** 2026-11-13, updated 2026-11-14 · **Author:** architect
+**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13). **Part A implemented 2026-11-14** on `m8-race-proposals` (all steps 1–10 of §6.1, incl. the UI, E2E, review and its fixes); **merged 2026-11-14 (stompsu/runners-diary#39) and deployed**. Part B: **G-R2 and G-R3 done 2026-11-14** (job provisioned, first import: 150 races), G-R4 done 2026-11-14 (UI on); G-R1 (permission e-mail) still outstanding: see the gate log under §6.2.
 **Builds on:**
 - M2: `Runs`, the run-type catalogue, `Owner` filter, guest lifecycle and `DemoDataSeeder`.
 - M3: month grid (ADR 0016), panel routes, run form (ADR 0018), fake API.
@@ -387,6 +387,18 @@ Progress (2026-11-14): **all done**: 1 (`07f9edf`), 2 (`6b5cffe`), 3 (`4a07bf1`)
 | **G-R3** | **Only after permission (or the user's explicit decision, Q1):** `azd env set RACE_IMPORT_ENABLED true`, `RACE_IMPORT_RUNNING_LIFE true` → provision (`--no-state` if only env changed) → **one manual run** `az containerapp job start -n job-race-import -g rg-runnersdiary-prod` → check the summary log, counts and 10 random races against the source, plus the robots line in the log. | env change, one job execution |
 | **G-R4** | `azd env set RACES_UI_ENABLED true` → provision → live check: guest sees Silesian proposals; signup → planned run; the toggle hides them; axe spot check. | env change |
 
+**Gate log (part B)**
+
+| Date | Gate | What happened |
+|---|---|---|
+| 2026-11-14 13:28 UTC | merge + deploy | #39 merged (`2f7c4a8`); `deploy.yml` approved by the user; migration `RaceCatalogue` applied; the grant script skipped the race-import user (identity not yet provisioned), `deploy.yml` skipped `job-race-import` (not yet created): both as designed. |
+| 2026-11-14 ~14:50 UTC | **G-R2** | User ran `azd hooks run preprovision`, `azd provision`, `azd hooks run postprovision`: `id-rd-race-import`, `job-race-import` (cron `25 3 * * 1`, 1,800 s, M8 API image, flags off), `alert-rd-race-import-failed`, deployer MI Operator, `Races__Enabled=false` on `api`, `RACE_IMPORT_IDENTITY_*` on `job-migrate`. Verified read-only. |
+| 2026-11-14 ~14:55 UTC | **G-R3** (decision) | **User decision, deviating from Q1's default:** the import was enabled **before** the running.life permission answer (Q1 alternative "go live after informing them"; G-R1 e-mail still to be sent). `RACE_IMPORT_ENABLED=true`, `RACE_IMPORT_RUNNING_LIFE=true`, `azd provision --no-state`. |
+| 2026-11-14 14:56 UTC | G-R3 (first start) | Execution `job-race-import-c3ly61i` **Failed**: SQL login refused because the job's database user did not exist yet (the migration job had not run since G-R2). Failed before any request to the site; the alert fired once. |
+| 2026-11-14 15:01 UTC | G-R3 (fix) | `job-migrate` started by hand (`job-migrate-i1pgovi`, Succeeded): "Created database user id-rd-race-import" with the two table grants. |
+| 2026-11-14 15:02–15:07 UTC | **G-R3 (first import)** | `job-race-import-suxfjz9` **Completed** in 4.6 min: robots.txt 200, 31 listing pages, 150 detail pages (the per-run cap), **150 new races**, 0 rejected, 0 duplicates, 0 purged. Telemetry: 182 requests to running.life, all 200, ≈ 1.5 s apart. The remaining ≈ 450 races follow at ≈ 150 per weekly run. Lesson recorded: G-R2 must include a migration-job run (or a deploy) **before** G-R3. |
+| 2026-11-14 ~15:20 UTC | **G-R4** | User ran `azd env set RACES_UI_ENABLED true` + `azd provision --no-state`; `client-config.races.enabled` is `true` in production and the user sees race proposals as a guest. **M8 part B complete except G-R1.** |
+
 **Rollback / kill:** set `RACE_IMPORT_ENABLED=false` (the job exits without SQL) and/or `RACES_UI_ENABLED=false` (UI hidden), then provision. To purge one source's rows, a runbook `DELETE` is run by the migrator identity on the user's request.
 
 ## 7. Cost
@@ -576,6 +588,8 @@ Send it through **the site's contact page**, in Polish or English:
 - **Outside M8 scope (`b6f334c`):** Aspire packages bumped to **13.6.5** for GHSA-f7vh-h5g3-7jrh; EF Core pins (`SqlServer.NetTopologySuite`, `Design`) aligned to **10.0.14**, the version Aspire 13.6.5 resolves; the `System.Security.Cryptography.Pkcs` security pin (CVE-2026-84008) dropped, since 10.0.14 no longer needs it.
 
 ## 13. Follow-ups and open items for the user (2026-11-14)
+
+- **G-R1 is now overdue relative to the import:** the running.life permission e-mail (§10) has not been sent while the weekly import is already on. Send it, or switch the import off (`RACE_IMPORT_ENABLED=false` + `azd provision --no-state`) until it is answered.
 
 **For the user (decisions or actions):**
 1. **G-R1:** send the permission e-mail to running.life (outline §10) **before** the import is enabled (G-R3). Record the date and the outcome in §12 (no addresses).
