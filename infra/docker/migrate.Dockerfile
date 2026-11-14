@@ -31,7 +31,7 @@ RUN case "$TARGETARCH" in arm64) rid=linux-arm64 ;; *) rid=linux-x64 ;; esac \
        --configuration Release --verbose --force -o /out/efbundle
 
 # go-sqlcmd: pinned release, verified by SHA-256 (published by the project with the release assets).
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble@sha256:62028293921f5bd6db3d9f9119cd29cd926dfd3c2336da23b09f425e40c3c832 AS sqlcmd
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble@sha256:9cab4d7d886226d47b5489ef9abf0544e2f109fde11a8acc190217610af26c00 AS sqlcmd
 ARG TARGETARCH
 ARG SQLCMD_VERSION=v1.10.0
 ARG SQLCMD_SHA256_AMD64=92516d98c63d99b0994de5b61350c91f6915f9b76f139a59039fbcb225c2e987
@@ -44,7 +44,7 @@ RUN case "$TARGETARCH" in arm64) arch=arm64; sha="$SQLCMD_SHA256_ARM64" ;; *) ar
     && echo "${sha}  /tmp/sqlcmd.tar.bz2" | sha256sum -c - \
     && mkdir /out && tar -xjf /tmp/sqlcmd.tar.bz2 -C /out sqlcmd
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble@sha256:62028293921f5bd6db3d9f9119cd29cd926dfd3c2336da23b09f425e40c3c832 AS final
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble@sha256:9cab4d7d886226d47b5489ef9abf0544e2f109fde11a8acc190217610af26c00 AS final
 WORKDIR /migrate
 COPY --from=bundle /out/efbundle ./efbundle
 COPY --from=sqlcmd /out/sqlcmd ./sqlcmd
