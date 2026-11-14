@@ -32,7 +32,7 @@ A single-page web app where authenticated runners (Entra External ID) or tempora
 | `RunnersDiary.ServiceDefaults` | OpenTelemetry, health checks, resilience, service discovery. M6: registers the meter and activity source `RunnersDiary.Ai` (no prompt or answer content is recorded). M7: Azure Monitor exporter (`Azure.Monitor.OpenTelemetry.AspNetCore` 1.6.0) only when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, 5 traces/s (ADR 0034). | M1 → M7 |
 | `infra/`, `azure.yaml`, `.github/workflows/deploy.yml` | Bicep (subscription scope, 15 modules), azd hooks, grant SQL, migrate image, smoke script; OIDC deploy workflow (ADRs 0030–0034). Provisioned at G2 (2026-11-04); not yet deployed. | M7 |
 | `RunnersDiary.AppHost` | Local orchestration: `sql` (+ db `runnersdiary`), `storage` (Azurite, `blobs`), `api`, `web`. M6: forwards `Ai__Provider` (`None` by default; `Fake` with `Ai:UseFake=true`; `Foundry` only when user-secrets `Ai:Endpoint` and `Ai:Deployment` are both set). No `Aspire.Hosting.Foundry` (ADR 0027 §4). | M1 → M6 |
-| `job-race-import` (**M8, planned, awaiting approval**) | Weekly Container Apps job (Monday 03:25 UTC, sharing the guest cleanup's SQL wake) running the API image with `--job race-import`. It crawls an allow-listed public race calendar (running.life first) politely, and upserts the shared `Races` catalogue. Own identity `id-rd-race-import` with table-level SQL grants only. Kill switches `RaceImport:Enabled` + per source, off by default; disabled = no SQL connection ([ADR 0035](adr/0035-race-catalogue-sources-and-crawling-policy.md), [0038](adr/0038-race-import-job.md)). | M8 (planned) |
+| `job-race-import` + race proposals (**M8, implemented (part A, UI in progress); not provisioned**) | Weekly Container Apps job (Monday 03:25 UTC, sharing the guest cleanup's SQL wake) running the API image with `--job race-import` (`RaceImportService`, `PoliteHttpClient`, AngleSharp 1.10.2 `RunningLifeParser`). It crawls an allow-listed public race calendar (running.life first) politely, and upserts the shared `Races` catalogue in one transaction per source, under a session app lock held on one idle connection. Own identity `id-rd-race-import` with table-level SQL grants only. Kill switches `RaceImport:Enabled` + per source, off by default; disabled = no SQL connection. API side: `Features/Races` (7 endpoints, 503 `feature-unavailable` while `Races:Enabled` is false), `RaceProposalService`/`RaceSignupService`, Domain `Races/`, migration `RaceCatalogue`; SPA: Settings → Race interests done, calendar proposals and details dialog in progress ([ADR 0035](adr/0035-race-catalogue-sources-and-crawling-policy.md)–[0038](adr/0038-race-import-job.md), all amended). | M8 |
 | `tests/RunnersDiary.Ai.Tests` | Fact sheet, validator, pipeline (scripted `IChatClient`), prompt manifest, demo fixture for every "today" across a year, eval cases (CI mode; live mode only with `RD_AI_LIVE_EVAL=1`), Foundry wire test. | M6 |
 
 Dependency rule: `Api → Infrastructure → Domain`; `Domain` depends on nothing ([ADR 0001](adr/0001-solution-structure-and-aspire.md)).
@@ -56,10 +56,10 @@ Dependency rule: `Api → Infrastructure → Domain`; `Domain` depends on nothin
 
   Durable quotas come from the `AiGenerations` ledger. Guests on the default view get a predicate-guarded demo example summary without tokens. **No cloud resource before M7:** the provider is `None` by default (generation → 503), `Fake` for local development and tests, and `Foundry` (keyless, managed identity) when configured. ADRs [0026](adr/0026-training-insights-agent-and-grounding.md)–[0028](adr/0028-summary-cache-quotas-and-demo-summaries.md).
 
-- **Race proposals (M8, planned; proposed 2026-11-13, awaiting the user's approval).**
+- **Race proposals (M8, implemented (part A, UI in progress) on `m8-race-proposals`; plan approved 2026-11-13; nothing provisioned).** Backend, importer, infra, MapView `area` and the settings page are done; the calendar bubbles, list panel and details dialog are in progress. Deviations: [plan §12](plans/M8-race-proposals.md#12-implementation-notes--deviations).
   - **Catalogue:** a shared, read-only race catalogue (`Races` + `RaceDistances`, no `Owner` filter, facts only, attributed). It is filled by `job-race-import`; locally and in CI by a synthetic demo catalogue.
-  - **Proposals:** per-user `RaceInterestProfiles` and `RaceProposalStates` (Owner-filtered, cascade with the user) drive `GET /api/races/proposals?from&to`. The handler reads three projections, and the pure `RaceProposalBuilder` (Domain) filters and ranks them. Nothing is stored per proposal.
-  - **Calendar:** the diary calls it next to `getCalendarMonth`, with the month's grid bounds, and draws dotted "proposal" bubbles with a legend and a toggle.
+  - **Proposals:** per-user `RaceInterestProfiles` and `RaceProposalStates` (Owner-filtered, cascade with the user) drive `GET /api/races/proposals?from&to`. The handler reads three projections, and the pure `RaceProposalBuilder` (Domain) filters and ranks them. Nothing is stored per proposal. While `Races:Enabled` is false every `/api/races` route answers 503 `feature-unavailable` ([ADR 0037](adr/0037-race-proposals-filtering-and-state.md) amendment).
+  - **Calendar (in progress):** the diary calls it next to `getCalendarMonth`, with the month's grid bounds, and draws dotted "proposal" bubbles with a legend and a toggle.
   - **Signup:** "I signed up" creates an ordinary **planned race run** linked by `Runs.CatalogRaceId` (ON DELETE SET NULL), so the calendar, insights and the AI summary need no change. Date changes are flagged, never applied to runs automatically.
   - Plan: [M8](plans/M8-race-proposals.md); ADRs [0035](adr/0035-race-catalogue-sources-and-crawling-policy.md)–[0038](adr/0038-race-import-job.md).
 
@@ -86,7 +86,7 @@ The topology is one `prod` environment (azd env `prod`, RG `rg-runnersdiary-prod
 - `api` (chiseled non-root image, internal ingress, 0–2 replicas, probes `/alive` only; anonymous `/api/health` never touches SQL);
 - `job-migrate` (manual: self-contained EF bundle + go-sqlcmd grant script, identity = SQL Entra admin);
 - `job-guest-cleanup` (weekly, Mon 03:15 UTC, API image with `--job guest-cleanup`).
-- *(M8, planned, not provisioned)* `job-race-import` (weekly, Mon 03:25 UTC, API image with `--job race-import`, identity `id-rd-race-import`, flags off by default; gates G-R2…G-R4 in the [M8 plan](plans/M8-race-proposals.md#62-part-b-user-confirmed-gates-each-needs-the-users-explicit-yes-same-procedure-as-m7)).
+- *(M8, implemented in Bicep, not provisioned)* `job-race-import` (weekly, Mon 03:25 UTC, API image with `--job race-import`, identity `id-rd-race-import`, flags off by default; gates G-R2…G-R4 in the [M8 plan](plans/M8-race-proposals.md#62-part-b-user-confirmed-gates-each-needs-the-users-explicit-yes-same-procedure-as-m7)).
 - First provision runs a public placeholder image (port 80, no probes) until the first deploy.
 
 **Shared services:**
@@ -149,7 +149,7 @@ GitHub Actions `ci.yml`: backend (build, Testcontainers tests), frontend (lint, 
 | 0032 | [Schema migrations and background jobs in Azure](adr/0032-migrations-and-jobs-in-azure.md) | Accepted (M7; amended 2026-11-04) |
 | 0033 | [Production map provider, Azure Maps geocoding and the SAS display option](adr/0033-production-maps-and-azure-maps.md) | Accepted (M7; amended 2026-11-04) |
 | 0034 | [Cost guardrails and observability](adr/0034-cost-guardrails-and-observability.md) | Accepted (M7; amended 2026-11-04) |
-| 0035 | [Race catalogue sources, import strategy and the legal/crawling policy](adr/0035-race-catalogue-sources-and-crawling-policy.md) | Proposed (M8) |
-| 0036 | [Race catalogue model, upsert/dedup/removal, and proposal → planned race run](adr/0036-race-catalogue-model-and-race-runs.md) | Proposed (M8) |
-| 0037 | [Race proposals: interests, filtering and ranking, per-user state, calendar integration](adr/0037-race-proposals-filtering-and-state.md) | Proposed (M8) |
-| 0038 | [The race import job on Container Apps](adr/0038-race-import-job.md) | Proposed (M8) |
+| 0035 | [Race catalogue sources, import strategy and the legal/crawling policy](adr/0035-race-catalogue-sources-and-crawling-policy.md) | Accepted (M8; amended 2026-11-13) |
+| 0036 | [Race catalogue model, upsert/dedup/removal, and proposal → planned race run](adr/0036-race-catalogue-model-and-race-runs.md) | Accepted (M8; amended 2026-11-13) |
+| 0037 | [Race proposals: interests, filtering and ranking, per-user state, calendar integration](adr/0037-race-proposals-filtering-and-state.md) | Accepted (M8; amended 2026-11-13) |
+| 0038 | [The race import job on Container Apps](adr/0038-race-import-job.md) | Accepted (M8; amended 2026-11-13) |

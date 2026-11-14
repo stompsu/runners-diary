@@ -1,6 +1,6 @@
 # 0037 – Race proposals: interest profile, filtering and ranking, per-user state and the calendar integration
 
-**Status:** Proposed (M8 plan, 2026-11-13; awaiting the user's approval)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the endpoints implementation, see the end; **§5 "the endpoints still answer" is superseded by the amendment**)
 **Date:** 2026-11-13
 **Related:** [0010](0010-current-user-and-data-scoping.md), [0016](0016-calendar-grid-and-url-state.md) (calendar), [0025](0025-insights-report-computation-and-api.md) (on-demand computation precedent), [0036](0036-race-catalogue-model-and-race-runs.md), [API contract](../api-contract.md#planned-in-m8-race-proposals)
 
@@ -105,6 +105,17 @@ Full table: [api-contract.md](../api-contract.md#planned-in-m8-race-proposals). 
 - **Spatial `STDistance` filter in SQL:** correct, but needless at ≤ 400 rows per window, and it puts logic outside the Domain. Revisit only if `truncated` appears.
 - **A per-race "seen" state:** precise "new" badges, but writes on every list view. Rejected for one timestamp.
 - **A relevance score in the API:** premature without feedback, and it invites a "why this score" UI. Deferred.
+
+## Amendment (2026-11-13, implementation)
+
+The decision stands except for §5's "endpoints still answer". As built in `Api/Features/Races/` and `Infrastructure/Races/` (commit `4a07bf1`; plan §12 D13–D19; contract: [api-contract.md](../api-contract.md#added-in-m8-race-proposals)):
+1. **Disabled feature (§5).** With `Races:Enabled=false` (read per request) the whole `/api/races` group answers **503 `urn:runnersdiary:problem:feature-unavailable`**, like `GET /api/maps/token` and AI generation. `client-config.races.enabled=false` keeps the SPA from calling them, so the 503 is only seen by stale or direct clients. This replaces "the endpoints still answer".
+2. **Window (§4).** The 92-day span is counted **inclusively** (`to − from + 1 ≤ 92`). `catalogueUpdatedUtc` is the max `LastSeenUtc` over the whole catalogue, returned even without a profile.
+3. **State request.** `SetRaceProposalStateRequest.state` is the enum **`RaceStateChoice`** (`None | Interested | Dismissed`), separate from the response enum `ProposalState`; `SignedUp` or an unknown value is a 400 on `state`.
+4. **Details shape.** `RaceDetailsDto` is a **flat** record with every `RaceProposalDto` member plus the extras (no `allOf` composition in the OpenAPI document).
+5. **Removed or duplicate races.** `setRaceProposalState` accepts only `None` (clearing a mark) for them; `Interested`/`Dismissed` → 404. `getRace` answers 404 for a removed race unless the caller is Interested or signed up, and 200 with `canonicalId` for a duplicate (as in §4).
+6. **Signup answer order.** 404 (unknown, removed or duplicate) → 409 `race-already-linked` (with `runId`) → 400 (mapper errors) → 409 `run-limit`. A concurrent second signup that loses the unique index also answers 409 `race-already-linked`.
+7. **Ids and options.** Source ids are `running-life` and `demo`; `client-config.races.sources` lists real sources only (demo is omitted). The state caps are options `Races:Proposals:MaxStatesPerUser` (2,000) and `Races:Proposals:MaxStatesPerGuest` (200).
 
 ## References (checked 2026-11-13)
 

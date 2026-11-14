@@ -1,6 +1,6 @@
 # M8 – Race proposals: plan
 
-**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13); implementation of part A in progress on `m8-race-proposals` · **Date:** 2026-11-13 · **Author:** architect
+**Status:** Approved 2026-11-13 with all §11 recommended defaults (proposed 2026-11-13); implementation of part A in progress on `m8-race-proposals`: backend, importer, infra, MapView and the settings page done; calendar/details UI, E2E and review open (§6.1, §12) · **Date:** 2026-11-13 · **Author:** architect
 **Builds on:**
 - M2: `Runs`, the run-type catalogue, `Owner` filter, guest lifecycle and `DemoDataSeeder`.
 - M3: month grid (ADR 0016), panel routes, run form (ADR 0018), fake API.
@@ -9,7 +9,7 @@
 - M7: `JobMode`, `job-guest-cleanup`, Entra-only SQL, gated provisioning, alerts.
 
 **Related ADRs:** [0008](../adr/0008-run-date-and-time-storage.md) · [0010](../adr/0010-current-user-and-data-scoping.md) · [0011](../adr/0011-guest-accounts-lifecycle.md) · [0012](../adr/0012-request-validation.md) · [0013](../adr/0013-persistence-model-and-migrations.md) · [0016](../adr/0016-calendar-grid-and-url-state.md) · [0031](../adr/0031-identities-secrets-and-data-access.md) · [0032](../adr/0032-migrations-and-jobs-in-azure.md) · [0033](../adr/0033-production-maps-and-azure-maps.md) · [0034](../adr/0034-cost-guardrails-and-observability.md).
-**New (proposed):**
+**New (accepted with the plan; amended 2026-11-13 after the backend/infra implementation):**
 - [0035](../adr/0035-race-catalogue-sources-and-crawling-policy.md): sources and the crawling/legal policy;
 - [0036](../adr/0036-race-catalogue-model-and-race-runs.md): catalogue model, upsert/dedup/removal, proposal → planned race run;
 - [0037](../adr/0037-race-proposals-filtering-and-state.md): interests, filtering/ranking, per-user state, API/calendar shape;
@@ -198,6 +198,8 @@ After implementation: ADR status changes and amendments, deviations (§12), `dat
 
 ## 4. Contracts
 
+As planned; the implemented contract (503 when disabled, `RaceStateChoice`, flat `RaceDetailsDto`, answer order) is in [api-contract.md](../api-contract.md#added-in-m8-race-proposals) and §12 (D13–D19).
+
 ### 4.1 Endpoints (all **Auth**, users and guests; general rate limiter)
 
 | Method & path | operationId | Success | Errors |
@@ -258,7 +260,7 @@ ClientConfigResponse.races = { enabled: boolean; sources: { id: string; name: st
 RunDto.catalogRaceId: string | null
 ```
 
-### 4.3 Schema delta (migration `RaceCatalogue`; full tables in [data-model.md](../data-model.md#planned-in-m8-race-proposals))
+### 4.3 Schema delta (migration `RaceCatalogue`; full tables in [data-model.md](../data-model.md#added-in-m8-race-proposals))
 
 | Object | Summary |
 |---|---|
@@ -358,21 +360,23 @@ The calendar issues `listRaceProposals` only when `client-config.races.enabled`,
 
 ### 6.1 Part A: offline (each step = one reviewable commit on `m8-race-proposals`)
 
-1. **backend-dotnet (+ qa-tester): Domain `Races/`.** All pure logic of §3.1 with hand-written unit tests (§9). No API change.
-2. **backend-dotnet: persistence and demo.** Configurations, migration `RaceCatalogue` (check the cascade ⚠ of ADR 0036 first, on Testcontainers SQL), `Run.CatalogRaceId`, `DemoRaceCatalogue` + seed file + startup check, guest demo profile, AppHost env.
-3. **backend-dotnet: endpoints.**
+Progress (2026-11-13): **done** 1 (`07f9edf`), 2 (`6b5cffe`), 3 (`4a07bf1`), 4 (`c4dbc61`), 5 (`139f70f`), 6 (`f5cffca`), 8 (`f29f930`); **in progress** 7; **open** 9, 10. Deviations of the done steps: §12.
+
+1. [x] **backend-dotnet (+ qa-tester): Domain `Races/`.** All pure logic of §3.1 with hand-written unit tests (§9). No API change.
+2. [x] **backend-dotnet: persistence and demo.** Configurations, migration `RaceCatalogue` (check the cascade ⚠ of ADR 0036 first, on Testcontainers SQL), `Run.CatalogRaceId`, `DemoRaceCatalogue` + seed file + startup check, guest demo profile, AppHost env.
+3. [x] **backend-dotnet: endpoints.**
    - `Features/Races/*`, `RunDto.catalogRaceId`, `client-config.races`;
    - OpenAPI → `npm --prefix web run generate:api`;
    - Api.Tests (validation, isolation, inventory, cascade on guest cleanup, run delete un-signs, date change).
-4. **backend-dotnet: importer.**
+4. [x] **backend-dotnet: importer.**
    - **Spike first:** at most 1 listing page + 2 detail pages of running.life, fetched once by hand with the project UA, to pin selectors. They are **not committed**; qa-tester writes synthetic look-alike fixtures from the observed structure.
    - Then `PoliteHttpClient`, `RobotsTxt`, `RunningLifeParser`/`Source`, `DemoRaceSource`, `RaceImportService`, `--job race-import`, validator rules, AngleSharp pin.
-5. **maps-gpx:** `MapView` `area` + race marker.
-6. **frontend-react: settings page** (+ the qa-tester fake API for races).
-7. **frontend-react: calendar integration and panels.** Bubbles, legend, toggle, day section, list panel, details dialog, signup flow, banners, invalidations, i18n, bundle budget.
-8. **azure-infra:** Bicep, grant script, `migrate.sh`, `deploy.yml`, CI full-stack env; `az bicep build/lint`, actionlint, shellcheck.
-9. **qa-tester: E2E** (fake API, phone, axe; full-stack journey).
-10. **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits "M8: race proposals" and stops for approval.
+5. [x] **maps-gpx:** `MapView` `area` + race marker.
+6. [x] **frontend-react: settings page** (+ the qa-tester fake API for races).
+7. [ ] **frontend-react: calendar integration and panels** (in progress). Bubbles, legend, toggle, day section, list panel, details dialog, signup flow, banners, invalidations, i18n, bundle budget.
+8. [x] **azure-infra:** Bicep, grant script, `migrate.sh`, `deploy.yml`, CI full-stack env; `az bicep build/lint`, actionlint, shellcheck.
+9. [ ] **qa-tester: E2E** (fake API, phone, axe; full-stack journey).
+10. [ ] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits "M8: race proposals" and stops for approval.
 
 ### 6.2 Part B: user-confirmed gates (each needs the user's explicit "yes"; same procedure as M7)
 
@@ -488,7 +492,44 @@ Send it through **the site's contact page**, in Polish or English:
 
 ## 12. Implementation notes & deviations
 
-*(Filled in after implementation.)*
+**Backend, importer and infra implemented 2026-11-13** (§6.1 steps 1–6 and 8; nothing provisioned, part B untouched). Step 7 (calendar proposals, list panel, details dialog, signup flow) is **in progress**: its deviations, the verification summary (test counts, bundle size) and the review findings are added after steps 7–10.
+
+### 12.1 Deviations (backend, importer, infra)
+
+| # | Plan said | Built | Why / where recorded |
+|---|---|---|---|
+| D1 | AngleSharp, version open (ADR 0035 §6 ⚠) | AngleSharp **1.10.2**, Infrastructure only | ADR 0035 amend. §1 |
+| D2 | robots.txt 4xx = allow all | **403/429 on robots.txt = stop the source** (the normal stop rule, exit 0); other 4xx = allow all | Conservative: a refusal is not a missing file. ADR 0035 amend. §2 |
+| D3 | — | A 200 detail page with no recognisable fact (no distances, links or type) is **ignored** for a race that already has facts; the stored facts stay | Layout-change guard for detail pages. ADR 0035 amend. §3 |
+| D4 | Kind from the detail page's type text | Kind from the **listing card's type anchor** (`label-*` class / Polish label); detail `[data-race-type]` overrides; name/chips only as a last guess. Non-running cards (triathlon, duathlon, aquathlon, fitness, multisport) are skipped | The listing JSON-LD has no type and lists other sports. ADR 0035 amend. §4 |
+| D5 | `PoliteHttpClient` over the usual client stack | Plain `HttpClient` (`AllowAutoRedirect=false`, gzip/br), **no `IHttpClientFactory` / resilience handler**; redirects hand-rolled (≤ 3, same host, https); size cap on the decompressed body; logs paths only | The standard handler retries, default logging writes full URLs. ADR 0035 amend. §5 |
+| D6 | Spike pages pin the selectors | Done once by hand, **not committed**; `tests/fixtures/races/` is synthetic | As planned. ADR 0035 amend. §6 |
+| D7 | `RaceDistances` replaced as a whole per hash change | EF child collection `Race.Distances` of `RaceDistance(RaceId, DistanceMeters)`; `ApplyFacts` **diffs** the rows | No needless delete/insert. ADR 0036 amend. §1 |
+| D8 | `SET NULL` ⚠, NO ACTION fallback | `FK_Runs_Races_CatalogRaceId` ON DELETE SET NULL **accepted by SQL Server**; a principal with only the two table grants imports and purges with the cascades (`RaceImportJobTests`) | Fallback not needed. ADR 0036 amend. §2 |
+| D9 | `CK_Races_*` only | + `CK_RaceInterestProfiles_{Center,Distance,Horizon,Kinds,Radius}`, `CK_RaceProposalStates_State` (`IN (1, 2)`), index `IX_Runs_CatalogRaceId` | Defence in depth; FK index for the SET NULL. ADR 0036 amend. §3, data model |
+| D10 | Purge `Date < today − 180` | Skips canonical rows a surviving duplicate still references (self-FK NO ACTION), clears pointers among the deleted rows first | FK safety. ADR 0036 amend. §4 |
+| D11 | New races read within the detail budget | A new race whose detail page was not read is **deferred** (not inserted) to a later run; first backfill ≈ 4 weekly runs at `MaxDetailPages` 150 | No listing-only rows without distances. ADR 0036 amend. §5 |
+| D12 | `ToPlannedRun(race, choice, zone)` | `ToPlannedRun(race, choice, zone, today)` + `TryToPlannedRun(…, out values, out errors)` | Past-race rule in Domain; errors without exceptions. ADR 0036 amend. §6 |
+| D13 | `Races:Enabled=false`: endpoints still answer (ADR 0037 §5) | The whole `/api/races` group answers **503 `feature-unavailable`** (read per request) | Same as maps token and AI. ADR 0037 amend. §1 |
+| D14 | Span ≤ 92 days | Counted **inclusively** (`to − from + 1 ≤ 92`) | ADR 0037 amend. §2 |
+| D15 | `state: "None" \| "Interested" \| "Dismissed"` | Enum `RaceStateChoice`; `SignedUp` or unknown → 400 on `state` | ADR 0037 amend. §3 |
+| D16 | `RaceDetailsDto = RaceProposalDto & {…}` | **Flat** record with the same members | Simple OpenAPI schema. ADR 0037 amend. §4 |
+| D17 | State on a removed/duplicate race unspecified | Only `None` (clear); `Interested`/`Dismissed` → 404 | ADR 0037 amend. §5 |
+| D18 | Signup errors unordered | **404 → 409 `race-already-linked` → 400 → 409 `run-limit`** | ADR 0037 amend. §6 |
+| D19 | Source ids, caps, freshness unspecified in config | Ids `running-life`, `demo` (demo not in `client-config`); `Races:Proposals:MaxStatesPerUser` 2,000 / `MaxStatesPerGuest` 200; `catalogueUpdatedUtc` = max `LastSeenUtc` | ADR 0037 amend. §7 |
+| D20 | Index read, then crawl with no connection open (ADR 0038 §1) | The session app lock is held on **one idle connection for the whole run**, released explicitly (`sp_releaseapplock`) | A session lock dies with its connection. ADR 0038 amend. §1 |
+| D21 | — | The merge runs on rows **re-read inside** the per-source transaction (the retry strategy reruns the whole attempt) | ADR 0038 amend. §2 |
+| D22 | Exit 0 / 1 outcomes | Exit 1 only for layout change, robots failure, unhandled exception, SQL failure; 403/429 and 3 × 5xx stop the source with **exit 0**. **Known gap:** a persistent outage or block never alerts | ADR 0038 amend. §3 |
+| D23 | Alert dimension value ⚠ | `Executions` Total, `state` = `Failed`, hourly over 24 h, > 0; **`Failed` unverified until G-R3** | ADR 0038 amend. §4 |
+| D24 | `deploy.yml` updates and rolls back the job | Only **when the job exists**; skipped before G-R2 | ADR 0038 amend. §5 |
+| D25 | — | `id-rd-race-import` added to the deployer's Managed Identity Operator list (`github-oidc.bicep`) | `job update` must assign the UAMI. ADR 0038 amend. §6 |
+| D26 | Job env per ADR 0038 §3 | As planned (`replicaTimeout` 1,800 s); **no blob setting** (job profile needs none; test) | ADR 0038 amend. §7 |
+
+### 12.2 Notes
+
+- **CI/AppHost:** `Races__Enabled=true` and `Races__DemoCatalogue__SeedOnStartup=true` in `AppHost.cs` and the `e2e-fullstack` API container (`ci.yml`).
+- **Follow-up (azure-infra):** the comment above `alert-rd-race-import-failed` in `infra/modules/alerts-budget.bicep` says "evaluated once a day", the value is `PT1H`; align the comment.
+- **Outside M8 scope (`b6f334c`):** Aspire packages bumped to **13.6.5** for GHSA-f7vh-h5g3-7jrh; EF Core pins (`SqlServer.NetTopologySuite`, `Design`) aligned to **10.0.14**, the version Aspire 13.6.5 resolves; the `System.Security.Cryptography.Pkcs` security pin (CVE-2026-84008) dropped, since 10.0.14 no longer needs it.
 
 ## Assumptions
 

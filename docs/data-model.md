@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) is planned only, awaiting the user's approval: see [Planned in M8](#planned-in-m8-race-proposals).**
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; implemented on `m8-race-proposals`, UI in progress, not merged): see [Added in M8](#added-in-m8-race-proposals).**
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -237,11 +237,13 @@ Migration `20261104070212_AiSummaries`; [ADR 0028](adr/0028-summary-cache-quotas
 - **Retention:** 35 days (`GeocodeBudget.Retention`); each guest cleanup pass deletes older rows.
 - Migration `20261104153828_GeocodeUsage` only creates the table, so it is compatible with the previous release (ADR 0032 expand rule).
 
-## Planned in M8 (race proposals)
+<a id="planned-in-m8-race-proposals"></a>
 
-**Proposed 2026-11-13, awaiting the user's approval; nothing below exists yet.**
-- [M8 plan](plans/M8-race-proposals.md); ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (model, upsert, dedup, race → run) and [0037](adr/0037-race-proposals-filtering-and-state.md) (interests, state).
-- One additive migration **`RaceCatalogue`**. It is compatible with the previous release (ADR 0032 expand rule): new tables, plus one nullable column and a filtered index on `Runs`.
+## Added in M8 (race proposals)
+
+**Implemented 2026-11-13 on `m8-race-proposals` (schema, demo catalogue, endpoints, import job); the calendar/details UI is in progress; nothing deployed.**
+- [M8 plan](plans/M8-race-proposals.md) (deviations §12); ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (model, upsert, dedup, race → run; amended) and [0037](adr/0037-race-proposals-filtering-and-state.md) (interests, state; amended).
+- One additive migration **`20261113165157_RaceCatalogue`**. It is compatible with the previous release (ADR 0032 expand rule): new tables, plus one nullable column and two indexes on `Runs`.
 
 ```
 Races (catalogue, shared) 1 ──< RaceDistances
@@ -296,7 +298,7 @@ Users 1 ── 0..1 RaceInterestProfiles           (per user; Owner filter)
   - **`UX_Races_Source_External (Source, ExternalId)` unique**: the upsert's natural key;
   - `IX_Races_DuplicateOf (DuplicateOfRaceId) WHERE DuplicateOfRaceId IS NOT NULL`.
 - **Checks:** `CK_Races_Price` (both or neither); `CK_Races_Duplicate` (`DuplicateOfRaceId <> Id`).
-- **Retention:** the import job deletes races with `Date < today − 180 days` (`RaceImport:RetainPastDays`, Q9). Distances and states cascade; linked runs get `CatalogRaceId = NULL` and keep their own copy of every fact.
+- **Retention:** the import job deletes races with `Date < today − 180 days` (`RaceImport:RetainPastDays`, Q9). Distances and states cascade; linked runs get `CatalogRaceId = NULL` and keep their own copy of every fact. A doomed canonical race still referenced by a surviving duplicate is skipped; `DuplicateOfRaceId` among the deleted rows is cleared first (NO ACTION self-FK).
 - **Volume:** ≈ 600–1,000 rows (one source); ≈ 3k with a second source.
 
 ### RaceDistances
@@ -306,7 +308,8 @@ Users 1 ── 0..1 RaceInterestProfiles           (per user; Owner filter)
 | `RaceId` | `uniqueidentifier` | no | FK → `Races.Id` **ON DELETE CASCADE**. |
 | `DistanceMeters` | `float` | no | 1,000 … 250,000 (shorter kids' runs are dropped by the normaliser). |
 
-PK `(RaceId, DistanceMeters)` clustered. ≤ 12 per race (Domain). The table is replaced as a whole per race when `FactsHash` changes. A child table, not JSON (ADR 0036 §1).
+PK `(RaceId, DistanceMeters)` clustered. ≤ 12 per race (Domain). A child table, not JSON (ADR 0036 §1).
+- **Mapping:** EF one-to-many `Race.Distances` of the domain type `RaceDistance(RaceId, DistanceMeters)`; consumers read `Race.DistancesMeters` (ascending). `Race.ApplyFacts` diffs the rows when `FactsHash` changes (unchanged rows stay, missing ones are deleted, new ones inserted).
 
 ### RaceInterestProfiles (per user)
 
@@ -326,6 +329,8 @@ User-owned: `IUserOwned`, **`Owner` filter**, and the owner of a new row is alwa
 | `ProposalsSeenUtc` | `datetime2(0)` | yes | "New since last visit" (ADR 0037 §3). |
 | `UpdatedAt` | `datetime2(0)` | no | |
 
+- **Checks** (mirror the Domain rules): `CK_RaceInterestProfiles_Center` (centre and radius both or neither; no `CenterName` without a centre), `_Radius` (5,000–300,000), `_Distance` (1,000–250,000, min ≤ max), `_Horizon` (7–365), `_Kinds` (1–127).
+
 ### RaceProposalStates (per user)
 
 User-owned: **`Owner` filter**. One row per user and race that the user marked. `SignedUp` is **not stored**: it is derived from `Runs.CatalogRaceId`.
@@ -339,7 +344,8 @@ User-owned: **`Owner` filter**. One row per user and race that the user marked. 
 | `UpdatedAt` | `datetime2(0)` | no | |
 
 - **Keys:** PK **`(UserId, RaceId)` clustered** (per-user reads are a seek on `UserId` + an id list); `IX_RaceProposalStates_RaceId` (FK, purge cascade).
-- **Cap (application-enforced):** users 2,000 rows, guests 200 → 409 `proposal-state-limit`.
+- **Check:** `CK_RaceProposalStates_State` (`State IN (1, 2)`).
+- **Cap (application-enforced):** users 2,000 rows, guests 200 (`Races:Proposals:MaxStatesPerUser` / `MaxStatesPerGuest`) → 409 `proposal-state-limit`.
 
 ### Runs (change)
 
@@ -347,12 +353,15 @@ User-owned: **`Owner` filter**. One row per user and race that the user marked. 
 |---|---|---|---|
 | `CatalogRaceId` | `uniqueidentifier` | yes | FK → `Races.Id` **ON DELETE SET NULL**. Set only by `POST /api/races/{id}/signup`; preserved by `PUT /api/runs/{id}`. |
 
-New index: **`UX_Runs_User_CatalogRace (UserId, CatalogRaceId) WHERE CatalogRaceId IS NOT NULL`**, unique (one linked run per race per user → 409 `race-already-linked`). It also serves the "signed up?" lookup for a proposal window.
-⚠ To verify in the migration (ADR 0036 references): no multiple-cascade-path error; the cascade from the job identity's `DELETE` on `Races` needs no grant on `Runs` or `RaceProposalStates`.
+New indexes:
+- **`UX_Runs_User_CatalogRace (UserId, CatalogRaceId) WHERE CatalogRaceId IS NOT NULL`**, unique (one linked run per race per user → 409 `race-already-linked`). It also serves the "signed up?" lookup for a proposal window.
+- `IX_Runs_CatalogRaceId (CatalogRaceId)`, non-unique: the FK index that serves the `SET NULL` when the job purges a race.
+
+Verified (ADR 0036 amendment §2): SQL Server accepts the `SET NULL` FK next to the existing cascades, and a principal with only the `Races`/`RaceDistances` grants can purge; the engine performs the `Runs` SET NULL and the `RaceProposalStates` cascade.
 
 ### Guest deletion (M8)
 
-- Every new per-user row hangs off `Users` with `ON DELETE CASCADE`: `RaceInterestProfiles`, `RaceProposalStates`, and runs as before. The existing guest cleanup (`ExecuteDelete` on `Users`) therefore **removes them with no code change**. M8 adds a test that proves it.
+- Every new per-user row hangs off `Users` with `ON DELETE CASCADE`: `RaceInterestProfiles`, `RaceProposalStates`, and runs as before. The existing guest cleanup (`ExecuteDelete` on `Users`) therefore **removes them with no code change** (proved by `Races/RaceGuestLifecycleTests`).
 - Guests never write catalogue rows; the catalogue is untouched by guest cleanup.
 - Signed-up guest runs are ordinary runs (blob prefix rule unchanged).
 

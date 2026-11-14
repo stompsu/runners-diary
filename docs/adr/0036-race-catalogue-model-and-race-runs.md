@@ -1,6 +1,6 @@
 # 0036 – Race catalogue model, upsert/dedup/removal rules, and turning a proposal into a planned race run
 
-**Status:** Proposed (M8 plan, 2026-11-13; awaiting the user's approval)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the implementation, see the end; the ⚠ cascade check in the references is resolved there)
 **Date:** 2026-11-13
 **Related:** [0008](0008-run-date-and-time-storage.md) (dates), [0010](0010-current-user-and-data-scoping.md) (scoping), [0011](0011-guest-accounts-lifecycle.md) (guests), [0013](0013-persistence-model-and-migrations.md) (mapping), [0032](0032-migrations-and-jobs-in-azure.md) (expand rule), [0035](0035-race-catalogue-sources-and-crawling-policy.md) (sources), [data model](../data-model.md#planned-in-m8-race-proposals)
 
@@ -133,6 +133,16 @@ The catalogue is shared and read-only for everyone. Interest profiles and propos
 - **Distances as an EF 10 JSON complex collection:** fewer tables, but it couples to the `json` column type and to JSON querying for the distance filter. The child table is simpler to index and test.
 - **Hard delete when a race disappears:** loses the race under users' interest flags because of one bad scan. Soft removal with a two-scan threshold is safer.
 - **Automatically moving linked runs on a date change:** silently changes user data and can break their week plan or totals. Rejected in favour of an explicit button.
+
+## Amendment (2026-11-13, implementation)
+
+The decision stands. As built (commits `07f9edf`, `6b5cffe`, `4a07bf1`, `c4dbc61`; migration `20261113165157_RaceCatalogue`; plan §12 D7–D12):
+1. **Distances (§1).** `Race.Distances` is an EF child collection of `RaceDistance(RaceId, DistanceMeters)` (the domain still exposes `DistancesMeters` as an ascending list). `Race.ApplyFacts` **diffs** the rows (keeps unchanged ones, removes missing ones, adds new ones) instead of replacing the set, so an unchanged distance issues no delete/insert.
+2. **Cascade check resolved (§5, references ⚠).** SQL Server accepts `FK_Runs_Races_CatalogRaceId` **ON DELETE SET NULL** next to the existing cascades. An Api.Tests case running as a principal with only the `Races`/`RaceDistances` grants imports and purges, and the engine performs the `RaceProposalStates` cascade and the `Runs` SET NULL. **The NO ACTION fallback is not needed.**
+3. **Extra constraints and index.** Beyond the plan: `CK_RaceInterestProfiles_Center` (centre and radius together; no name without a centre), `_Distance` (1,000–250,000, min ≤ max), `_Horizon` (7–365), `_Kinds` (1–127), `_Radius` (5,000–300,000); `CK_RaceProposalStates_State` (`State IN (1, 2)`); and the non-unique FK index `IX_Runs_CatalogRaceId` (serves the SET NULL on purge).
+4. **Purge (§2 retention).** Because `DuplicateOfRaceId` is NO ACTION, the purge **skips** a doomed canonical race that a surviving row still references (repeated until stable) and **clears** `DuplicateOfRaceId` among the rows it deletes before deleting them in chunks of 500.
+5. **New races without a detail page.** A new race whose detail page was not read in a run (detail budget spent, fetch failed) is **deferred**: it is not inserted, and a later run picks it up. With `MaxDetailPages` 150 and ≈ 600 listed races, the first backfill completes in **≈ 4 weekly runs**. Known races keep their stored facts with the listing facts refreshed.
+6. **Mapper (§5).** `RaceRunMapper.ToPlannedRun(race, choice, profileTimeZoneId, today)` takes `today` (the past-race rule lives in Domain), and `TryToPlannedRun(…, out RunValues, out errors)` returns the 400 errors without exceptions; the signup service uses the latter.
 
 ## References (checked 2026-11-13)
 

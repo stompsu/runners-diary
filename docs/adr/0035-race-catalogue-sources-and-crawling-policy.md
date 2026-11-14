@@ -1,6 +1,6 @@
 # 0035 – Race catalogue sources, import strategy and the legal/crawling policy
 
-**Status:** Proposed (M8 plan, 2026-11-13; awaiting the user's approval)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the importer implementation, see the end)
 **Date:** 2026-11-13
 **Related:** [M8 plan](../plans/M8-race-proposals.md), [0036](0036-race-catalogue-model-and-race-runs.md) (data model), [0038](0038-race-import-job.md) (the job), [0033](0033-production-maps-and-azure-maps.md) (geocoding budget)
 
@@ -109,6 +109,16 @@ M8 proposes upcoming races to a runner, based on their interests. No public, doc
 - **Regex + `System.Text.Json` only (no HTML parser):** no dependency, but a regex over untrusted HTML is brittle and easy to get wrong. It is acceptable only for the `ld+json` blocks, and the detail facts need real parsing.
 - **User-submitted races only (no import):** no legal question, but an empty catalogue. The user can still add any race by hand as a planned race run today.
 - **Daily import:** fresher data, but ≈ 14–27 % of the SQL free allowance (ADR 0032) and seven times the load on a volunteer-run site. Rejected; weekly is the default, and the cron is configurable.
+
+## Amendment (2026-11-13, implementation)
+
+The decision stands. As built in `Infrastructure/RaceSources/` (commit `c4dbc61`; plan §12 D1–D6):
+1. **Parser (§6).** **AngleSharp 1.10.2** (central pin, Infrastructure only), used without loaders.
+2. **robots.txt (§4).** A **403 or 429** on robots.txt is treated as the normal stop rule (the source stops for this run, exit 0), not as RFC 9309's "4xx = allow all". This is deliberately more conservative than the RFC. Other 4xx still mean allow all; 5xx, a timeout or an unparsable file abort the source (exit 1).
+3. **Detail layout guard (§4).** A 200 detail page with no recognisable fact (no distances, signup or website link, or type) is **ignored** for a race that already has stored facts, which are kept. This is the detail-page counterpart of the zero-events listing rule; for a new race the listing facts are used.
+4. **Race kind.** The listing JSON-LD carries no type, so the kind comes from the **listing card's type anchor** (`.event-card-distances a[class^="label-"]`, the Polish label text first, the `label-*` class as a fallback). A detail-page `[data-race-type]` label overrides it; guessing from the name and distance chips is the last resort. Cards of non-running sports (**triathlon, duathlon, aquathlon, fitness, multisport**, incl. Polish spellings) are skipped and never imported.
+5. **HTTP stack (§4).** `PoliteHttpClient` wraps a plain `HttpClient` (`AllowAutoRedirect=false`, gzip/brotli decompression), **not** an `IHttpClientFactory` client with the standard resilience handler: that handler would retry (the policy forbids retries) and the default client logging writes full URLs. Redirects are followed by hand (≤ 3 hops, https, same host); the 2 MB cap applies to the **decompressed** body; logs carry the path only, never the query string or the body.
+6. **Spike (§7).** The selector spike (1 listing + 2 detail pages, fetched once with the project UA) pinned the selectors; the pages were **not committed**. The fixtures in `tests/fixtures/races/` are synthetic.
 
 ## References (checked 2026-11-13)
 

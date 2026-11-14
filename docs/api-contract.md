@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**. **M8 (race proposals) is planned only, awaiting the user's approval: see [Planned in M8](#planned-in-m8-race-proposals).**
+Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**. **M8 (race proposals) adds the `/api/races` endpoints, `client-config.races`, `RunDto.catalogRaceId` and `--job race-import` (implemented on `m8-race-proposals`; the SPA calendar/details UI is in progress; not merged): see [Added in M8](#added-in-m8-race-proposals).**
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -461,29 +461,32 @@ ClientConfigResponse.maps.azureMapsDomain: string | null   // e.g. "eu.atlas.mic
 
 **Job CLI (not HTTP):** `dotnet RunnersDiary.Api.dll --job guest-cleanup` → exit 0 on success, 1 on failure (any other `--job` value is a failure). Used by the Container Apps job `job-guest-cleanup` (ADR 0032).
 
-## Planned in M8 (race proposals)
+<a id="planned-in-m8-race-proposals"></a>
 
-**Proposed 2026-11-13, awaiting the user's approval; not implemented.**
-- Sources: [plan](plans/M8-race-proposals.md) §4, ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (signup mapping) and [0037](adr/0037-race-proposals-filtering-and-state.md) (filtering, state, why a separate endpoint).
-- After implementation the backend regenerates the OpenAPI document, then `npm --prefix web run generate:api` (ADR 0002), and the api-contract CI job checks both.
+## Added in M8 (race proposals)
+
+**Implemented 2026-11-13 on `m8-race-proposals`** (OpenAPI document and `web/src/api/generated/schema.d.ts` regenerated); the SPA calendar/details UI is in progress.
+- Sources: [plan](plans/M8-race-proposals.md) §4 and §12 (deviations D13–D19), ADRs [0036](adr/0036-race-catalogue-model-and-race-runs.md) (signup mapping) and [0037](adr/0037-race-proposals-filtering-and-state.md) (filtering, state, why a separate endpoint; both amended 2026-11-13).
 
 All routes are **Auth** (users and guests) on the general per-caller rate limiter. No request carries a user id. Per-user rows (interests, states, the linked run) go through the `Owner` filter. The race catalogue is shared and not user-owned, so a race id is never "foreign": unknown, purged and hidden races answer 404.
 
+**Feature switch:** while `Races:Enabled` is false (the production default until gate G-R4; read per request), **every `/api/races` route answers 503 `urn:runnersdiary:problem:feature-unavailable`** (after authentication, so an anonymous call is still 401), like `GET /api/maps/token` and AI generation. `client-config.races.enabled` tells the SPA not to call them.
+
 | Method & path | operationId | Policy | Success | Errors |
 |---|---|---|---|---|
-| `GET /api/races/interests` | `getRaceInterests` | Auth | 200 `RaceInterestsResponse` (`configured: false` + defaults when the caller has none) | 401 |
-| `PUT /api/races/interests` | `updateRaceInterests` | Auth | 200 `RaceInterestsResponse` | 400, 401, 413 |
-| `GET /api/races/proposals?from&to&includeDismissed` | `listRaceProposals` | Auth | 200 `RaceProposalListResponse`, `Cache-Control: private, no-store` | 400 (`from`, `to`, `includeDismissed`), 401 |
-| `POST /api/races/proposals/seen` | `markRaceProposalsSeen` | Auth | 204 | 401 |
-| `GET /api/races/{raceId}` | `getRace` | Auth | 200 `RaceDetailsDto` | 401, 404 |
-| `PUT /api/races/{raceId}/state` | `setRaceProposalState` | Auth | 200 `RaceUserStateDto` | 400, 401, 404, 409 `proposal-state-limit` |
-| `POST /api/races/{raceId}/signup` | `signUpForRace` | Auth | 201 `RunDto` + `Location: /api/runs/{id}` | 400, 401, 404, 409 (`race-already-linked`, `run-limit`) |
+| `GET /api/races/interests` | `getRaceInterests` | Auth | 200 `RaceInterestsResponse` (`configured: false` + defaults when the caller has none) | 401, 503 |
+| `PUT /api/races/interests` | `updateRaceInterests` | Auth | 200 `RaceInterestsResponse` | 400, 401, 413, 503 |
+| `GET /api/races/proposals?from&to&includeDismissed` | `listRaceProposals` | Auth | 200 `RaceProposalListResponse`, `Cache-Control: private, no-store` | 400 (`from`, `to`, `includeDismissed`), 401, 503 |
+| `POST /api/races/proposals/seen` | `markRaceProposalsSeen` | Auth | 204 (no-op without a profile) | 401, 503 |
+| `GET /api/races/{raceId}` | `getRace` | Auth | 200 `RaceDetailsDto`, `private, no-store` | 401, 404 (unknown or purged; removed unless the caller is Interested or signed up), 503 |
+| `PUT /api/races/{raceId}/state` | `setRaceProposalState` | Auth | 200 `RaceUserStateDto`, `private, no-store` | 400, 401, 404 (unknown; `Interested`/`Dismissed` on a removed or duplicate race), 409 `proposal-state-limit`, 503 |
+| `POST /api/races/{raceId}/signup` | `signUpForRace` | Auth | 201 `RunDto` + `Location: /api/runs/{id}` | 400, 401, 404, 409 (`race-already-linked`, `run-limit`), 503 |
 | `GET /api/client-config` (changed) | `getClientConfig` | Anon (unchanged) | 200 + `races` | — |
 | `GET/POST/PUT /api/runs…`, `GET /api/calendar/months/…` (changed) | unchanged | unchanged | `RunDto` gains read-only `catalogRaceId` | unchanged |
 
 **Validation (ADR 0012 style; 400 `errors` keyed by camelCase path):**
 - **`listRaceProposals`:**
-  - `from`/`to` are required dates in 1950–2100, with `to ≥ from` and span ≤ 92 days (errors on `to`);
+  - `from`/`to` are required dates in 1950–2100, with `to ≥ from` and a span of ≤ 92 days **counting both ends** (`to − from + 1 ≤ 92`; errors on `to`);
   - `includeDismissed` is an optional boolean;
   - the server clamps to `[today, today + horizonDays]` in the caller's profile zone and returns `effectiveFrom`/`effectiveTo`; signed-up races also show outside the horizon;
   - no profile → 200 with `profileConfigured: false` and `items: []`.
@@ -495,13 +498,14 @@ All routes are **Auth** (users and guests) on the general per-caller rate limite
   - `horizonDays` 7–365;
   - `keywords` ≤ 100 characters and ≤ 5 terms of 2–30 characters;
   - `center.latitude/longitude` in range, `center.name` ≤ 200.
-- **`setRaceProposalState`:** `state` ∈ `None | Interested | Dismissed` (`SignedUp` → 400; it is derived).
-- **`signUpForRace`:**
+- **`setRaceProposalState`:** `state` is the enum `RaceStateChoice` = `None | Interested | Dismissed` (`SignedUp` or an unknown value → 400 on `state`; `SignedUp` is derived). For a removed or duplicate race only `None` (clear) is accepted; the other values → 404.
+- **`signUpForRace`** (the body is optional; answers are checked in this order: **404** unknown/removed/duplicate race → **409 `race-already-linked`** → **400** → **409 `run-limit`**):
   - `distanceMeters` must equal one of the race's distances; it is required when the race lists more than one (`errors.distanceMeters`);
   - `runTypeId` must be a Race-category type;
   - `startTime` is `HH:mm`; `targetTimeSeconds` 1 … 604,800;
   - a race dated before the caller's today → `errors.raceId`;
-  - a removed or duplicate race → 404.
+  - a removed or duplicate race → 404;
+  - a concurrent second signup that loses the unique index → 409 `race-already-linked` as well.
 
 **New problem types:**
 
@@ -510,7 +514,7 @@ All routes are **Auth** (users and guests) on the general per-caller rate limite
 | 409 | The caller already has a run linked to this race | `urn:runnersdiary:problem:race-already-linked` | `runId` (the caller's own run) |
 | 409 | Proposal-state rows per account reached (users 2,000, guests 200) | `urn:runnersdiary:problem:proposal-state-limit` | — |
 
-### Shapes (planned)
+### Shapes (M8)
 
 ```ts
 RaceKind = "Road" | "Trail" | "Mountain" | "Ultra" | "CrossCountry" | "Ocr" | "Other"   // PascalCase, like RunStatus
@@ -529,7 +533,7 @@ UpdateRaceInterestsRequest = Omit<RaceInterestsResponse, "configured" | "updated
 RaceProposalListResponse = {
   from: string; to: string; effectiveFrom: string; effectiveTo: string;
   profileConfigured: boolean;
-  catalogueUpdatedUtc: string | null;   // max LastSeenUtc of the catalogue; null when empty
+  catalogueUpdatedUtc: string | null;   // max LastSeenUtc of the whole catalogue (also without a profile); null when empty
   truncated: boolean;                   // the window had more than Races:Proposals:MaxCatalogueRows rows
   items: RaceProposalDto[]              // by date, then rank
 }
@@ -541,9 +545,10 @@ RaceProposalDto = {
   state: ProposalState; linkedRunId: string | null;
   isNew: boolean;        // imported after the caller's ProposalsSeenUtc
   dateChanged: boolean;  // linked run's date ≠ race date, or Interested and RaceDateWhenMarked ≠ race date
-  source: string         // id in client-config.races.sources
+  source: string         // "running-life" | "demo" (demo has no entry in client-config.races.sources)
 }
-RaceDetailsDto = RaceProposalDto & {
+RaceDetailsDto = {       // a flat schema: every RaceProposalDto member, plus
+  /* …RaceProposalDto members… */
   timeZoneId: string | null; surface: "Road" | "Trail" | "Track" | "Treadmill" | "Mixed" | null;
   elevationGainMeters: number | null; price: { amount: number; currency: string } | null;
   signupDeadline: string | null; organizerName: string | null;
@@ -552,10 +557,11 @@ RaceDetailsDto = RaceProposalDto & {
   canonicalId: string | null;          // set when this id is a duplicate; the SPA navigates to it
   lastSeenUtc: string; updatedUtc: string
 }
-SetRaceProposalStateRequest = { state: "None" | "Interested" | "Dismissed" }
+RaceStateChoice = "None" | "Interested" | "Dismissed"                                     // request-only enum
+SetRaceProposalStateRequest = { state: RaceStateChoice }
 RaceUserStateDto = { raceId: string; state: ProposalState; linkedRunId: string | null; dateChanged: boolean }
 SignUpForRaceRequest = { distanceMeters?: number | null; startTime?: string | null; runTypeId?: number | null; targetTimeSeconds?: number | null }
-ClientConfigResponse.races = { enabled: boolean; sources: { id: string; name: string; url: string }[] }
+ClientConfigResponse.races = { enabled: boolean; sources: { id: string; name: string; url: string }[] }   // real sources only: [{ "running-life", "running.life", "https://running.life/" }]
 RunDto.catalogRaceId: string | null    // read-only; not part of RunWriteRequest (an unknown member there is still a 400)
 ```
 
@@ -569,8 +575,10 @@ RunDto.catalogRaceId: string | null    // read-only; not part of RunWriteRequest
 - **Other fields:** `distanceMeters`, `surface`, `elevationGainMeters` and `location` come from the race. The full table is in ADR 0036 §5.
 - The run cap rules of `createRun` apply.
 
-**Job CLI (planned, not HTTP):** `dotnet RunnersDiary.Api.dll --job race-import`. Exit 0 covers success, disabled (no SQL connection) and another run holding the lock. Exit 1 covers a layout change, a robots failure, a SQL error or an unhandled error. The job is the Container Apps job `job-race-import` (ADR 0038).
+**Limits (M8):** `Races:Proposals:MaxCatalogueRows` 1,000 (→ `truncated`), `Races:Proposals:MaxStatesPerUser` 2,000 and `MaxStatesPerGuest` 200 (→ 409 `proposal-state-limit`); signups use the run caps of `createRun`.
+
+**Job CLI (not HTTP):** `dotnet RunnersDiary.Api.dll --job race-import`. Exit 0 covers success, disabled (no SQL connection), another run holding the lock, and a source stopped by 403/429 or three consecutive 5xx/timeouts (warning only). Exit 1 covers a layout change, a robots failure, a SQL error or an unhandled error. The job is the Container Apps job `job-race-import` (ADR 0038 + amendment).
 
 ## Planned for later milestones
 
-None in the MVP (M8 above is post-MVP and awaiting approval). A real Foundry deployment (M7 Part B, gate G7) changes no contract.
+None in the MVP (M8 above is post-MVP, implemented on its branch, UI in progress). A real Foundry deployment (M7 Part B, gate G7) changes no contract.

@@ -1,6 +1,6 @@
 # 0038 – The race import job on Container Apps (schedule, identity, SQL access, kill switch, observability, cost)
 
-**Status:** Proposed (M8 plan, 2026-11-13; awaiting the user's approval)
+**Status:** Accepted (M8 plan approved 2026-11-13; amended 2026-11-13 after the job and infra implementation, see the end; nothing provisioned yet)
 **Date:** 2026-11-13
 **Related:** [0031](0031-identities-secrets-and-data-access.md) (identities, Entra-only SQL), [0032](0032-migrations-and-jobs-in-azure.md) (job mode, SQL wake budget), [0034](0034-cost-guardrails-and-observability.md) (alerts, cost), [0035](0035-race-catalogue-sources-and-crawling-policy.md) (crawling rules), [0036](0036-race-catalogue-model-and-race-runs.md) (upsert rules)
 
@@ -129,6 +129,17 @@ The job parses untrusted HTML. A bug there must not be able to read users' data,
 - **Azure Functions timer trigger:** a second hosting model, plan and deployment path. Rejected.
 - **GitHub Actions scheduled workflow writing to SQL:** needs a firewall hole and SQL rights for CI (rejected in ADR 0032 for the same reason).
 - **Daily schedule:** fresher, but ≈ 7× the SQL wakes unless it shares a daily wake that does not exist. Rejected; `raceImportCron` allows it.
+
+## Amendment (2026-11-13, implementation)
+
+The decision stands. As built (`RaceImportService`, `JobMode`; `infra/modules/jobs.bicep`, `alerts-budget.bicep`, `github-oidc.bicep`, `.github/workflows/deploy.yml`; commits `c4dbc61`, `f29f930`; plan §12 D20–D26). Nothing is provisioned; gates G-R2…G-R4 are unchanged.
+1. **Lock connection (§1 steps 2–3).** `sp_getapplock` with `@LockOwner = 'Session'` lives only as long as its connection, so the job **keeps one dedicated connection open (idle) for the whole run** and releases the lock explicitly with `sp_releaseapplock` at the end (best effort; a broken connection has dropped it anyway). The index read and the per-source writes use their own short-lived contexts. So "no SQL connection open during the crawl" becomes "one idle connection during the crawl"; the database stays awake for the run, which the cost estimate (§6) already assumed.
+2. **Merge input (§1 step 5).** The per-source transaction **re-reads that source's rows** (with distances) inside the transaction and merges against them, not against the index read before the crawl. The SQL retry strategy reruns the whole attempt.
+3. **Exit codes (§1 step 6).** Exit **1** only for a layout change, a robots failure (disallowed, unavailable or unparsable), an unhandled exception or a SQL failure. 403/429 and three consecutive 5xx/timeouts stop that source with a warning and **exit 0** (a partial scan changes no missed-scan counters). **Known gap:** a source that blocks us or is down for weeks never fires the alert; it shows only as stale `catalogueUpdatedUtc` and in the summary logs (saved KQL). Revisit if it happens.
+4. **Alert (§5).** `alert-rd-race-import-failed`: metric `Executions`, Total, dimension `state` Include **`Failed`**, `> 0`, evaluated every hour (`PT1H`) over a 24 h window (`P1D`). The dimension value is **unverified until the first real execution (G-R3)**; the metrics reference does not list the values.
+5. **Deploy workflow (§4).** `deploy.yml` reads the job's current image only **if the job exists**; the update and the rollback of `job-race-import` are skipped when it does not (before G-R2).
+6. **Deployer rights.** `id-rd-race-import` is added to the identities on which the GitHub deployer has **Managed Identity Operator** (`github-oidc.bicep`), because `az containerapp job update` on a job with a user-assigned identity needs the assign permission on that identity, as for the existing apps and jobs.
+7. **Job settings (§3).** As planned, incl. `replicaTimeout` 1,800 s. The job env has **no blob setting**: the race-import profile registers no Blob client, and a test asserts that the production job needs the database connection string only.
 
 ## References (checked 2026-11-13)
 
