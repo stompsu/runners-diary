@@ -78,7 +78,7 @@ describe('fake API', () => {
     expect(me.guestExpiresAt).toBe(session.expiresAt)
 
     const types = (await (await call(api, 'GET', '/api/run-types', { token: session.accessToken })).json()) as unknown[]
-    expect(types).toHaveLength(20)
+    expect(types).toHaveLength(21)
     expect(api.runsOf(session.accessToken).length).toBeGreaterThanOrEqual(8)
   })
 

@@ -72,7 +72,7 @@ public sealed class SchemaTests(ContainersApiFactory factory)
 
         var stored = await db.RunTypes.AsNoTracking().OrderBy(t => t.Id).ToListAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(20, stored.Count);
+        Assert.Equal(21, stored.Count);
         Assert.Equal(RunTypeCatalog.All.OrderBy(t => t.Id).Select(t => (t.Id, t.Code, t.Category, t.CountsTowardRunningDistance, t.CountsTowardLoad, t.IsRestDay, t.SortOrder)),
             stored.Select(t => (t.Id, t.Code, t.Category, t.CountsTowardRunningDistance, t.CountsTowardLoad, t.IsRestDay, t.SortOrder)));
     }
@@ -95,7 +95,7 @@ public sealed class SchemaTests(ContainersApiFactory factory)
         db.Users.Add(user);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(20, await db.RunTypes.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(21, await db.RunTypes.CountAsync(TestContext.Current.CancellationToken));
         Assert.Equal("geography", await ScalarAsync<string>(cs,
             "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Runs' AND COLUMN_NAME='Location_Point'"));
 
@@ -374,7 +374,7 @@ public sealed class SchemaTests(ContainersApiFactory factory)
 
         Assert.Equal(0, await ScalarAsync<int>(cs, "SELECT COUNT(*) FROM Runs"));
         Assert.Equal(0, await ScalarAsync<int>(cs, "SELECT COUNT(*) FROM GpxTracks"));
-        Assert.Equal(20, await ScalarAsync<int>(cs, "SELECT COUNT(*) FROM RunTypes"));
+        Assert.Equal(21, await ScalarAsync<int>(cs, "SELECT COUNT(*) FROM RunTypes"));
     }
 
     [Fact]

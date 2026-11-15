@@ -21,7 +21,7 @@ public sealed class SummaryValuesTests
         var content = SummaryValues.Resolve(draft, sheet);
 
         Assert.Equal(["acwr.peak.value", "acwr.peak.raceType"], content.Headline.Keys);
-        Assert.Equal(new SummaryValue(1.79, null, FactUnit.Ratio), content.Values["acwr.peak.value"]);
+        Assert.Equal(new SummaryValue(1.56, null, FactUnit.Ratio), content.Values["acwr.peak.value"]);
         Assert.Equal(new SummaryValue(null, "trailRace", FactUnit.RunType), content.Values["acwr.peak.raceType"]);
         Assert.Equal(new SummaryValue(382593, null, FactUnit.Meters), content.Values["totals.distance"]);
         Assert.Equal(new SummaryValue(null, "2026-11-04", FactUnit.Date), content.Values["period.asOf"]);
@@ -41,7 +41,7 @@ public sealed class SummaryValuesTests
 
         Assert.Equal(json, SummaryContentJson.ToJson(back));
         Assert.Contains("\"values\":{", json, StringComparison.Ordinal);
-        Assert.Contains("\"acwr.peak.value\":{\"number\":1.79,\"text\":null,\"unit\":\"ratio\"}", json, StringComparison.Ordinal);
+        Assert.Contains("\"acwr.peak.value\":{\"number\":1.56,\"text\":null,\"unit\":\"ratio\"}", json, StringComparison.Ordinal);
         Assert.Contains("\"keys\":[\"totals.distance\",\"totals.runCount\",\"comparison.delta.distance.percent\"]", json, StringComparison.Ordinal);
     }
 

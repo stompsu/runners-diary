@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMe } from '@/auth/useMe'
 import { useRunTypeCodes } from '@/features/calendar/calendarQueries'
-import { FAMILY_ICON, familyOf, familyStyle, runTypeLabelKey } from '@/features/calendar/runTypePresentation'
+import { familyStyle, RUN_TYPE_ICON, runTypeLabelKey } from '@/features/calendar/runTypePresentation'
 import { diaryPath } from '@/features/diary/diaryMonth'
 import { QueryError } from '@/features/errors/QueryError'
 import { parseProblem } from '@/lib/api/problem'
@@ -187,7 +187,7 @@ function RunDetailsBody({
   onUploadOpened: () => void
 }) {
   const { t } = useTranslation('runs')
-  const Icon = FAMILY_ICON[familyOf(code)]
+  const Icon = RUN_TYPE_ICON[runTypeLabelKey(code)]
   const pace = formatPace(run.durationSeconds, run.distanceMeters)
   const when = [dayLabel(run.date, language), run.startTime].filter(Boolean).join(' · ')
   const resultsUrl = safeHttpUrl(run.race?.resultsUrl)

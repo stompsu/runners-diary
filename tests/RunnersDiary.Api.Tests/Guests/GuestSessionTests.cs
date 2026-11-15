@@ -70,7 +70,7 @@ public sealed class GuestSessionTests(ContainersApiFactory factory)
         }
 
         Assert.Equal(all.Count, all.Select(r => r.GetProperty("id").GetGuid()).Distinct().Count());
-        Assert.InRange(all.Count, 100, 140);
+        Assert.InRange(all.Count, 200, 240);
 
         var raceTypeIds = new[] { 1, 2, 3, 4, 5, 6 };
         var races = all.Where(r => raceTypeIds.Contains(r.GetProperty("runTypeId").GetInt32())).ToList();

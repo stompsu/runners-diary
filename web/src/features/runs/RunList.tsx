@@ -3,7 +3,7 @@ import { useId, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
-import { FAMILY_ICON, familyOf, familyStyle, runTypeLabelKey } from '@/features/calendar/runTypePresentation'
+import { familyStyle, RUN_TYPE_ICON, runTypeLabelKey } from '@/features/calendar/runTypePresentation'
 import type { Run } from '@/features/calendar/types'
 import { diaryPath, type DiaryMonth } from '@/features/diary/diaryMonth'
 import { dayLabel } from '@/lib/dates/plainDate'
@@ -72,7 +72,7 @@ function RunListItem({
   const { t: tType } = useTranslation('runTypes')
   const describedBy = useId()
   const metrics = useRunMetrics()(run)
-  const Icon = FAMILY_ICON[familyOf(code)]
+  const Icon = RUN_TYPE_ICON[runTypeLabelKey(code)]
   const base = diaryPath(month)
   const typeLabel = tType(runTypeLabelKey(code))
   const row = 'h-11 sm:h-9'

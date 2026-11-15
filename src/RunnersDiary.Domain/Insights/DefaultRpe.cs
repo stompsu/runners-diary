@@ -14,7 +14,7 @@ public static class DefaultRpe
         {
             "recovery" => 2,
             "easy" or "stridesDrills" or "treadmill" => 3,
-            "crossTraining" => 4,
+            "crossTraining" or "bodyBar" => 4,
             "long" or "trailTraining" => 5,
             "fartlek" or "progression" => 6,
             "tempo" or "racePace" => 7,

@@ -24,6 +24,7 @@ export const RUN_TYPES: RunTypeDto[] = [
   ['stridesDrills', 29, 'Training'],
   ['trailTraining', 30, 'Training'],
   ['treadmill', 31, 'Training'],
+  ['bodyBar', 42, 'Other'],
   ['crossTraining', 40, 'Other'],
   ['rest', 41, 'Other'],
 ].map(([code, id, category], index) => ({

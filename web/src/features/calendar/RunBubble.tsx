@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { formatDistance } from '@/lib/format/units'
-import { FAMILY_ICON, familyOf, familyStyle, runTypeLabelKey } from './runTypePresentation'
+import { FAMILY_ICON, familyOf, familyStyle, RUN_TYPE_ICON, runTypeLabelKey } from './runTypePresentation'
 import type { Run } from './types'
 
 /**
@@ -20,7 +20,7 @@ export function RunBubble({
 }) {
   const { t, i18n } = useTranslation('runTypes')
   const family = familyOf(code)
-  const Icon = FAMILY_ICON[family]
+  const Icon = RUN_TYPE_ICON[runTypeLabelKey(code)]
   const completed = run.status === 'Completed'
 
   return (

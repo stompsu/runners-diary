@@ -4,7 +4,7 @@ import { RUN_TYPES } from '@/test/fakeApi'
 
 describe('i18n', () => {
   it('has a label for every run type code in the catalogue, and a fallback', () => {
-    expect(RUN_TYPES).toHaveLength(20)
+    expect(RUN_TYPES).toHaveLength(21)
     for (const { code } of RUN_TYPES) {
       expect([code, i18n.exists(`runTypes:${code}`)]).toEqual([code, true])
     }

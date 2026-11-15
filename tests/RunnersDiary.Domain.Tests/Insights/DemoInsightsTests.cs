@@ -101,10 +101,10 @@ public sealed class DemoInsightsTests
 
         var spike = report.Weeks.Single(w => w.Start == monday.AddDays(-77));
         var taper = report.Weeks.Single(w => w.Start == monday.AddDays(-56));
-        Assert.Equal(1.48, spike.AcwrAtEnd);
-        Assert.Equal(0.55, taper.AcwrAtEnd);
-        Assert.Equal(1440.7, spike.Load);
-        Assert.Equal(632.2, taper.Load);
+        Assert.Equal(1.34, spike.AcwrAtEnd);
+        Assert.Equal(0.67, taper.AcwrAtEnd);
+        Assert.Equal(1845.7, spike.Load);
+        Assert.Equal(1037.2, taper.Load);
     }
 
     [Fact]

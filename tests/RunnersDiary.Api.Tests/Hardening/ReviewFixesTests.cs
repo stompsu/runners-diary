@@ -124,19 +124,19 @@ public sealed class ReviewFixesTests(ContainersApiFactory factory)
         factory.SkipIfDockerUnavailable();
         await using var host = factory.WithWebHostBuilder(b =>
         {
-            // Just above the seeded demo diary (122 runs): the host refuses to start with a cap below it.
-            b.UseSetting("RunLimits:GuestMaxRuns", "123");
+            // Just above the seeded demo diary (218 runs): the host refuses to start with a cap below it.
+            b.UseSetting("RunLimits:GuestMaxRuns", "219");
             b.UseSetting("RunLimits:UserMaxRuns", "2");
         });
         var guest = await host.GuestSessionAsync("capped-guest");
-        Assert.Equal(122, await host.RunCountAsync(guest.UserId!.Value));
+        Assert.Equal(218, await host.RunCountAsync(guest.UserId!.Value));
         var user = host.EntraUser("capped-user");
 
         Assert.Equal(HttpStatusCode.Created, (await guest.Client.PostAsJsonAsync(Runs, Json.Run("2026-11-01"), Ct)).StatusCode);
         var guestOver = await guest.Client.PostAsJsonAsync(Runs, Json.Run("2026-11-02"), Ct);
         Assert.Equal(HttpStatusCode.Conflict, guestOver.StatusCode);
         Assert.Equal("urn:runnersdiary:problem:run-limit", (await guestOver.ReadAsync()).GetProperty("type").GetString());
-        Assert.Equal(123, await host.RunCountAsync(guest.UserId!.Value));
+        Assert.Equal(219, await host.RunCountAsync(guest.UserId!.Value));
 
         Assert.Equal(HttpStatusCode.Created, (await user.Client.PostAsJsonAsync(Runs, Json.Run("2026-11-01"), Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await user.Client.PostAsJsonAsync(Runs, Json.Run("2026-11-02"), Ct)).StatusCode);

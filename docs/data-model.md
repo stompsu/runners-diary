@@ -69,10 +69,13 @@ Seed (ids are contracts):
 | 29 | `stridesDrills` | Training | ✓ | ✓ |
 | 30 | `trailTraining` | Training | ✓ | ✓ |
 | 31 | `treadmill` | Training | ✓ | ✓ |
+| 42 | `bodyBar` | Other | — | ✓ |
 | 40 | `crossTraining` | Other | — | ✓ |
 | 41 | `rest` | Other | — | — (rest day) |
 
 The brief's road-race sub-types (5K, 10K, half, marathon, other) are `Race.DistanceCategory`, not separate run types. Ultra road vs trail is `Surface`.
+
+Rows are listed in display order (`SortOrder`). `bodyBar` (id 42, added 2026-11-15, migration `BodyBarRunType`) is a Body Bar strength class, shown first in Other; its UI label is "Body Bar 🏋🏻‍♂️ with Domenico C." (i18n only — the code stays `bodyBar`). It counts toward load like cross-training (default RPE 4).
 
 ## Runs
 

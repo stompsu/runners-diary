@@ -40,7 +40,7 @@ All of this lives in `RunnersDiary.Domain/Insights/` (pure C#, no packages). `Me
 | Duration missing | no load (0) | counted in `dataQuality.sessionsWithoutDuration` |
 | Rest-day type | no load (the rules forbid RPE and duration on a rest day) | counted in `restDays` |
 
-Default RPE by type (v1): `recovery` 2 · `easy`, `stridesDrills`, `treadmill` 3 · `crossTraining` 4 · `long`, `trailTraining` 5 · `fartlek`, `progression` 6 · `tempo`, `racePace` 7 · `intervals`, `hillRepeats` 8 · `ultra` 8 · other race types (`roadRace`, `trailRace`, `trackRace`, `crossCountry`, `virtualRace`) 9.
+Default RPE by type (v1): `recovery` 2 · `easy`, `stridesDrills`, `treadmill` 3 · `crossTraining`, `bodyBar` 4 · `long`, `trailTraining` 5 · `fartlek`, `progression` 6 · `tempo`, `racePace` 7 · `intervals`, `hillRepeats` 8 · `ultra` 8 · other race types (`roadRace`, `trailRace`, `trackRace`, `crossCountry`, `virtualRace`) 9.
 
 Worked example: 45:00 at RPE 6 → 6 × 2 700 = 16 200 RPE·s → **270.0 AU**.
 
@@ -161,6 +161,14 @@ After the easy-pace tune (M5 plan §9 Q5) the golden report gives:
 - taper week −8: load **632 AU** (632.2; was 636), ACWR **0.55 (low)**, unchanged;
 - easy pace improves from about **5:56 to about 5:40 per km** over 26 weeks (slope **−0.58 s/km per week**).
 - ~~The trail-race week (week −3) peaks at **ACWR 1.59** … the default 12-week view's `load.peak` is therefore the race week.~~ **Corrected 2026-11-04 (M6 review finding M1):** the trail race is on the Sunday of week −3, and that week's `acwrAtEnd` is **1.59**. But the default 12-week view's daily `load.peak` is **1.79 on the Friday of week −2** (2026-10-23 in the golden report, race on 2026-10-18), 5 days after the race, while the race is still in the 7-day acute window. The peak is therefore race-driven but **not inside the race's ISO week**. This is correct behaviour (uncoupled 7/28 ACWR, §3). M6 narrates it as race-driven, not as a training spike; the fact sheet decides this by the race being inside the peak's acute window, not by the bucket (ADR 0026 §1, amendment).
+
+### Demo numbers after Body Bar (2026-11-15)
+
+The demo dataset gained a `bodyBar` class (new run type 42, Other, counts toward load, default RPE 4) every Tuesday, Thursday and Saturday, 45 min at RPE 3. The steady extra load (~405 AU per week) compresses the ratios; the story still holds:
+- spike week −11: load **1 846 AU** (1 845.7), ACWR **1.34 (high)**;
+- taper week −8: load **1 037 AU** (1 037.2), ACWR **0.67 (low)**;
+- trail-race week −3 `acwrAtEnd` **1.42**; the default 12-week view's `load.peak` is **1.56 on 2026-10-23** (same day as before, still race-driven);
+- the easy-pace trend is unchanged (Body Bar is not a running type).
 
 ### Accepted edge cases (review findings)
 
