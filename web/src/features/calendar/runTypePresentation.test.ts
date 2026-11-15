@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { RUN_TYPES } from '@/test/fakeApi'
-import { familyOf, FAMILY_ICON, isKnownRunType, runTypeLabelKey, type RunFamily } from './runTypePresentation'
+import { Dumbbell } from 'lucide-react'
+import {
+  familyOf,
+  FAMILY_ICON,
+  isKnownRunType,
+  RUN_TYPE_ICON,
+  runTypeLabelKey,
+  type RunFamily,
+} from './runTypePresentation'
 
 describe('run type presentation', () => {
   it('maps every catalogue code to a family and a label', () => {
@@ -26,5 +34,12 @@ describe('run type presentation', () => {
   it('gives each family its own icon, so colour is never the only cue', () => {
     const families: RunFamily[] = ['race', 'easy', 'long', 'quality', 'trail', 'treadmill', 'cross', 'rest', 'unknown']
     expect(new Set(families.map((f) => FAMILY_ICON[f])).size).toBe(families.length)
+  })
+
+  it('shows Body Bar with a dumbbell in the cross-training colour, other types with their family icon', () => {
+    expect(familyOf('bodyBar')).toBe('cross')
+    expect(RUN_TYPE_ICON.bodyBar).toBe(Dumbbell)
+    expect(RUN_TYPE_ICON.crossTraining).toBe(FAMILY_ICON.cross)
+    expect(RUN_TYPE_ICON.unknown).toBe(FAMILY_ICON.unknown)
   })
 })

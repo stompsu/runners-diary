@@ -43,6 +43,7 @@ public static class RunTypeCatalog
             Training(29, "stridesDrills"),
             Training(30, "trailTraining"),
             Training(31, "treadmill"),
+            new(42, "bodyBar", RunTypeCategory.Other, false, true, false, ++order),
             new(40, "crossTraining", RunTypeCategory.Other, false, true, false, ++order),
             new(41, "rest", RunTypeCategory.Other, false, false, true, ++order),
         ];

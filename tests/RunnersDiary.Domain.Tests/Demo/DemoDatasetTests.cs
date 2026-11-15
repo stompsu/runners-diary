@@ -28,7 +28,7 @@ public sealed class DemoDatasetTests
     public void Dataset_has_the_documented_shape()
     {
         Assert.Equal("Europe/Warsaw", Template.TimeZoneId);
-        Assert.InRange(Template.Runs.Count, 100, 130);
+        Assert.InRange(Template.Runs.Count, 200, 240);
         Assert.InRange(Template.Runs.Min(r => r.Week), -30, -20);
         Assert.InRange(Template.Runs.Max(r => r.Week), 4, 6);
     }

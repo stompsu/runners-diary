@@ -92,6 +92,7 @@ public sealed class SessionLoadTests
     [InlineData("stridesDrills", 3)]
     [InlineData("treadmill", 3)]
     [InlineData("crossTraining", 4)]
+    [InlineData("bodyBar", 4)]
     [InlineData("long", 5)]
     [InlineData("trailTraining", 5)]
     [InlineData("fartlek", 6)]
@@ -114,7 +115,7 @@ public sealed class SessionLoadTests
     {
         var documented = new HashSet<string>
         {
-            "recovery", "easy", "stridesDrills", "treadmill", "crossTraining", "long", "trailTraining", "fartlek", "progression",
+            "recovery", "easy", "stridesDrills", "treadmill", "crossTraining", "bodyBar", "long", "trailTraining", "fartlek", "progression",
             "tempo", "racePace", "intervals", "hillRepeats", "ultra", "roadRace", "trailRace", "trackRace", "crossCountry", "virtualRace",
         };
 

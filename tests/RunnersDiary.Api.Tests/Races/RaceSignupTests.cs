@@ -273,17 +273,19 @@ public sealed class RaceSignupTests(ContainersApiFactory factory)
     public async Task The_run_cap_per_date_is_409_run_limit_and_nothing_is_created()
     {
         factory.SkipIfDockerUnavailable();
-        using var host = factory.WithWebHostBuilder(b => b.UseSetting("RunLimits:MaxRunsPerDate", "1"));
+        // 2 is the lowest cap the startup check accepts: the demo dataset has two sessions on some dates (a run and Body Bar).
+        using var host = factory.WithWebHostBuilder(b => b.UseSetting("RunLimits:MaxRunsPerDate", "2"));
         var user = host.EntraUser("signup-cap-date");
         var (race, _) = await SeedAsync(factory);
         var date = Iso(RaceTestSupport.Today.AddDays(20));
+        Assert.Equal(HttpStatusCode.Created, (await user.Client.PostAsJsonAsync(U("/api/runs"), Json.Run(date), Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await user.Client.PostAsJsonAsync(U("/api/runs"), Json.Run(date), Ct)).StatusCode);
 
         var response = await user.SignUpAsync(race.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("urn:runnersdiary:problem:run-limit", (await response.ReadAsync()).GetProperty("type").GetString());
-        Assert.Equal(1, await host.RunCountAsync(await user.GetUserIdAsync()));
+        Assert.Equal(2, await host.RunCountAsync(await user.GetUserIdAsync()));
     }
 
     [Fact]

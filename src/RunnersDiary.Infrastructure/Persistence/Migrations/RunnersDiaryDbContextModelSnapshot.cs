@@ -19,7 +19,7 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -625,13 +625,23 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            Id = (short)42,
+                            Category = (byte)2,
+                            Code = "bodyBar",
+                            CountsTowardLoad = true,
+                            CountsTowardRunningDistance = false,
+                            IsRestDay = false,
+                            SortOrder = (short)19
+                        },
+                        new
+                        {
                             Id = (short)40,
                             Category = (byte)2,
                             Code = "crossTraining",
                             CountsTowardLoad = true,
                             CountsTowardRunningDistance = false,
                             IsRestDay = false,
-                            SortOrder = (short)19
+                            SortOrder = (short)20
                         },
                         new
                         {
@@ -641,7 +651,7 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                             CountsTowardLoad = false,
                             CountsTowardRunningDistance = false,
                             IsRestDay = true,
-                            SortOrder = (short)20
+                            SortOrder = (short)21
                         });
                 });
 

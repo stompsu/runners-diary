@@ -253,7 +253,7 @@ public sealed class FactSheetBuilderTests
         Assert.Equal("37:20:12", sheet.Find("totals.duration")!.Display);
         Assert.Equal("5:51 /km", sheet.Find("totals.averagePace")!.Display);
         Assert.Equal("+14.2 %", sheet.Find("comparison.delta.distance.percent")!.Display);
-        Assert.Equal("1.79", sheet.Find("acwr.peak.value")!.Display);
+        Assert.Equal("1.56", sheet.Find("acwr.peak.value")!.Display);
         Assert.Equal("-0.48 s/km per week", sheet.Find("pace.slope")!.Display);
         Assert.Equal("17 Aug 2026", sheet.Find("period.from")!.Display);
         Assert.Equal("trail race", sheet.Find("acwr.peak.raceType")!.Display);

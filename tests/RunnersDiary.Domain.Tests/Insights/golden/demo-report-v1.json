@@ -22,16 +22,16 @@
     "elevationGainMeters": 2594,
     "averagePaceSecondsPerKm": 351.3,
     "longestRunMeters": 21800,
-    "load": 11676.6,
-    "loadSessionCount": 41,
-    "activeDays": 41,
+    "load": 16266.6,
+    "loadSessionCount": 75,
+    "activeDays": 49,
     "restDays": 3
   },
   "planned": {
-    "runCount": 3,
+    "runCount": 5,
     "distanceMeters": 30300,
-    "durationSeconds": 10314,
-    "upcomingCount": 3,
+    "durationSeconds": 15714,
+    "upcomingCount": 5,
     "missedCount": 0
   },
   "comparison": {
@@ -45,9 +45,9 @@
       "elevationGainMeters": 1690,
       "averagePaceSecondsPerKm": 344.8,
       "longestRunMeters": 16300,
-      "load": 9961.1,
-      "loadSessionCount": 39,
-      "activeDays": 39,
+      "load": 14551.1,
+      "loadSessionCount": 73,
+      "activeDays": 47,
       "restDays": 2
     },
     "deltas": {
@@ -69,11 +69,11 @@
       },
       "load": {
         "absolute": 1715.5,
-        "percent": 17.2
+        "percent": 11.8
       },
       "activeDays": {
         "absolute": 2,
-        "percent": 5.1
+        "percent": 4.3
       }
     }
   },
@@ -81,665 +81,665 @@
     "historyStart": "2026-05-05",
     "atAsOf": {
       "date": "2026-11-04",
-      "value": 0.8,
+      "value": 0.85,
       "band": "optimal",
-      "acute": 926.1,
-      "chronic": 1155.4,
+      "acute": 1331.1,
+      "chronic": 1560.4,
       "unavailableReason": null
     },
     "peak": {
       "date": "2026-10-23",
-      "value": 1.79,
+      "value": 1.56,
       "band": "high",
-      "acute": 1822.6,
-      "chronic": 1019.1,
+      "acute": 2227.6,
+      "chronic": 1424.1,
       "unavailableReason": null
     },
     "bandDays": {
-      "low": 13,
-      "optimal": 48,
-      "high": 19,
+      "low": 9,
+      "optimal": 57,
+      "high": 14,
       "unavailable": 0
     },
     "daily": [
       {
         "date": "2026-08-17",
         "load": 0,
-        "acute": 1187.6,
-        "chronic": 902,
-        "acwr": 1.32,
-        "band": "high"
+        "acute": 1592.6,
+        "chronic": 1307,
+        "acwr": 1.22,
+        "band": "optimal"
       },
       {
         "date": "2026-08-18",
-        "load": 95.5,
-        "acute": 1144.4,
-        "chronic": 914.5,
-        "acwr": 1.25,
+        "load": 230.5,
+        "acute": 1549.4,
+        "chronic": 1319.5,
+        "acwr": 1.17,
         "band": "optimal"
       },
       {
         "date": "2026-08-19",
         "load": 65.3,
-        "acute": 1209.7,
-        "chronic": 914.5,
-        "acwr": 1.32,
-        "band": "high"
+        "acute": 1614.7,
+        "chronic": 1319.5,
+        "acwr": 1.22,
+        "band": "optimal"
       },
       {
         "date": "2026-08-20",
-        "load": 400.4,
-        "acute": 1223.7,
-        "chronic": 930.9,
-        "acwr": 1.31,
-        "band": "high"
+        "load": 535.4,
+        "acute": 1628.7,
+        "chronic": 1335.9,
+        "acwr": 1.22,
+        "band": "optimal"
       },
       {
         "date": "2026-08-21",
         "load": 0,
-        "acute": 1133.7,
-        "chronic": 953.4,
-        "acwr": 1.19,
+        "acute": 1538.7,
+        "chronic": 1358.4,
+        "acwr": 1.13,
         "band": "optimal"
       },
       {
         "date": "2026-08-22",
-        "load": 107.7,
-        "acute": 1176.3,
-        "chronic": 946.7,
-        "acwr": 1.24,
+        "load": 242.7,
+        "acute": 1581.3,
+        "chronic": 1351.7,
+        "acwr": 1.17,
         "band": "optimal"
       },
       {
         "date": "2026-08-23",
         "load": 771.7,
-        "acute": 1440.7,
-        "chronic": 975.5,
-        "acwr": 1.48,
+        "acute": 1845.7,
+        "chronic": 1380.5,
+        "acwr": 1.34,
         "band": "high"
       },
       {
         "date": "2026-08-24",
         "load": 0,
-        "acute": 1440.7,
-        "chronic": 975.5,
-        "acwr": 1.48,
+        "acute": 1845.7,
+        "chronic": 1380.5,
+        "acwr": 1.34,
         "band": "high"
       },
       {
         "date": "2026-08-25",
-        "load": 144.4,
-        "acute": 1489.5,
-        "chronic": 965.2,
-        "acwr": 1.54,
+        "load": 279.4,
+        "acute": 1894.5,
+        "chronic": 1370.2,
+        "acwr": 1.38,
         "band": "high"
       },
       {
         "date": "2026-08-26",
         "load": 0,
-        "acute": 1424.2,
-        "chronic": 981.5,
-        "acwr": 1.45,
+        "acute": 1829.2,
+        "chronic": 1386.5,
+        "acwr": 1.32,
         "band": "high"
       },
       {
         "date": "2026-08-27",
-        "load": 307.1,
-        "acute": 1330.9,
-        "chronic": 1004.3,
-        "acwr": 1.33,
-        "band": "high"
+        "load": 442.1,
+        "acute": 1735.9,
+        "chronic": 1409.3,
+        "acwr": 1.23,
+        "band": "optimal"
       },
       {
         "date": "2026-08-28",
         "load": 0,
-        "acute": 1330.9,
-        "chronic": 1004.3,
-        "acwr": 1.33,
-        "band": "high"
+        "acute": 1735.9,
+        "chronic": 1409.3,
+        "acwr": 1.23,
+        "band": "optimal"
       },
       {
         "date": "2026-08-29",
-        "load": 0,
-        "acute": 1223.2,
-        "chronic": 1031.2,
-        "acwr": 1.19,
+        "load": 135,
+        "acute": 1628.2,
+        "chronic": 1436.2,
+        "acwr": 1.13,
         "band": "optimal"
       },
       {
         "date": "2026-08-30",
         "load": 325.8,
-        "acute": 777.3,
-        "chronic": 1110.1,
-        "acwr": 0.7,
+        "acute": 1182.3,
+        "chronic": 1515.1,
+        "acwr": 0.78,
         "band": "low"
       },
       {
         "date": "2026-08-31",
         "load": 0,
-        "acute": 777.3,
-        "chronic": 1110.1,
-        "acwr": 0.7,
+        "acute": 1182.3,
+        "chronic": 1515.1,
+        "acwr": 0.78,
         "band": "low"
       },
       {
         "date": "2026-09-01",
-        "load": 161.1,
-        "acute": 793.9,
-        "chronic": 1102.4,
-        "acwr": 0.72,
-        "band": "low"
+        "load": 296.1,
+        "acute": 1198.9,
+        "chronic": 1507.4,
+        "acwr": 0.8,
+        "band": "optimal"
       },
       {
         "date": "2026-09-02",
         "load": 54.7,
-        "acute": 848.6,
-        "chronic": 1102.4,
-        "acwr": 0.77,
-        "band": "low"
+        "acute": 1253.6,
+        "chronic": 1507.4,
+        "acwr": 0.83,
+        "band": "optimal"
       },
       {
         "date": "2026-09-03",
-        "load": 356.2,
-        "acute": 897.8,
-        "chronic": 1086.1,
-        "acwr": 0.83,
+        "load": 491.2,
+        "acute": 1302.8,
+        "chronic": 1491.1,
+        "acwr": 0.87,
         "band": "optimal"
       },
       {
         "date": "2026-09-04",
         "load": 0,
-        "acute": 897.8,
-        "chronic": 1086.1,
-        "acwr": 0.83,
+        "acute": 1302.8,
+        "chronic": 1491.1,
+        "acwr": 0.87,
         "band": "optimal"
       },
       {
         "date": "2026-09-05",
-        "load": 92,
-        "acute": 989.8,
-        "chronic": 1086.1,
-        "acwr": 0.91,
+        "load": 227,
+        "acute": 1394.8,
+        "chronic": 1491.1,
+        "acwr": 0.94,
         "band": "optimal"
       },
       {
         "date": "2026-09-06",
         "load": 542.7,
-        "acute": 1206.6,
-        "chronic": 1046.4,
-        "acwr": 1.15,
+        "acute": 1611.6,
+        "chronic": 1451.4,
+        "acwr": 1.11,
         "band": "optimal"
       },
       {
         "date": "2026-09-07",
         "load": 0,
-        "acute": 1206.6,
-        "chronic": 1046.4,
-        "acwr": 1.15,
+        "acute": 1611.6,
+        "chronic": 1451.4,
+        "acwr": 1.11,
         "band": "optimal"
       },
       {
         "date": "2026-09-08",
-        "load": 120.3,
-        "acute": 1165.8,
-        "chronic": 1056.1,
-        "acwr": 1.1,
+        "load": 255.3,
+        "acute": 1570.8,
+        "chronic": 1461.1,
+        "acwr": 1.08,
         "band": "optimal"
       },
       {
         "date": "2026-09-09",
         "load": 0,
-        "acute": 1111.1,
-        "chronic": 1069.8,
-        "acwr": 1.04,
+        "acute": 1516.1,
+        "chronic": 1474.8,
+        "acwr": 1.03,
         "band": "optimal"
       },
       {
         "date": "2026-09-10",
-        "load": 220.5,
-        "acute": 975.4,
-        "chronic": 1083,
-        "acwr": 0.9,
+        "load": 355.5,
+        "acute": 1380.4,
+        "chronic": 1488,
+        "acwr": 0.93,
         "band": "optimal"
       },
       {
         "date": "2026-09-11",
         "load": 0,
-        "acute": 975.4,
-        "chronic": 1083,
-        "acwr": 0.9,
+        "acute": 1380.4,
+        "chronic": 1488,
+        "acwr": 0.93,
         "band": "optimal"
       },
       {
         "date": "2026-09-12",
-        "load": 57.4,
-        "acute": 940.9,
-        "chronic": 1091.6,
-        "acwr": 0.86,
+        "load": 192.4,
+        "acute": 1345.9,
+        "chronic": 1496.6,
+        "acwr": 0.9,
         "band": "optimal"
       },
       {
         "date": "2026-09-13",
         "load": 234,
-        "acute": 632.2,
-        "chronic": 1153,
-        "acwr": 0.55,
+        "acute": 1037.2,
+        "chronic": 1558,
+        "acwr": 0.67,
         "band": "low"
       },
       {
         "date": "2026-09-14",
         "load": 0,
-        "acute": 632.2,
-        "chronic": 1153,
-        "acwr": 0.55,
+        "acute": 1037.2,
+        "chronic": 1558,
+        "acwr": 0.67,
         "band": "low"
       },
       {
         "date": "2026-09-15",
-        "load": 103.5,
-        "acute": 615.4,
-        "chronic": 1148.4,
-        "acwr": 0.54,
+        "load": 238.5,
+        "acute": 1020.4,
+        "chronic": 1553.4,
+        "acwr": 0.66,
         "band": "low"
       },
       {
         "date": "2026-09-16",
         "load": 0,
-        "acute": 615.4,
-        "chronic": 1148.4,
-        "acwr": 0.54,
+        "acute": 1020.4,
+        "chronic": 1553.4,
+        "acwr": 0.66,
         "band": "low"
       },
       {
         "date": "2026-09-17",
-        "load": 87.8,
-        "acute": 482.7,
-        "chronic": 1106.9,
-        "acwr": 0.44,
+        "load": 222.8,
+        "acute": 887.7,
+        "chronic": 1511.9,
+        "acwr": 0.59,
         "band": "low"
       },
       {
         "date": "2026-09-18",
         "load": 0,
-        "acute": 482.7,
-        "chronic": 1084.4,
-        "acwr": 0.45,
+        "acute": 887.7,
+        "chronic": 1489.4,
+        "acwr": 0.6,
         "band": "low"
       },
       {
         "date": "2026-09-19",
-        "load": 0,
-        "acute": 425.3,
-        "chronic": 1082.5,
-        "acwr": 0.39,
+        "load": 135,
+        "acute": 830.3,
+        "chronic": 1487.5,
+        "acwr": 0.56,
         "band": "low"
       },
       {
         "date": "2026-09-20",
         "load": 1023,
-        "acute": 1214.3,
-        "chronic": 1014.2,
-        "acwr": 1.2,
+        "acute": 1619.3,
+        "chronic": 1419.2,
+        "acwr": 1.14,
         "band": "optimal"
       },
       {
         "date": "2026-09-21",
         "load": 0,
-        "acute": 1214.3,
-        "chronic": 1014.2,
-        "acwr": 1.2,
+        "acute": 1619.3,
+        "chronic": 1419.2,
+        "acwr": 1.14,
         "band": "optimal"
       },
       {
         "date": "2026-09-22",
-        "load": 76.3,
-        "acute": 1187,
-        "chronic": 1016.2,
-        "acwr": 1.17,
+        "load": 211.3,
+        "acute": 1592,
+        "chronic": 1421.2,
+        "acwr": 1.12,
         "band": "optimal"
       },
       {
         "date": "2026-09-23",
         "load": 0,
-        "acute": 1187,
-        "chronic": 999.8,
-        "acwr": 1.19,
+        "acute": 1592,
+        "chronic": 1404.8,
+        "acwr": 1.13,
         "band": "optimal"
       },
       {
         "date": "2026-09-24",
-        "load": 236.6,
-        "acute": 1335.9,
-        "chronic": 921.7,
-        "acwr": 1.45,
+        "load": 371.6,
+        "acute": 1740.9,
+        "chronic": 1326.7,
+        "acwr": 1.31,
         "band": "high"
       },
       {
         "date": "2026-09-25",
         "load": 0,
-        "acute": 1335.9,
-        "chronic": 921.7,
-        "acwr": 1.45,
+        "acute": 1740.9,
+        "chronic": 1326.7,
+        "acwr": 1.31,
         "band": "high"
       },
       {
         "date": "2026-09-26",
-        "load": 0,
-        "acute": 1335.9,
-        "chronic": 894.8,
-        "acwr": 1.49,
+        "load": 135,
+        "acute": 1740.9,
+        "chronic": 1299.8,
+        "acwr": 1.34,
         "band": "high"
       },
       {
         "date": "2026-09-27",
         "load": 381.2,
-        "acute": 694.1,
-        "chronic": 957.6,
-        "acwr": 0.72,
-        "band": "low"
+        "acute": 1099.1,
+        "chronic": 1362.6,
+        "acwr": 0.81,
+        "band": "optimal"
       },
       {
         "date": "2026-09-28",
         "load": 0,
-        "acute": 694.1,
-        "chronic": 957.6,
-        "acwr": 0.72,
-        "band": "low"
+        "acute": 1099.1,
+        "chronic": 1362.6,
+        "acwr": 0.81,
+        "band": "optimal"
       },
       {
         "date": "2026-09-29",
-        "load": 163.8,
-        "acute": 781.6,
-        "chronic": 940.5,
-        "acwr": 0.83,
+        "load": 298.8,
+        "acute": 1186.6,
+        "chronic": 1345.5,
+        "acwr": 0.88,
         "band": "optimal"
       },
       {
         "date": "2026-09-30",
         "load": 0,
-        "acute": 781.6,
-        "chronic": 940.5,
-        "acwr": 0.83,
+        "acute": 1186.6,
+        "chronic": 1345.5,
+        "acwr": 0.88,
         "band": "optimal"
       },
       {
         "date": "2026-10-01",
-        "load": 403.5,
-        "acute": 948.5,
-        "chronic": 922.9,
-        "acwr": 1.03,
+        "load": 538.5,
+        "acute": 1353.5,
+        "chronic": 1327.9,
+        "acwr": 1.02,
         "band": "optimal"
       },
       {
         "date": "2026-10-02",
         "load": 120,
-        "acute": 1068.5,
-        "chronic": 922.9,
-        "acwr": 1.16,
+        "acute": 1473.5,
+        "chronic": 1327.9,
+        "acwr": 1.11,
         "band": "optimal"
       },
       {
         "date": "2026-10-03",
-        "load": 0,
-        "acute": 1068.5,
-        "chronic": 922.9,
-        "acwr": 1.16,
+        "load": 135,
+        "acute": 1473.5,
+        "chronic": 1327.9,
+        "acwr": 1.11,
         "band": "optimal"
       },
       {
         "date": "2026-10-04",
         "load": 358,
-        "acute": 1045.3,
-        "chronic": 936.8,
-        "acwr": 1.12,
+        "acute": 1450.3,
+        "chronic": 1341.8,
+        "acwr": 1.08,
         "band": "optimal"
       },
       {
         "date": "2026-10-05",
         "load": 0,
-        "acute": 1045.3,
-        "chronic": 936.8,
-        "acwr": 1.12,
+        "acute": 1450.3,
+        "chronic": 1341.8,
+        "acwr": 1.08,
         "band": "optimal"
       },
       {
         "date": "2026-10-06",
-        "load": 118.3,
-        "acute": 999.8,
-        "chronic": 937.5,
-        "acwr": 1.07,
+        "load": 253.3,
+        "acute": 1404.8,
+        "chronic": 1342.5,
+        "acwr": 1.05,
         "band": "optimal"
       },
       {
         "date": "2026-10-07",
         "load": 0,
-        "acute": 999.8,
-        "chronic": 923.8,
-        "acwr": 1.08,
+        "acute": 1404.8,
+        "chronic": 1328.8,
+        "acwr": 1.06,
         "band": "optimal"
       },
       {
         "date": "2026-10-08",
-        "load": 315,
-        "acute": 911.3,
-        "chronic": 935.6,
-        "acwr": 0.97,
+        "load": 450,
+        "acute": 1316.3,
+        "chronic": 1340.6,
+        "acwr": 0.98,
         "band": "optimal"
       },
       {
         "date": "2026-10-09",
         "load": 0,
-        "acute": 791.3,
-        "chronic": 965.6,
-        "acwr": 0.82,
+        "acute": 1196.3,
+        "chronic": 1370.6,
+        "acwr": 0.87,
         "band": "optimal"
       },
       {
         "date": "2026-10-10",
-        "load": 0,
-        "acute": 791.3,
-        "chronic": 942.6,
-        "acwr": 0.84,
+        "load": 135,
+        "acute": 1196.3,
+        "chronic": 1347.6,
+        "acwr": 0.89,
         "band": "optimal"
       },
       {
         "date": "2026-10-11",
         "load": 591.1,
-        "acute": 1024.4,
-        "chronic": 896.4,
-        "acwr": 1.14,
+        "acute": 1429.4,
+        "chronic": 1301.4,
+        "acwr": 1.1,
         "band": "optimal"
       },
       {
         "date": "2026-10-12",
         "load": 0,
-        "acute": 1024.4,
-        "chronic": 896.4,
-        "acwr": 1.14,
+        "acute": 1429.4,
+        "chronic": 1301.4,
+        "acwr": 1.1,
         "band": "optimal"
       },
       {
         "date": "2026-10-13",
-        "load": 102.8,
-        "acute": 1008.9,
-        "chronic": 896,
-        "acwr": 1.13,
+        "load": 237.8,
+        "acute": 1413.9,
+        "chronic": 1301,
+        "acwr": 1.09,
         "band": "optimal"
       },
       {
         "date": "2026-10-14",
         "load": 0,
-        "acute": 1008.9,
-        "chronic": 896,
-        "acwr": 1.13,
+        "acute": 1413.9,
+        "chronic": 1301,
+        "acwr": 1.09,
         "band": "optimal"
       },
       {
         "date": "2026-10-15",
-        "load": 186.7,
-        "acute": 880.6,
-        "chronic": 919.6,
-        "acwr": 0.96,
+        "load": 321.7,
+        "acute": 1285.6,
+        "chronic": 1324.6,
+        "acwr": 0.97,
         "band": "optimal"
       },
       {
         "date": "2026-10-16",
         "load": 0,
-        "acute": 880.6,
-        "chronic": 919.6,
-        "acwr": 0.96,
+        "acute": 1285.6,
+        "chronic": 1324.6,
+        "acwr": 0.97,
         "band": "optimal"
       },
       {
         "date": "2026-10-17",
-        "load": 0,
-        "acute": 880.6,
-        "chronic": 905.2,
-        "acwr": 0.97,
+        "load": 135,
+        "acute": 1285.6,
+        "chronic": 1310.2,
+        "acwr": 0.98,
         "band": "optimal"
       },
       {
         "date": "2026-10-18",
         "load": 1296,
-        "acute": 1585.5,
-        "chronic": 994.5,
-        "acwr": 1.59,
+        "acute": 1990.5,
+        "chronic": 1399.5,
+        "acwr": 1.42,
         "band": "high"
       },
       {
         "date": "2026-10-19",
         "load": 0,
-        "acute": 1585.5,
-        "chronic": 994.5,
-        "acwr": 1.59,
+        "acute": 1990.5,
+        "chronic": 1399.5,
+        "acwr": 1.42,
         "band": "high"
       },
       {
         "date": "2026-10-20",
-        "load": 104,
-        "acute": 1586.7,
-        "chronic": 994.3,
-        "acwr": 1.6,
+        "load": 239,
+        "acute": 1991.7,
+        "chronic": 1399.3,
+        "acwr": 1.42,
         "band": "high"
       },
       {
         "date": "2026-10-21",
         "load": 0,
-        "acute": 1586.7,
-        "chronic": 994.3,
-        "acwr": 1.6,
+        "acute": 1991.7,
+        "chronic": 1399.3,
+        "acwr": 1.42,
         "band": "high"
       },
       {
         "date": "2026-10-22",
-        "load": 302.6,
-        "acute": 1702.6,
-        "chronic": 1019.1,
-        "acwr": 1.67,
+        "load": 437.6,
+        "acute": 2107.6,
+        "chronic": 1424.1,
+        "acwr": 1.48,
         "band": "high"
       },
       {
         "date": "2026-10-23",
         "load": 120,
-        "acute": 1822.6,
-        "chronic": 1019.1,
-        "acwr": 1.79,
+        "acute": 2227.6,
+        "chronic": 1424.1,
+        "acwr": 1.56,
         "band": "high"
       },
       {
         "date": "2026-10-24",
-        "load": 0,
-        "acute": 1822.6,
-        "chronic": 1019.1,
-        "acwr": 1.79,
+        "load": 135,
+        "acute": 2227.6,
+        "chronic": 1424.1,
+        "acwr": 1.56,
         "band": "high"
       },
       {
         "date": "2026-10-25",
         "load": 431.7,
-        "acute": 958.3,
-        "chronic": 1087.3,
-        "acwr": 0.88,
+        "acute": 1363.3,
+        "chronic": 1492.3,
+        "acwr": 0.91,
         "band": "optimal"
       },
       {
         "date": "2026-10-26",
         "load": 0,
-        "acute": 958.3,
-        "chronic": 1087.3,
-        "acwr": 0.88,
+        "acute": 1363.3,
+        "chronic": 1492.3,
+        "acwr": 0.91,
         "band": "optimal"
       },
       {
         "date": "2026-10-27",
-        "load": 172,
-        "acute": 1026.3,
-        "chronic": 1094.2,
-        "acwr": 0.94,
+        "load": 307,
+        "acute": 1431.3,
+        "chronic": 1499.2,
+        "acwr": 0.95,
         "band": "optimal"
       },
       {
         "date": "2026-10-28",
         "load": 0,
-        "acute": 1026.3,
-        "chronic": 1094.2,
-        "acwr": 0.94,
+        "acute": 1431.3,
+        "chronic": 1499.2,
+        "acwr": 0.95,
         "band": "optimal"
       },
       {
         "date": "2026-10-29",
-        "load": 350.8,
-        "acute": 1074.5,
-        "chronic": 1110.7,
-        "acwr": 0.97,
+        "load": 485.8,
+        "acute": 1479.5,
+        "chronic": 1515.7,
+        "acwr": 0.98,
         "band": "optimal"
       },
       {
         "date": "2026-10-30",
         "load": 0,
-        "acute": 954.5,
-        "chronic": 1140.7,
-        "acwr": 0.84,
+        "acute": 1359.5,
+        "chronic": 1545.7,
+        "acwr": 0.88,
         "band": "optimal"
       },
       {
         "date": "2026-10-31",
-        "load": 0,
-        "acute": 954.5,
-        "chronic": 1140.7,
-        "acwr": 0.84,
+        "load": 135,
+        "acute": 1359.5,
+        "chronic": 1545.7,
+        "acwr": 0.88,
         "band": "optimal"
       },
       {
         "date": "2026-11-01",
         "load": 488.7,
-        "acute": 1011.5,
-        "chronic": 1153.4,
-        "acwr": 0.88,
+        "acute": 1416.5,
+        "chronic": 1558.4,
+        "acwr": 0.91,
         "band": "optimal"
       },
       {
         "date": "2026-11-02",
         "load": 0,
-        "acute": 1011.5,
-        "chronic": 1153.4,
-        "acwr": 0.88,
+        "acute": 1416.5,
+        "chronic": 1558.4,
+        "acwr": 0.91,
         "band": "optimal"
       },
       {
         "date": "2026-11-03",
-        "load": 86.6,
-        "acute": 926.1,
-        "chronic": 1155.4,
-        "acwr": 0.8,
+        "load": 221.6,
+        "acute": 1331.1,
+        "chronic": 1560.4,
+        "acwr": 0.85,
         "band": "optimal"
       },
       {
         "date": "2026-11-04",
         "load": 0,
-        "acute": 926.1,
-        "chronic": 1155.4,
-        "acwr": 0.8,
+        "acute": 1331.1,
+        "chronic": 1560.4,
+        "acwr": 0.85,
         "band": "optimal"
       }
     ]
@@ -762,10 +762,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1440.7,
-      "monotony": 0.78,
-      "strain": 1127.2,
-      "acwrAtEnd": 1.48,
+      "load": 1845.7,
+      "monotony": 0.98,
+      "strain": 1799.6,
+      "acwrAtEnd": 1.34,
       "complete": true
     },
     {
@@ -785,10 +785,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 777.3,
-      "monotony": 0.8,
-      "strain": 621.5,
-      "acwrAtEnd": 0.7,
+      "load": 1182.3,
+      "monotony": 1,
+      "strain": 1186.7,
+      "acwrAtEnd": 0.78,
       "complete": true
     },
     {
@@ -808,10 +808,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1206.6,
-      "monotony": 0.91,
-      "strain": 1098.9,
-      "acwrAtEnd": 1.15,
+      "load": 1611.6,
+      "monotony": 1.1,
+      "strain": 1772.1,
+      "acwrAtEnd": 1.11,
       "complete": true
     },
     {
@@ -831,10 +831,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 632.2,
-      "monotony": 0.94,
-      "strain": 596.9,
-      "acwrAtEnd": 0.55,
+      "load": 1037.2,
+      "monotony": 1.09,
+      "strain": 1129.3,
+      "acwrAtEnd": 0.67,
       "complete": true
     },
     {
@@ -854,10 +854,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1214.3,
-      "monotony": 0.5,
-      "strain": 602.9,
-      "acwrAtEnd": 1.2,
+      "load": 1619.3,
+      "monotony": 0.69,
+      "strain": 1110.3,
+      "acwrAtEnd": 1.14,
       "complete": true
     },
     {
@@ -877,10 +877,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 694.1,
-      "monotony": 0.71,
-      "strain": 489.6,
-      "acwrAtEnd": 0.72,
+      "load": 1099.1,
+      "monotony": 1,
+      "strain": 1095.5,
+      "acwrAtEnd": 0.81,
       "complete": true
     },
     {
@@ -900,10 +900,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1045.3,
-      "monotony": 0.94,
-      "strain": 984.1,
-      "acwrAtEnd": 1.12,
+      "load": 1450.3,
+      "monotony": 1.12,
+      "strain": 1624.2,
+      "acwrAtEnd": 1.08,
       "complete": true
     },
     {
@@ -923,10 +923,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1024.4,
-      "monotony": 0.69,
-      "strain": 709.3,
-      "acwrAtEnd": 1.14,
+      "load": 1429.4,
+      "monotony": 0.92,
+      "strain": 1319.8,
+      "acwrAtEnd": 1.1,
       "complete": true
     },
     {
@@ -946,10 +946,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1585.5,
-      "monotony": 0.51,
-      "strain": 812.9,
-      "acwrAtEnd": 1.59,
+      "load": 1990.5,
+      "monotony": 0.66,
+      "strain": 1317.5,
+      "acwrAtEnd": 1.42,
       "complete": true
     },
     {
@@ -969,10 +969,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 958.3,
-      "monotony": 0.87,
-      "strain": 837,
-      "acwrAtEnd": 0.88,
+      "load": 1363.3,
+      "monotony": 1.15,
+      "strain": 1562.6,
+      "acwrAtEnd": 0.91,
       "complete": true
     },
     {
@@ -992,10 +992,10 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 1011.5,
-      "monotony": 0.77,
-      "strain": 780.8,
-      "acwrAtEnd": 0.88,
+      "load": 1416.5,
+      "monotony": 0.98,
+      "strain": 1383.1,
+      "acwrAtEnd": 0.91,
       "complete": true
     },
     {
@@ -1015,10 +1015,10 @@
         "durationSeconds": 10314,
         "elevationGainMeters": 163
       },
-      "load": 86.6,
+      "load": 221.6,
       "monotony": null,
       "strain": null,
-      "acwrAtEnd": 0.8,
+      "acwrAtEnd": 0.85,
       "complete": false
     }
   ],
@@ -1040,7 +1040,7 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 4670.1
+      "load": 6425.1
     },
     {
       "year": 2026,
@@ -1059,7 +1059,7 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 3910.9
+      "load": 5665.9
     },
     {
       "year": 2026,
@@ -1078,7 +1078,7 @@
         "durationSeconds": 0,
         "elevationGainMeters": 0
       },
-      "load": 4972.5
+      "load": 6862.5
     },
     {
       "year": 2026,
@@ -1097,10 +1097,19 @@
         "durationSeconds": 37579,
         "elevationGainMeters": 575
       },
-      "load": 575.3
+      "load": 710.3
     }
   ],
   "typeDistribution": [
+    {
+      "runTypeId": 42,
+      "code": "bodyBar",
+      "category": "other",
+      "runCount": 34,
+      "distanceMeters": 0,
+      "durationSeconds": 91800,
+      "load": 4590
+    },
     {
       "runTypeId": 22,
       "code": "long",
@@ -1326,7 +1335,7 @@
   },
   "races": [
     {
-      "runId": "0000004d-0000-0000-0000-000000000000",
+      "runId": "00000089-0000-0000-0000-000000000000",
       "date": "2026-09-20",
       "status": "completed",
       "runTypeCode": "roadRace",
@@ -1344,7 +1353,7 @@
       "isPersonalBest": true
     },
     {
-      "runId": "0000005b-0000-0000-0000-000000000000",
+      "runId": "000000a3-0000-0000-0000-000000000000",
       "date": "2026-10-18",
       "status": "completed",
       "runTypeCode": "trailRace",
@@ -1363,7 +1372,7 @@
     }
   ],
   "dataQuality": {
-    "completedSessions": 41,
+    "completedSessions": 75,
     "sessionsWithEstimatedRpe": 0,
     "estimatedLoadShare": 0,
     "sessionsWithoutDuration": 0,
