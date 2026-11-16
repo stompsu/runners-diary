@@ -228,7 +228,9 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
         Assert.Equal([Id(a)], replaced.GetProperty("replacedGoalIds").EnumerateArray().Select(e => e.GetGuid()));
         var all = (await user.ListSuggestionsAsync(0, 90, includeDismissed: true)).GetProperty("items").EnumerateArray().ToList();
         Assert.All(all, s => Assert.Equal(Id(b), s.GetProperty("goalId").GetGuid()));
-        Assert.Equal(0, (await user.GetGoalJsonAsync(Id(a))).GetProperty("plan").GetProperty("pendingCount").GetInt32());
+        var replacedPlan = (await user.GetGoalJsonAsync(Id(a))).GetProperty("plan");
+        Assert.Equal(0, replacedPlan.GetProperty("pendingCount").GetInt32());
+        Assert.True(replacedPlan.GetProperty("outdated").GetBoolean());
         // Goal A's target date is a commitment of goal B's plan: no suggestion on it.
         Assert.DoesNotContain(all, s => s.GetProperty("date").GetString() == a.GetProperty("targetDate").GetString());
     }

@@ -147,6 +147,18 @@ public sealed class GoalRulesTests
     }
 
     [Fact]
+    public void An_unchanged_race_run_link_only_needs_the_run_to_exist()
+    {
+        var id = Guid.NewGuid();
+        var moved = new LinkedRaceRun(id, Today.AddDays(40), RunStatus.Completed, IsRaceCategory: true);
+        var linked = Valid(v => v with { Type = GoalType.Race, EventName = "Gliwice 10K", RaceRunId = id });
+
+        Assert.Empty(GoalRules.Validate(linked, Today, null, moved, previousRaceRunId: id));
+        Assert.Contains(GoalRules.Validate(linked, Today, null, null, previousRaceRunId: id), e => e.Path == "raceRunId");
+        Assert.Contains(GoalRules.Validate(linked, Today, null, moved, previousRaceRunId: Guid.NewGuid()), e => e.Path == "raceRunId");
+    }
+
+    [Fact]
     public void EnsureValid_throws_with_all_errors()
     {
         var ex = Assert.Throws<Common.DomainRuleException>(() =>

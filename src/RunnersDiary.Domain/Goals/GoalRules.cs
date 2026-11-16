@@ -21,7 +21,9 @@ public static class GoalRules
     /// <param name="today">The caller's local today.</param>
     /// <param name="previousTargetDate">The stored target date on an update, null on create. An unchanged date is not re-checked, so an approaching goal stays editable.</param>
     /// <param name="raceRun">The caller's own run named by <c>raceRunId</c>; null when none was found (then a set id is "Unknown run.").</param>
-    public static IReadOnlyList<DomainError> Validate(GoalValues values, DateOnly today, DateOnly? previousTargetDate, LinkedRaceRun? raceRun)
+    /// <param name="previousRaceRunId">The stored <c>raceRunId</c> on an update, null on create. An unchanged link only has to still name one of the caller's runs: the run may have been completed or moved since.</param>
+    public static IReadOnlyList<DomainError> Validate(
+        GoalValues values, DateOnly today, DateOnly? previousTargetDate, LinkedRaceRun? raceRun, Guid? previousRaceRunId = null)
     {
         ArgumentNullException.ThrowIfNull(values);
         var errors = new List<DomainError>();
@@ -73,7 +75,7 @@ public static class GoalRules
 
         ValidateTarget(errors, values, distanceValid);
         ValidateLocation(errors, values.Location);
-        ValidateRaceRun(errors, values, raceRun);
+        ValidateRaceRun(errors, values, raceRun, previousRaceRunId);
         return errors;
     }
 
@@ -130,9 +132,10 @@ public static class GoalRules
     }
 
     /// <summary>Throws <see cref="DomainRuleException"/> when <see cref="Validate"/> reports any error.</summary>
-    public static void EnsureValid(GoalValues values, DateOnly today, DateOnly? previousTargetDate, LinkedRaceRun? raceRun)
+    public static void EnsureValid(
+        GoalValues values, DateOnly today, DateOnly? previousTargetDate, LinkedRaceRun? raceRun, Guid? previousRaceRunId = null)
     {
-        var errors = Validate(values, today, previousTargetDate, raceRun);
+        var errors = Validate(values, today, previousTargetDate, raceRun, previousRaceRunId);
         if (errors.Count > 0)
         {
             throw new DomainRuleException(errors);
@@ -194,7 +197,7 @@ public static class GoalRules
         MaxLength(errors, "location.name", location.Name, LocationNameMaxLength);
     }
 
-    private static void ValidateRaceRun(List<DomainError> errors, GoalValues v, LinkedRaceRun? raceRun)
+    private static void ValidateRaceRun(List<DomainError> errors, GoalValues v, LinkedRaceRun? raceRun, Guid? previousRaceRunId)
     {
         if (v.RaceRunId is null)
         {
@@ -204,6 +207,11 @@ public static class GoalRules
         if (raceRun is null || raceRun.Id != v.RaceRunId)
         {
             errors.Add(new("raceRunId", "Unknown run."));
+            return;
+        }
+
+        if (previousRaceRunId == v.RaceRunId)
+        {
             return;
         }
 

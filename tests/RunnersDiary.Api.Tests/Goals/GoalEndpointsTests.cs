@@ -410,6 +410,99 @@ public sealed class GoalEndpointsTests(ContainersApiFactory factory)
         Assert.Equal(Ahead(52), afterMove.GetProperty("raceRunDate").GetString());
     }
 
+    private async Task<(TestActor User, JsonElement Race, JsonElement Goal)> LinkedGoalAsync(string name)
+    {
+        var user = factory.EntraUser(name);
+        var race = await user.CreatePlannedRaceRunAsync(45);
+        var goal = await user.CreateGoalAsync(g =>
+        {
+            g["type"] = "Race";
+            g["eventName"] = "Gliwice 10K";
+            g["targetDate"] = Ahead(45);
+            g["raceRunId"] = race.GetProperty("id").GetGuid();
+        });
+        return (user, race, goal);
+    }
+
+    private static Task<HttpResponseMessage> PutRunAsync(TestActor user, JsonElement race, int days, string status, string? version = null)
+    {
+        var completed = status == "Completed";
+        var body = Json.Run(Ahead(days), r =>
+        {
+            r["status"] = status;
+            r["runTypeId"] = 1;
+            r["durationSeconds"] = completed ? 3_000 : null;
+            r["rpe"] = completed ? 9 : null;
+            r["race"] = completed
+                ? new { name = "Gliwice 10K", distanceCategory = "TenK", resultTimeSeconds = 3_000 }
+                : new { name = "Gliwice 10K", distanceCategory = "TenK" };
+            r["version"] = version ?? race.GetProperty("version").GetString();
+        });
+        return user.Client.PutAsJsonAsync(U($"/api/runs/{race.GetProperty("id").GetGuid()}"), body, Ct);
+    }
+
+    [Fact]
+    public async Task An_unchanged_race_run_link_stays_saveable_after_the_run_is_completed()
+    {
+        factory.SkipIfDockerUnavailable();
+        var (user, race, goal) = await LinkedGoalAsync("goal-link-complete");
+        var raceId = race.GetProperty("id").GetGuid();
+        var put = await PutRunAsync(user, race, -1, "Completed");
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var current = await user.GetGoalJsonAsync(goal.GetProperty("id").GetGuid());
+        var response = await user.PutGoalAsync(current, g =>
+        {
+            g["type"] = "Race";
+            g["eventName"] = "Gliwice 10K";
+            g["status"] = "Achieved";
+            g["raceRunId"] = raceId;
+        });
+
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        Assert.Equal(raceId, (await response.ReadAsync()).GetProperty("raceRunId").GetGuid());
+    }
+
+    [Fact]
+    public async Task An_unchanged_race_run_link_stays_saveable_after_the_run_moved()
+    {
+        factory.SkipIfDockerUnavailable();
+        var (user, race, goal) = await LinkedGoalAsync("goal-link-moved");
+        var raceId = race.GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await PutRunAsync(user, race, 52, "Planned")).StatusCode);
+
+        var current = await user.GetGoalJsonAsync(goal.GetProperty("id").GetGuid());
+        var response = await user.PutGoalAsync(current, g =>
+        {
+            g["type"] = "Race";
+            g["eventName"] = "Gliwice 10K";
+            g["notes"] = "New notes";
+            g["raceRunId"] = raceId;
+        });
+
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        Assert.Equal("New notes", (await response.ReadAsync()).GetProperty("notes").GetString());
+    }
+
+    [Fact]
+    public async Task Changing_the_race_run_link_to_a_new_run_gets_the_full_checks()
+    {
+        factory.SkipIfDockerUnavailable();
+        var (user, _, goal) = await LinkedGoalAsync("goal-link-new");
+        var wrongDate = await user.CreatePlannedRaceRunAsync(50);
+        var current = await user.GetGoalJsonAsync(goal.GetProperty("id").GetGuid());
+
+        var response = await user.PutGoalAsync(current, g =>
+        {
+            g["type"] = "Race";
+            g["eventName"] = "Gliwice 10K";
+            g["raceRunId"] = wrongDate.GetProperty("id").GetGuid();
+        });
+
+        var problem = await response.ProblemAsync(HttpStatusCode.BadRequest);
+        Assert.True(problem.GetProperty("errors").TryGetProperty("raceRunId", out _), problem.ToString());
+    }
+
     [Fact]
     public async Task Deleting_the_linked_run_clears_the_goals_race_run_link()
     {

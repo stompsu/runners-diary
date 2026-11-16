@@ -42,48 +42,62 @@ public sealed class TrainingSuggestionService(
     /// mapping applies; with them the run is exactly those values (validated by <see cref="RunRules"/>), and the goal link is set either way.
     /// Order of answers: not found, invalid, run cap.
     /// </summary>
-    public async Task<AcceptSuggestionResult> AcceptAsync(Guid suggestionId, RunValues? overrides, CancellationToken cancellationToken)
-    {
-        var suggestion = await db.TrainingSuggestions.FirstOrDefaultAsync(s => s.Id == suggestionId, cancellationToken);
-        if (suggestion is null)
+    public async Task<AcceptSuggestionResult> AcceptAsync(Guid suggestionId, RunValues? overrides, CancellationToken cancellationToken) =>
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            return new AcceptSuggestionResult(AcceptSuggestionStatus.NotFound);
-        }
-
-        var (zone, _) = await CallerClock.GetAsync(db, currentUser, clock, cancellationToken);
-        var values = overrides is null
-            ? suggestion.ToRunValues(zone)
-            : overrides with { TimeZoneId = string.IsNullOrEmpty(overrides.TimeZoneId) ? zone : overrides.TimeZoneId };
-
-        var errors = RunRules.Validate(values);
-        if (errors.Count > 0)
-        {
-            return new AcceptSuggestionResult(AcceptSuggestionStatus.Invalid, Errors: errors);
-        }
-
-        if (await RunCaps.CheckCreateAsync(db, currentUser, limits.Value, values.Date, cancellationToken) is { } limitDetail)
-        {
-            return new AcceptSuggestionResult(AcceptSuggestionStatus.RunLimit, LimitDetail: limitDetail);
-        }
-
-        // The owner is always the caller (never from the request).
-        var run = Run.Create(currentUser.UserId, values, clock.GetUtcNow());
-        run.LinkToGoal(suggestion.GoalId);
-        db.Runs.Add(run);
-        db.TrainingSuggestions.Remove(suggestion);
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // A concurrent accept (or a goal delete) removed the suggestion first: nothing was written, it is gone for this caller too.
+            // The whole unit is re-run from a clean change tracker if the retrying execution strategy repeats it.
             db.ChangeTracker.Clear();
-            return new AcceptSuggestionResult(AcceptSuggestionStatus.NotFound);
-        }
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
-        return new AcceptSuggestionResult(AcceptSuggestionStatus.Created, Run: run);
-    }
+            // Serialises with a goal delete and a plan commit; the suggestion is read under the lock, so it is the current one.
+            await GoalWriteLock.AcquireAsync(db, currentUser.UserId, cancellationToken);
+            var suggestion = await db.TrainingSuggestions.FirstOrDefaultAsync(s => s.Id == suggestionId, cancellationToken);
+            if (suggestion is null)
+            {
+                return new AcceptSuggestionResult(AcceptSuggestionStatus.NotFound);
+            }
+
+            var (zone, _) = await CallerClock.GetAsync(db, currentUser, clock, cancellationToken);
+            var values = overrides is null
+                ? suggestion.ToRunValues(zone)
+                : overrides with { TimeZoneId = string.IsNullOrEmpty(overrides.TimeZoneId) ? zone : overrides.TimeZoneId };
+
+            var errors = RunRules.Validate(values);
+            if (errors.Count > 0)
+            {
+                return new AcceptSuggestionResult(AcceptSuggestionStatus.Invalid, Errors: errors);
+            }
+
+            if (await RunCaps.CheckCreateAsync(db, currentUser, limits.Value, values.Date, cancellationToken) is { } limitDetail)
+            {
+                return new AcceptSuggestionResult(AcceptSuggestionStatus.RunLimit, LimitDetail: limitDetail);
+            }
+
+            // The owner is always the caller (never from the request).
+            var run = Run.Create(currentUser.UserId, values, clock.GetUtcNow());
+            run.LinkToGoal(suggestion.GoalId);
+            db.Runs.Add(run);
+            db.TrainingSuggestions.Remove(suggestion);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // A concurrent accept (or a goal delete) removed the suggestion first: nothing was written, it is gone for this caller too.
+                db.ChangeTracker.Clear();
+                return new AcceptSuggestionResult(AcceptSuggestionStatus.NotFound);
+            }
+            catch (DbUpdateException ex) when (GoalWriteLock.IsForeignKeyViolation(ex))
+            {
+                // Safety net: the goal was deleted between the read and the insert.
+                db.ChangeTracker.Clear();
+                return new AcceptSuggestionResult(AcceptSuggestionStatus.NotFound);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return new AcceptSuggestionResult(AcceptSuggestionStatus.Created, Run: run);
+        });
 
     /// <summary>Marks the suggestion dismissed (idempotent). Null when it is not the caller's.</summary>
     public async Task<TrainingSuggestion?> DismissAsync(Guid suggestionId, CancellationToken cancellationToken)
@@ -95,7 +109,17 @@ public sealed class TrainingSuggestionService(
         }
 
         suggestion.Dismiss();
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A regenerate, accept or goal delete removed the suggestion meanwhile: it is gone for this caller too.
+            db.ChangeTracker.Clear();
+            return null;
+        }
+
         return suggestion;
     }
 }

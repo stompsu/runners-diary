@@ -195,6 +195,8 @@ public sealed partial class TrainingPlanService(
             db.ChangeTracker.Clear();
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
+            // Serialises with a goal delete and a suggestion accept, so the goal checked below still exists when the rows are inserted.
+            await GoalWriteLock.AcquireAsync(db, currentUser.UserId, cancellationToken);
             var goal = await db.Goals.FirstOrDefaultAsync(g => g.Id == loaded.Id, cancellationToken);
             if (goal is null || goal.Status != GoalStatus.Active || !goal.RowVersion.AsSpan().SequenceEqual(loaded.RowVersion))
             {
@@ -216,14 +218,20 @@ public sealed partial class TrainingPlanService(
             var (kept, droppedNow) = TrainingPlanValidator.DropCollisions(validation.Kept, fresh);
 
             await db.TrainingSuggestions.Where(s => s.GoalId == goal.Id).ExecuteDeleteAsync(cancellationToken);
+            var now = clock.GetUtcNow();
             List<Guid> replaced = [];
             if (replaceOtherGoals && others.Count > 0)
             {
                 replaced = [.. others.Select(o => o.GoalId).Distinct().Order()];
                 await db.TrainingSuggestions.Where(s => s.GoalId != goal.Id).ExecuteDeleteAsync(cancellationToken);
+
+                // Their plan metadata would otherwise show a plan with nothing pending.
+                foreach (var other in await db.Goals.Where(g => replaced.Contains(g.Id)).ToListAsync(cancellationToken))
+                {
+                    other.MarkPlanOutdated(now);
+                }
             }
 
-            var now = clock.GetUtcNow();
             var rows = kept.Select(s => TrainingSuggestion.Create(currentUser.UserId, goal.Id, record.GenerationId, s, now)).ToList();
             db.TrainingSuggestions.AddRange(rows);
             goal.RecordPlan(record, now);
@@ -234,6 +242,11 @@ public sealed partial class TrainingPlanService(
             }
             catch (DbUpdateConcurrencyException)
             {
+                return new PlanGenerateOutcome(PlanGenerateStatus.Conflict);
+            }
+            catch (DbUpdateException ex) when (GoalWriteLock.IsForeignKeyViolation(ex))
+            {
+                // Safety net: the goal was deleted before the suggestion rows went in.
                 return new PlanGenerateOutcome(PlanGenerateStatus.Conflict);
             }
 

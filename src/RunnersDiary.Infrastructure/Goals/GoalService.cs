@@ -94,7 +94,7 @@ public sealed class GoalService(
                 return new GoalWriteResult(GoalWriteStatus.NotFound);
             }
 
-            var errors = GoalRules.Validate(values, today, goal.TargetDate, linked);
+            var errors = GoalRules.Validate(values, today, goal.TargetDate, linked, goal.RaceRunId);
             if (errors.Count > 0)
             {
                 return new GoalWriteResult(GoalWriteStatus.Invalid, Errors: errors);
@@ -132,6 +132,7 @@ public sealed class GoalService(
         await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            await GoalWriteLock.AcquireAsync(db, currentUser.UserId, cancellationToken);
             await db.Runs.Where(r => r.GoalId == id).ExecuteUpdateAsync(s => s.SetProperty(r => r.GoalId, (Guid?)null), cancellationToken);
             var deleted = await db.Goals.Where(g => g.Id == id).ExecuteDeleteAsync(cancellationToken);
             if (deleted == 0)

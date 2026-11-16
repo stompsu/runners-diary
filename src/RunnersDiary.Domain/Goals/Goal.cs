@@ -108,7 +108,7 @@ public sealed class Goal : IUserOwned
     public void Update(GoalValues values, DateOnly today, LinkedRaceRun? raceRun, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(values);
-        GoalRules.EnsureValid(values, today, TargetDate, raceRun);
+        GoalRules.EnsureValid(values, today, TargetDate, raceRun, RaceRunId);
 
         var planFieldChanged = Type != values.Type
             || TargetDate != values.TargetDate
