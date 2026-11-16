@@ -490,6 +490,7 @@ public sealed class GoalEndpointsTests(ContainersApiFactory factory)
             (HttpMethod.Put, $"/api/goals/{id}", Goal(g => { g["status"] = "Active"; g["version"] = "AAAA"; })),
             (HttpMethod.Delete, $"/api/goals/{id}", null),
             (HttpMethod.Post, "/api/goals/estimate", new { type = "Distance", distanceMeters = 10_000, targetDate = Ahead(60) }),
+            (HttpMethod.Post, $"/api/goals/{id}/plan", null),
             (HttpMethod.Get, $"/api/training-suggestions?from={Ahead(0)}&to={Ahead(10)}", null),
             (HttpMethod.Post, $"/api/training-suggestions/{id}/accept", null),
             (HttpMethod.Post, $"/api/training-suggestions/{id}/dismiss", null),

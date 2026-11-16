@@ -21,6 +21,7 @@ public static class GoalsEndpoints
         CreateGoal.Map(goals);
         UpdateGoal.Map(goals);
         DeleteGoal.Map(goals);
+        GenerateTrainingPlan.Map(goals);
 
         var suggestions = endpoints.MapGroup("/training-suggestions").WithTags("TrainingSuggestions").RequireGoalsEnabled();
         ListTrainingSuggestions.Map(suggestions);

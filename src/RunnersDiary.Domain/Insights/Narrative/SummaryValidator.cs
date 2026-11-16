@@ -326,7 +326,8 @@ public static class SummaryValidator
         return false;
     }
 
-    private static bool HasMarkup(string text)
+    /// <summary>The <c>markup</c> rule (ADR 0026 §3), shared with the plan validator (ADR 0040 §5).</summary>
+    internal static bool HasMarkup(string text)
     {
         if (text.Any(char.IsControl))
         {
@@ -342,7 +343,7 @@ public static class SummaryValidator
     }
 
     /// <summary>A deny-list entry: a word, a word prefix (<c>injur*</c>) or a phrase of words (<c>risk of</c>), case-insensitive.</summary>
-    private sealed record DenyPattern(string[] Words, bool Prefix)
+    internal sealed record DenyPattern(string[] Words, bool Prefix)
     {
         public static List<DenyPattern> ParseAll(IReadOnlyList<string> entries) =>
         [

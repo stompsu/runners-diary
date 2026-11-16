@@ -10,6 +10,11 @@ internal static class RepoPaths
     /// <summary>The copy next to the binaries (Infrastructure content items), as a host would read it.</summary>
     public static string PromptsInOutput => Path.Combine(AppContext.BaseDirectory, "prompts", "training-insights");
 
+    public static string PlanPrompts => Path.Combine(Root, "prompts", "training-plan");
+
+    /// <summary>The plan prompts as copied next to the binaries.</summary>
+    public static string PlanPromptsInOutput => Path.Combine(AppContext.BaseDirectory, "prompts", "training-plan");
+
     public static string DemoSeed => Path.Combine(Root, "seed", "demo");
 
     public static string TestsDirectory => Path.Combine(Root, "tests", "RunnersDiary.Ai.Tests");

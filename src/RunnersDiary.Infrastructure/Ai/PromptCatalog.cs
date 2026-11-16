@@ -119,7 +119,8 @@ public sealed class PromptCatalog
         return new PromptVersion(version, instructions, actual, policy);
     }
 
-    private static (int Version, string Body) SplitFrontMatter(string text)
+    /// <summary>The <c>version</c> of a prompt file's front matter and the instructions after it (shared with <see cref="PlanPromptCatalog"/>).</summary>
+    internal static (int Version, string Body) SplitFrontMatter(string text)
     {
         const string fence = "---\n";
         if (!text.StartsWith(fence, StringComparison.Ordinal))

@@ -73,7 +73,7 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
 
         Assert.False(off?.Goals.Enabled);
         Assert.True(enabled?.Goals.Enabled);
-        // Plan generation is not available until the generation endpoint exists (M9 step 5 wires Ai:Plan:Enabled).
+        // Plan generation also needs a model (none is configured here).
         Assert.False(off?.Ai.PlanGeneration);
         Assert.False(enabled?.Ai.PlanGeneration);
     }
@@ -238,6 +238,31 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
         Assert.Equal(new GpxClientConfig(20L * 1024 * 1024, 5L * 1024 * 1024), defaults);
         Assert.Equal(new GpxClientConfig(1000, 100), custom);
         Assert.Contains("\"gpx\":{\"maxFileBytesUser\":20971520,\"maxFileBytesGuest\":5242880}", raw, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Ai_plan_generation_needs_goals_a_model_and_both_switches()
+    {
+        static void Foundry(Microsoft.AspNetCore.Hosting.IWebHostBuilder b, string goals, string ai, string plan)
+        {
+            b.UseSetting("Ai:Provider", "Foundry");
+            b.UseSetting("Ai:Foundry:Endpoint", "https://example.invalid/");
+            b.UseSetting("Ai:Foundry:Deployment", "gpt-test");
+            b.UseSetting("Goals:Enabled", goals);
+            b.UseSetting("Ai:Enabled", ai);
+            b.UseSetting("Ai:Plan:Enabled", plan);
+        }
+
+        async Task<AiClientConfig?> Read(string goals, string ai, string plan)
+        {
+            using var host = factory.WithWebHostBuilder(b => Foundry(b, goals, ai, plan));
+            return (await host.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken))?.Ai;
+        }
+
+        Assert.Equal(new AiClientConfig(true, true), await Read("true", "true", "true"));
+        Assert.Equal(new AiClientConfig(true, false), await Read("true", "true", "false"));
+        Assert.Equal(new AiClientConfig(true, false), await Read("false", "true", "true"));
+        Assert.Equal(new AiClientConfig(false, false), await Read("true", "false", "true"));
     }
 
     [Fact]

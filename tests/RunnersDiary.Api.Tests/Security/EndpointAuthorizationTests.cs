@@ -74,6 +74,7 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
         ["GET /api/geocoding/search"] = "geocode",
         ["GET /api/maps/token"] = "maps-token",
         ["POST /api/insights/summary"] = "ai-summary",
+        ["POST /api/goals/{goalId:guid}/plan"] = "ai-plan",
     };
 
     private static string Key(RouteEndpoint e) =>
@@ -186,9 +187,15 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
             Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
         }
 
-        // Nothing else lives under these groups: a new route must be added to this list on purpose (the plan route joins it in a later step).
+        // The plan generation route exists, requires authorization and has its own limiter instead of the general one.
+        var plan = Assert.Single(endpoints, e => Key(e) == "POST /api/goals/{goalId:guid}/plan");
+        Assert.Null(plan.Metadata.GetMetadata<IAllowAnonymous>());
+        Assert.NotEmpty(plan.Metadata.GetOrderedMetadata<IAuthorizeData>());
+        Assert.Equal("ai-plan", plan.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+
+        // Nothing else lives under these groups: a new route must be added to this list on purpose.
         Assert.Equal(
-            expected.Length,
+            expected.Length + 1,
             endpoints.Count(e => Route(e).StartsWith("/api/goals", StringComparison.Ordinal) || Route(e).StartsWith("/api/training-suggestions", StringComparison.Ordinal)));
     }
 

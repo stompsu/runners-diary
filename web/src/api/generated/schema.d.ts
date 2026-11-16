@@ -478,6 +478,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/goals/{goalId}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generates (or regenerates) the AI-suggested trainings up to an active goal, at most 16 weeks ahead.
+         * @description The body is optional. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. 400 errors.goalId: the goal is not Active or is less than two days away. 422 insufficient-history: fewer than 3 completed runs in the last 84 days. 409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), 409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model, plans switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After). 502 plan-failed carries reason (invalidOutput, timeout, provider). The response is never cached.
+         */
+        post: operations["generateTrainingPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/training-suggestions": {
         parameters: {
             query?: never;
@@ -704,6 +724,9 @@ export interface components {
             compare?: null | string;
             lang?: null | string;
             regenerate?: boolean;
+        };
+        GenerateTrainingPlanRequest: {
+            replaceOtherGoals?: null | boolean;
         };
         /** @enum {unknown} */
         GenerationAvailabilityDto: "available" | "notConfigured" | "quotaExhausted" | "notNeeded";
@@ -1513,6 +1536,13 @@ export interface components {
         TrainingIntensity: "Recovery" | "Easy" | "Steady" | "Tempo" | "Threshold" | "Interval" | "RacePace" | "Rest";
         /** @enum {unknown} */
         TrainingPhase: "Base" | "Build" | "Peak" | "Taper";
+        TrainingPlanResponse: {
+            goal: components["schemas"]["GoalDto"];
+            suggestions: components["schemas"]["TrainingSuggestionDto"][];
+            /** Format: int32 */
+            droppedCount: number;
+            replacedGoalIds: string[];
+        };
         TrainingSuggestionDto: {
             /** Format: uuid */
             id: string;
@@ -3832,6 +3862,113 @@ export interface operations {
             };
             /** @description Too Many Requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    generateTrainingPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["GenerateTrainingPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

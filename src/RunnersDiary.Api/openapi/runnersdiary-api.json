@@ -2943,6 +2943,150 @@
         ]
       }
     },
+    "/api/goals/{goalId}/plan": {
+      "post": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "Generates (or regenerates) the AI-suggested trainings up to an active goal, at most 16 weeks ahead.",
+        "description": "The body is optional. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. 400 errors.goalId: the goal is not Active or is less than two days away. 422 insufficient-history: fewer than 3 completed runs in the last 84 days. 409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), 409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model, plans switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After). 502 plan-failed carries reason (invalidOutput, timeout, provider). The response is never cached.",
+        "operationId": "generateTrainingPlan",
+        "parameters": [
+          {
+            "name": "goalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateTrainingPlanRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/training-suggestions": {
       "get": {
         "tags": [
@@ -3863,6 +4007,18 @@
           },
           "regenerate": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenerateTrainingPlanRequest": {
+        "type": "object",
+        "properties": {
+          "replaceOtherGoals": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         },
         "additionalProperties": false
@@ -7119,6 +7275,38 @@
           "Peak",
           "Taper"
         ]
+      },
+      "TrainingPlanResponse": {
+        "required": [
+          "goal",
+          "suggestions",
+          "droppedCount",
+          "replacedGoalIds"
+        ],
+        "type": "object",
+        "properties": {
+          "goal": {
+            "$ref": "#/components/schemas/GoalDto"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrainingSuggestionDto"
+            }
+          },
+          "droppedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "replacedGoalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "additionalProperties": false
       },
       "TrainingSuggestionDto": {
         "required": [

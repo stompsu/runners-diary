@@ -75,7 +75,8 @@ public sealed class UnauthenticatedSweepTests(OfflineApiFactory factory) : IClas
         var routes = NonAllowlistedEndpoints().Select(d => d.Data).Where(d =>
             d.Item2.StartsWith("/api/goals", StringComparison.Ordinal) || d.Item2.StartsWith("/api/training-suggestions", StringComparison.Ordinal)).ToList();
 
-        Assert.Equal(9, routes.Count);
+        Assert.Equal(10, routes.Count);
+        Assert.Contains(routes, r => r.Item1 == "POST" && r.Item2.EndsWith("/plan", StringComparison.Ordinal));
     }
 
     [Theory]

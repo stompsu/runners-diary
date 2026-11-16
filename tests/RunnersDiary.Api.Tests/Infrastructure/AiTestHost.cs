@@ -74,6 +74,22 @@ internal sealed class ScriptedChatClient : IChatClient
         return this;
     }
 
+    /// <summary>Answers like <see cref="ReplyValid"/> (a summary or, for a plan request, a valid plan) after <paramref name="transform"/> rewrote the JSON.</summary>
+    public ScriptedChatClient ReplyValidTransformed(Func<string, string> transform)
+    {
+        Enqueue(async (messages, ct) =>
+        {
+            using var fake = new RuleBasedFakeChatClient();
+            var response = await fake.GetResponseAsync(messages, null, ct);
+            return new ChatResponse(new ChatMessage(ChatRole.Assistant, transform(response.Text)))
+            {
+                ModelId = "scripted-model",
+                Usage = new UsageDetails { InputTokenCount = 3000, OutputTokenCount = 2500 },
+            };
+        });
+        return this;
+    }
+
     /// <summary>Holds the next call until <paramref name="release"/> completes, then answers like <see cref="ReplyValid"/>.</summary>
     public ScriptedChatClient ReplyValidAfter(Task release)
     {
@@ -158,6 +174,8 @@ internal static class AiTestHost
         {
             builder.UseSetting("RateLimiting:AiSummary:UserPermitLimit", "1000");
             builder.UseSetting("RateLimiting:AiSummary:GuestPermitLimit", "1000");
+            builder.UseSetting("RateLimiting:AiPlan:UserPermitLimit", "1000");
+            builder.UseSetting("RateLimiting:AiPlan:GuestPermitLimit", "1000");
             if (client is not null)
             {
                 builder.UseSetting("Ai:Provider", "Foundry");

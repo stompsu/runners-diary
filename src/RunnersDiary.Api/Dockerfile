@@ -23,6 +23,7 @@ COPY seed/demo seed/demo
 COPY seed/races seed/races
 # Training Insights prompts, templates and demo fixtures are content of the Infrastructure project (ADR 0026 §6).
 COPY prompts/training-insights prompts/training-insights
+COPY prompts/training-plan prompts/training-plan
 
 # OpenApiGenerateDocuments=false: the committed OpenAPI document is produced (and checked) by the api-contract CI job;
 # generating it here would start the app during the image build.

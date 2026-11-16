@@ -62,9 +62,9 @@ public static class GetClientConfig
         return TypedResults.Ok(config with
         {
             Maps = config.Maps with { GeocodingEnabled = geocoder.IsAvailable },
-            // Read per request so the Ai:Enabled kill switch shows up without a restart (within the 5-minute client cache).
-            // PlanGeneration stays false until the plan endpoint exists (M9 step 5 adds the Ai:Plan:Enabled switch: goals on && model available && plan switch on).
-            Ai = new AiClientConfig(ai.CurrentValue.GenerationAvailable, PlanGeneration: false),
+            // Read per request so the Ai:Enabled and Ai:Plan:Enabled kill switches show up without a restart (within the 5-minute client cache).
+            // Plans need the goals feature, a model and the plan switch.
+            Ai = new AiClientConfig(ai.CurrentValue.GenerationAvailable, goals.CurrentValue.Enabled && ai.CurrentValue.PlanGenerationAvailable),
             // Read per request, like the AI switch; the sources are a static registry (real sources only, never the synthetic demo).
             Races = new RacesClientConfig(races.CurrentValue.Enabled, config.Races.Sources),
             Goals = new GoalsClientConfig(goals.CurrentValue.Enabled),
