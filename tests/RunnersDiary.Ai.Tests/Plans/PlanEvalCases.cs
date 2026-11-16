@@ -34,6 +34,7 @@ internal static class PlanEvalCases
     public const string TaperOnly = "goal-3-weeks-taper-only";
     public const string Collisions = "collisions-with-planned-runs";
     public const string CappedHorizon = "capped-horizon-30-weeks";
+    public const string DenseDiary = "dense-diary-like-demo";
 
     private static readonly DateOnly Today = PlanSheets.Today;
 
@@ -205,7 +206,39 @@ internal static class PlanEvalCases
             },
             (plan, sheet) => Assert.All(plan.Kept, s => Assert.True(s.Date <= sheet.Envelope.PlanEnd)));
 
-        return [halfCase, tenKCase, trailCase, closeCase, collisionCase, cappedCase];
+        // 7. The guest demo diary (runs.json + planned runs and Body Bar classes in the next weeks) with the demo trail goal 10 weeks out: weeks +1 to +5
+        // are mostly full of fixed planned runs, so a model that adds sessions as usual goes over the weekly session limit (G-P4 live finding, repaired).
+        var denseSheet = DemoTrainingPlanFixtureTests.DemoSheet(Today);
+        var denseCase = new PlanEvalCase(
+            DenseDiary,
+            denseSheet,
+            sheet =>
+            {
+                var e = sheet.Envelope;
+                Assert.Equal(Surface.Trail, sheet.Goal.Surface);
+                Assert.Equal(11, e.Weeks.Count);
+                Assert.Contains(e.Weeks.Take(5), w => w.FixedRunningSessions >= e.MaxSessionsPerWeek - 1);
+            },
+            (draft, sheet) =>
+            {
+                var sessions = draft.Sessions.ToList();
+                sessions.Add(sessions[^1] with { Date = D(sheet.Envelope.PlanEnd.AddDays(1)) });
+                return (draft with { Sessions = sessions }, PlanRuleCode.DateRange);
+            },
+            (plan, sheet) =>
+            {
+                var e = sheet.Envelope;
+                foreach (var w in e.Weeks)
+                {
+                    var running = plan.Kept.Count(s => s.Intensity != TrainingIntensity.Rest && s.Date >= w.Start && s.Date <= w.Start.AddDays(6));
+                    Assert.True(w.FixedRunningSessions + running <= e.MaxSessionsPerWeek, $"{w.Start}: {w.FixedRunningSessions} + {running} > {e.MaxSessionsPerWeek}");
+                }
+
+                var blocked = TrainingPlanValidator.BlockedDates(sheet.Commitments);
+                Assert.DoesNotContain(plan.Kept, s => blocked.Contains(s.Date));
+            });
+
+        return [halfCase, tenKCase, trailCase, closeCase, collisionCase, cappedCase, denseCase];
     }
 
     public static bool InWeek(DraftSession session, PlanWeek week) => Date(session.Date) is var d && d >= week.Start && d <= week.Start.AddDays(6);

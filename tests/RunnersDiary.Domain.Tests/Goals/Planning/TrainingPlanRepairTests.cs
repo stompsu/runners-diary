@@ -93,4 +93,107 @@ public sealed class TrainingPlanRepairTests
         Assert.Empty(result.Repairs);
         Assert.Equal(sessions, result.Sessions);
     }
+
+    /// <summary>A week at the session limit: <paramref name="fixedSessions"/> planned runs plus the given suggestions (day offset, intensity, distance).</summary>
+    private static (PlanFactSheet Sheet, PlanWeek Week, List<PlannedSession> Sessions) Crowded(int fixedSessions, params (int Day, TrainingIntensity Intensity, double Meters)[] suggestions)
+    {
+        var commitments = Enumerable.Range(0, fixedSessions)
+            .Select(i => new CommitmentFact(new DateOnly(2026, 11, 30).AddDays(i * 2), 20, 5_000, null, CommitmentKind.Planned, false)).ToList();
+        var sheet = TrainingPlanValidatorTests.Sheet(commitments);
+        var week = sheet.Envelope.Weeks.Single(w => w.Start == new DateOnly(2026, 11, 30));
+        var sessions = suggestions.Select(x => Session(week.Start.AddDays(x.Day), x.Meters, intensity: x.Intensity, phase: week.Phase)).ToList();
+        return (sheet, week, sessions);
+    }
+
+    [Fact]
+    public void An_over_full_week_loses_recovery_first_then_easy_then_other_non_hard_then_hard_and_later_dates_first()
+    {
+        // 3 sessions a week history: at most 4. One fixed run leaves room for 3 suggestions, so 5 suggestions are 2 over.
+        var (sheet, week, sessions) = Crowded(
+            1,
+            (1, TrainingIntensity.Easy, 6_000), (3, TrainingIntensity.Recovery, 4_000), (5, TrainingIntensity.Easy, 5_000), (6, TrainingIntensity.Interval, 6_000), (0, TrainingIntensity.Steady, 7_000));
+        Assert.Equal(4, sheet.Envelope.MaxSessionsPerWeek);
+        Assert.Equal(1, week.FixedRunningSessions);
+
+        var result = TrainingPlanRepair.Apply(sessions, sheet);
+
+        // Dropped: the recovery run (Thu) and the later easy run (Sat). The longest (Steady, Mon 7,000 m) is protected anyway.
+        Assert.Equal(2, result.Dropped);
+        Assert.Equal([week.Start, week.Start.AddDays(1), week.Start.AddDays(6)], result.Sessions.Select(s => s.Date));
+        Assert.Equal(new PlanRepair(PlanRuleCode.Frequency, "2026-11-30", PlanRepairAction.Drop, 5, 3), Assert.Single(result.Repairs));
+    }
+
+    [Fact]
+    public void Hard_sessions_go_after_the_non_hard_ones_and_the_longest_run_is_protected()
+    {
+        // Limit 4 with 2 fixed runs: room for 2. Four suggestions: easy 9,000 (the longest), steady, tempo, interval.
+        var (sheet, week, sessions) = Crowded(
+            2, (0, TrainingIntensity.Easy, 9_000), (2, TrainingIntensity.Steady, 5_000), (4, TrainingIntensity.Tempo, 4_000), (6, TrainingIntensity.Interval, 3_000));
+
+        var result = TrainingPlanRepair.Apply(sessions, sheet);
+
+        // Steady goes first, then the later hard session (interval, Sun); the longest easy run and the tempo stay.
+        Assert.Equal([week.Start, week.Start.AddDays(4)], result.Sessions.Select(s => s.Date));
+        Assert.Equal(2, result.Dropped);
+    }
+
+    [Fact]
+    public void The_longest_run_is_kept_while_any_other_candidate_exists_even_when_it_is_recovery()
+    {
+        var (sheet, week, sessions) = Crowded(
+            2, (0, TrainingIntensity.Recovery, 12_000), (2, TrainingIntensity.Interval, 5_000), (4, TrainingIntensity.Tempo, 4_000));
+
+        var result = TrainingPlanRepair.Apply(sessions, sheet);
+
+        Assert.Equal(1, result.Dropped);
+        Assert.Contains(result.Sessions, s => s.Date == week.Start);
+        Assert.DoesNotContain(result.Sessions, s => s.Date == week.Start.AddDays(4));
+    }
+
+    [Fact]
+    public void A_week_full_of_fixed_runs_loses_every_suggestion_without_becoming_an_empty_week_violation()
+    {
+        var (sheet, week, sessions) = Crowded(4, (1, TrainingIntensity.Easy, 5_000), (3, TrainingIntensity.Easy, 6_000));
+        Assert.Equal(4, week.FixedRunningSessions);
+        var all = new List<PlannedSession>(sessions);
+
+        var result = TrainingPlanRepair.Apply(all, sheet);
+
+        Assert.Empty(result.Sessions);
+        Assert.Equal(2, result.Dropped);
+        Assert.Equal(new PlanRepair(PlanRuleCode.Frequency, "2026-11-30", PlanRepairAction.Drop, 2, 0), Assert.Single(result.Repairs));
+    }
+
+    [Fact]
+    public void Rest_sessions_are_not_running_sessions_and_stay()
+    {
+        var (sheet, week, sessions) = Crowded(1, (0, TrainingIntensity.Easy, 5_000), (2, TrainingIntensity.Easy, 5_500), (4, TrainingIntensity.Easy, 6_000));
+        var rest = new PlannedSession(week.Start.AddDays(5), TrainingSuggestion.RestRunTypeId, null, null, TrainingIntensity.Rest, null, null, "Rest.", week.Phase);
+
+        var result = TrainingPlanRepair.Apply([.. sessions, rest], sheet);
+
+        Assert.Empty(result.Repairs); // 1 fixed + 3 running = 4 = the limit
+        Assert.Contains(result.Sessions, s => s.Intensity == TrainingIntensity.Rest);
+
+        var over = TrainingPlanRepair.Apply([.. sessions, sessions[0] with { Date = week.Start.AddDays(6) }, rest], sheet);
+        Assert.Equal(1, over.Dropped);
+        Assert.Contains(over.Sessions, s => s.Intensity == TrainingIntensity.Rest);
+    }
+
+    [Fact]
+    public void Frequency_repair_is_idempotent_and_runs_before_volume_scaling()
+    {
+        var (sheet, week, _) = Crowded(1);
+        // Five easy runs of equal length: 2 over the limit. After dropping 2 the 3 remaining fit the cap, so no volume scaling is needed.
+        var each = Math.Floor(week.AvailableDistanceMeters * 0.3 / 100) * 100;
+        var sessions = Enumerable.Range(0, 5).Select(i => Session(week.Start.AddDays(i * 7 / 5 + (i % 2)), each, phase: week.Phase)).Select((s, i) => s with { Date = week.Start.AddDays(i + (i > 2 ? 1 : 0)) }).ToList();
+
+        var first = TrainingPlanRepair.Apply(sessions, sheet);
+
+        Assert.Equal(2, first.Dropped);
+        Assert.DoesNotContain(first.Repairs, r => r.Rule == PlanRuleCode.WeeklyVolume);
+        var second = TrainingPlanRepair.Apply(first.Sessions, sheet);
+        Assert.Empty(second.Repairs);
+        Assert.Equal(first.Sessions, second.Sessions);
+    }
 }

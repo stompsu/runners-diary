@@ -496,7 +496,7 @@ public sealed class TrainingPlanValidatorTests
     }
 
     [Fact]
-    public void More_sessions_than_max_sessions_per_week_with_the_fixed_ones_is_frequency()
+    public void More_sessions_than_max_sessions_per_week_with_the_fixed_ones_are_dropped_as_a_frequency_repair()
     {
         // History of 3 sessions a week: at most 4. Week 2 already has a planned run, so 4 suggestions make 5.
         var commitment = new CommitmentFact(new DateOnly(2026, 11, 26), 20, 5_000, null, CommitmentKind.Planned, false);
@@ -505,7 +505,11 @@ public sealed class TrainingPlanValidatorTests
         var sessions = Good(sheet).Where(s => s.Date != "2026-11-24" && s.Date != "2026-11-29").ToList();
         sessions.AddRange(FrequencyDays.Select(i => new DraftSession(D(week.Start.AddDays(i)), "easy", "easy", "base", 3_000, null, null, null, "Easy run.")));
 
-        AssertOnly(Validate(sheet, sessions), PlanRuleCode.Frequency, "2026-11-23");
+        // Repaired: the excess session is dropped and counted, the plan stays valid.
+        var result = Validate(sheet, sessions);
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal(1, result.DroppedCount);
+        Assert.Equal(new PlanRepair(PlanRuleCode.Frequency, "2026-11-23", PlanRepairAction.Drop, 4, 3), Assert.Single(result.Repairs));
         Assert.True(Validate(sheet, sessions.Where(s => s.Date != "2026-11-23")).IsValid);
     }
 

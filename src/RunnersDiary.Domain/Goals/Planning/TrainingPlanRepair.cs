@@ -6,7 +6,7 @@ namespace RunnersDiary.Domain.Goals.Planning;
 /// The deterministic repair step between parsing and the plan-level verdict (ADR 0040 amendment "repair"). Local, mechanical issues never fail a
 /// plan; each repair only makes the plan easier or safer, and everything else stays a violation (retry, then <c>plan-failed</c>).
 /// <para>Order: <c>phase</c> set from the envelope week; item-level drops of hard sessions in the quiet window (<c>taperIntensity</c>) and of
-/// too-fast targets (<c>pace</c>); <c>longRun</c> clamp; <c>weeklyVolume</c> scale. (The pace-spread clamp happens while a session is converted, in
+/// too-fast targets (<c>pace</c>), then the <c>frequency</c> drops of an over-full week; <c>longRun</c> clamp; <c>weeklyVolume</c> scale. (The pace-spread clamp happens while a session is converted, in
 /// <see cref="TrainingPlanValidator"/>.) Long runs are clamped before the weekly sum is judged, so a week that overshoots only because of one long run
 /// can be rescued. A volume or long-run overshoot of more than <see cref="MaxRepairedOvershoot"/> above the tolerant cap is not repaired. A repair that
 /// would push a session out of its own range (distance below 1,000 m, duration below 10 min, implied pace out of bounds) is skipped, so the
@@ -55,6 +55,37 @@ public static class TrainingPlanRepair
             }
 
             result.Add(s);
+        }
+
+        // 4b. frequency: drop the excess running sessions of an over-full week (fixed commitments + suggestions above MaxSessionsPerWeek).
+        foreach (var week in envelope.Weeks)
+        {
+            var sunday = week.Start.AddDays(6);
+            var running = result.Where(s => s.Intensity != TrainingIntensity.Rest && s.Date >= week.Start && s.Date <= sunday).ToList();
+            var excess = week.FixedRunningSessions + running.Count - envelope.MaxSessionsPerWeek;
+            if (running.Count == 0 || excess <= 0)
+            {
+                continue;
+            }
+
+            // The longest run (earliest on equal distance) goes last; the rest by priority: recovery, easy, other non-hard, hard; later date first.
+            var longest = running.OrderByDescending(s => s.DistanceMeters ?? 0).ThenBy(s => s.Date).First();
+            var order = running.Where(s => !ReferenceEquals(s, longest))
+                .OrderBy(s => s.Intensity switch
+                {
+                    TrainingIntensity.Recovery => 0,
+                    TrainingIntensity.Easy => 1,
+                    _ when !s.Intensity.IsHard() => 2,
+                    _ => 3,
+                })
+                .ThenByDescending(s => s.Date)
+                .Append(longest)
+                .Take(excess)
+                .ToList();
+            var gone = new HashSet<PlannedSession>(order, ReferenceEqualityComparer.Instance);
+            result.RemoveAll(gone.Contains);
+            dropped += order.Count;
+            repairs.Add(new PlanRepair(PlanRuleCode.Frequency, TrainingPlanValidator.Format(week.Start), PlanRepairAction.Drop, running.Count, running.Count - order.Count));
         }
 
         // 5a. longRun: clamp one session to the week's cap.
