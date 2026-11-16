@@ -19,11 +19,13 @@ public sealed class ScriptedChatClient : IChatClient
 
     public int CallCount => Requests.Count;
 
-    public ScriptedChatClient Reply(string text, int inputTokens = 1000, int outputTokens = 300, string modelId = "scripted-model")
+    public ScriptedChatClient Reply(
+        string text, int inputTokens = 1000, int outputTokens = 300, string modelId = "scripted-model", ChatFinishReason? finishReason = null)
     {
         _steps.Enqueue(_ => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, text))
         {
             ModelId = modelId,
+            FinishReason = finishReason,
             Usage = new UsageDetails { InputTokenCount = inputTokens, OutputTokenCount = outputTokens },
         }));
         return this;

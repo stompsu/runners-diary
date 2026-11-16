@@ -92,11 +92,13 @@ public sealed class TrainingPlanAgent
         var messages = BuildMessages(factSheetJson, language, rejected);
         var response = await _agent.RunAsync(messages, session: null, options: new ChatClientAgentRunOptions(CreateChatOptions(_options)), cancellationToken);
         var usage = response.Usage;
+        var raw = response.RawRepresentation as ChatResponse;
         return new AgentAttempt(
             response.Text,
             ToInt(usage?.InputTokenCount),
             ToInt(usage?.OutputTokenCount),
-            (response.RawRepresentation as ChatResponse)?.ModelId);
+            raw?.ModelId,
+            raw?.FinishReason?.Value);
     }
 
     /// <summary>Run options per call: the plan output cap, reasoning effort, strict structured output. No temperature (reasoning models).</summary>

@@ -118,7 +118,19 @@ public sealed class TrainingPlanAgentTests
         Assert.True(jsonSchema.GetProperty("strict").GetBoolean());
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(AdrSchema), JsonNode.Parse(jsonSchema.GetProperty("schema").GetRawText())));
         Assert.Equal(2, root.GetProperty("messages").GetArrayLength());
-        Assert.Equal((9_000, 4_200), (attempt.InputTokens, attempt.OutputTokens));
+        Assert.Equal((9_000, 4_200, "stop"), (attempt.InputTokens, attempt.OutputTokens, attempt.FinishReason));
+    }
+
+    [Fact]
+    public async Task A_completion_cut_at_the_token_cap_reports_the_length_finish_reason()
+    {
+        using var transport = new CapturingTransport().RespondCompletion("{\"notes\":\"cut", 9_000, 8_000, finishReason: "length");
+        var client = ChatClientFactory.Wrap(ChatClientFactory.CreateFoundryClient(FoundryOptions, new RecordingCredential(), transport.Transport), NullLoggerFactory.Instance);
+        var agent = new TrainingPlanAgent(client, PlanPromptCatalog.Load(RepoPaths.PlanPromptsInOutput).Current, FoundryOptions.Plan);
+
+        var attempt = await agent.RunAsync(PlanFactSheetJson.ToJson(Sheet), "en", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(("length", 8_000), (attempt.FinishReason, attempt.OutputTokens));
     }
 
     [Fact]

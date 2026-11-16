@@ -147,7 +147,10 @@ public sealed record AiRunSettings(int MaxAttempts, TimeSpan AttemptTimeout, Tim
 public sealed record AiAttemptResult<T>(int InputTokens, int OutputTokens, string? ModelId, T? Value, IReadOnlyList<string> RejectedCodes)
     where T : class;
 
-/// <summary>The outcome of <see cref="AiGenerationRunner.RunAsync"/>. On success <see cref="Value"/> is set and the usage is the sum over all attempts.</summary>
+/// <summary>
+/// The outcome of <see cref="AiGenerationRunner.RunAsync"/>. On success <see cref="Value"/> is set and the usage is the sum over all attempts;
+/// a <see cref="GenerationStatus.Failed"/> run also carries its attempts and the usage that came back (for diagnostics only, never sent to clients).
+/// </summary>
 public sealed record AiRunResult<T>(
     GenerationStatus Status,
     T? Value = null,
@@ -318,14 +321,18 @@ public sealed partial class AiGenerationRunner(
             return new AiRunResult<T>(GenerationStatus.Unavailable);
         }
 
+        // A failed run carries its usage too (in-process diagnostics, e.g. the live eval's cost); callers map only status and reason to the API.
+        AiRunResult<T> Failed(GenerationFailure failure) =>
+            new(GenerationStatus.Failed, Attempts: attempts, InputTokens: inputTokens, OutputTokens: outputTokens, ModelId: modelId, Failure: failure);
+
         return outcome switch
         {
             AiGenerationOutcome.Succeeded => new AiRunResult<T>(
                 GenerationStatus.Succeeded, value, attempts, inputTokens, outputTokens, modelId, clock.GetUtcNow()),
             AiGenerationOutcome.Throttled => new AiRunResult<T>(GenerationStatus.Busy, RetryAfter: retryAfter),
-            AiGenerationOutcome.Timeout => new AiRunResult<T>(GenerationStatus.Failed, Failure: GenerationFailure.Timeout),
-            AiGenerationOutcome.ProviderError => new AiRunResult<T>(GenerationStatus.Failed, Failure: GenerationFailure.Provider),
-            _ => new AiRunResult<T>(GenerationStatus.Failed, Failure: GenerationFailure.InvalidOutput),
+            AiGenerationOutcome.Timeout => Failed(GenerationFailure.Timeout),
+            AiGenerationOutcome.ProviderError => Failed(GenerationFailure.Provider),
+            _ => Failed(GenerationFailure.InvalidOutput),
         };
     }
 
