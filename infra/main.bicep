@@ -72,6 +72,12 @@ param raceImportRunningLife string = 'false'
 param raceImportCron string = '25 3 * * 1'
 @description('Races__Enabled on the api app: feeds client-config races.enabled (the Races UI). azd env RACES_UI_ENABLED.')
 param racesUiEnabled string = 'false'
+
+// ---- Adaptive training plan (M9, ADR 0040). Strings because azd parameter files substitute text. ----
+@description('Goals__Enabled on the api app: feeds client-config goals.enabled (Goals UI, goals and suggestions endpoints). azd env PLANS_UI_ENABLED.')
+param plansUiEnabled string = 'false'
+@description('Ai__Plan__Enabled on the api app: plan-only AI kill switch on top of Ai__Enabled. Stays false until the live eval (gate G-P4). azd env PLANS_AI_ENABLED.')
+param plansAiEnabled string = 'false'
 param githubRepository string = 'stompsu/runners-diary'
 param githubEnvironment string = 'prod'
 
@@ -99,6 +105,8 @@ var aiEnabledValue = toLower(aiEnabled) == 'true' ? 'true' : 'false'
 var raceImportEnabledValue = toLower(raceImportEnabled) == 'true' ? 'true' : 'false'
 var raceImportRunningLifeValue = toLower(raceImportRunningLife) == 'true' ? 'true' : 'false'
 var racesUiEnabledValue = toLower(racesUiEnabled) == 'true' ? 'true' : 'false'
+var plansUiEnabledValue = toLower(plansUiEnabled) == 'true' ? 'true' : 'false'
+var plansAiEnabledValue = toLower(plansAiEnabled) == 'true' ? 'true' : 'false'
 var entraEnabled = !empty(entraTenantId) && !empty(entraTenantSubdomain) && !empty(entraApiClientId)
 var cspEntraHost = empty(entraTenantSubdomain) ? '' : 'https://${entraTenantSubdomain}.ciamlogin.com'
 var cspMapHosts = displayEnabled
@@ -262,6 +270,7 @@ var sharedApiEnv = concat(
     { name: 'ForwardedHeaders__KnownIPNetworks__1', value: '::/0' }
     { name: 'Ai__Provider', value: 'Foundry' }
     { name: 'Ai__Enabled', value: aiEnabledValue }
+    { name: 'Ai__Plan__Enabled', value: plansAiEnabledValue }
     { name: 'Ai__Foundry__Endpoint', value: foundry.outputs.openAiEndpoint }
     { name: 'Ai__Foundry__Deployment', value: foundry.outputs.deploymentName }
     { name: 'Ai__Foundry__ManagedIdentityClientId', value: identities.outputs.apiClientId }
@@ -291,6 +300,7 @@ var apiOnlyEnv = concat(
     { name: 'OTEL_SERVICE_NAME', value: 'api' }
     { name: 'Auth__Entra__Enabled', value: entraEnabled ? 'true' : 'false' }
     { name: 'Races__Enabled', value: racesUiEnabledValue }
+    { name: 'Goals__Enabled', value: plansUiEnabledValue }
   ],
   entraEnabled
     ? [

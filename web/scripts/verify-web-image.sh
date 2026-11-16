@@ -23,6 +23,11 @@ header() { # header <name> from a dump on stdin: the first value, or empty
 curl -sS -o "$work/slow.json" -w '%{http_code}' --max-time 130 "$base/api/slow?delay=90000" > "$work/slow.code" 2> "$work/slow.err" &
 slow_pid=$!
 
+# Plan generation route (200 s limit): a 150 s response must pass, which the generic 120 s /api limit would cut.
+curl -sS -o "$work/plan.json" -w '%{http_code}' --max-time 190 -X POST \
+  "$base/api/goals/3fa85f64-5717-4562-b3fc-2c963f66afa6/plan?delay=150000" > "$work/plan.code" 2> "$work/plan.err" &
+plan_pid=$!
+
 # ---- headers on the SPA entry points ----
 for path in / /diary/2026/11 /index.html; do
   h="$(headers_of "$base$path")"
@@ -111,6 +116,21 @@ if wait "$slow_pid" && [ "$(cat "$work/slow.code")" = "200" ]; then
   ok "a 90 s upstream response is not cut (proxy_read_timeout 120 s)"
 else
   fail "the 90 s delayed response was cut: code $(cat "$work/slow.code" 2>/dev/null) $(cat "$work/slow.err" 2>/dev/null)"
+fi
+
+# The plan route keeps the security headers (a location with its own add_header drops the inherited ones) and passes the API's.
+h="$(headers_of -X POST "$base/api/goals/3fa85f64-5717-4562-b3fc-2c963f66afa6/plan")"
+[ "$(printf '%s' "$h" | header cache-control)" = "private, no-store" ] || fail "the plan route does not pass the API's Cache-Control"
+case "$(printf '%s' "$h" | header content-security-policy)" in *"frame-ancestors 'none';"*) ;; *) fail "the plan route lost the CSP" ;; esac
+[ "$(printf '%s' "$h" | header cross-origin-opener-policy)" = "same-origin" ] || fail "the plan route lost COOP"
+[ "$(printf '%s' "$h" | header strict-transport-security)" = "max-age=31536000" ] || fail "the plan route lost HSTS"
+[ "$(printf '%s' "$h" | header referrer-policy)" = "strict-origin-when-cross-origin" ] || fail "the plan route lost Referrer-Policy"
+[ "$(printf '%s' "$h" | grep -ic '^x-content-type-options:')" = "1" ] || fail "X-Content-Type-Options is missing or duplicated on the plan route"
+ok "the plan route carries the security headers once and passes the API's Cache-Control"
+if wait "$plan_pid" && [ "$(cat "$work/plan.code")" = "200" ]; then
+  ok "a 150 s response on POST /api/goals/<id>/plan is not cut (proxy_read_timeout 200 s)"
+else
+  fail "the 150 s plan response was cut: code $(cat "$work/plan.code" 2>/dev/null) $(cat "$work/plan.err" 2>/dev/null)"
 fi
 
 if [ "$failures" -gt 0 ]; then echo "$failures check(s) failed" >&2; exit 1; fi
