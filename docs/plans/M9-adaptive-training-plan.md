@@ -358,9 +358,9 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 
 ### 6.1 Part A: offline (each step = one reviewable commit on `m9-adaptive-training-plan`)
 
-1. [ ] **backend-dotnet (+ qa-tester): Domain goals.** `Goals/` (rules, term, predictor, estimator) and `Goals/Planning/` envelope, fact sheet, suggestion entity, with hand-computed unit tests (§9). No API change.
-2. [ ] **backend-dotnet: persistence.** Configurations, migration `TrainingGoals`, `Run.GoalId`, `AiGeneration.Feature`; **verify the ⚠ of ADR 0039 §3 first** on Testcontainers SQL (guest delete with mutual links); `DeleteRun` clear; AppHost `Goals__Enabled=true`.
-3. [ ] **backend-dotnet: endpoints.** Goals CRUD + estimate, suggestions list/accept/dismiss, `RunDto.goalId`, client-config, problem types; OpenAPI → `npm --prefix web run generate:api`; Api.Tests (validation matrix, isolation, inventory, cascades, caps).
+1. [x] **backend-dotnet (+ qa-tester): Domain goals.** `Goals/` (rules, term, predictor, estimator) and `Goals/Planning/` envelope, fact sheet, suggestion entity, with hand-computed unit tests (§9). No API change.
+2. [x] **backend-dotnet: persistence.** Configurations, migration `TrainingGoals`, `Run.GoalId`, `AiGeneration.Feature`; **verify the ⚠ of ADR 0039 §3 first** on Testcontainers SQL (guest delete with mutual links); `DeleteRun` clear; AppHost `Goals__Enabled=true`.
+3. [x] **backend-dotnet: endpoints.** Goals CRUD + estimate, suggestions list/accept/dismiss, `RunDto.goalId`, client-config, problem types; OpenAPI → `npm --prefix web run generate:api`; Api.Tests (validation matrix, isolation, inventory, cascades, caps).
 4. [ ] **ai-insights: shared runner refactor.** `AiGenerationRunner`, ledger `Feature` + weighted global sum, guard per (feature, user), client network timeout. **All existing Ai.Tests and Api.Tests pass with their assertions unchanged.**
 5. [ ] **ai-insights: plan generation.** Prompt v1 + manifest, `TrainingPlanAgent`, `TrainingPlanValidator`, parsing, `TrainingPlanService`, `generateTrainingPlan` endpoint, `ai-plan` policy, fake plan mode, the demo fixture `seed/demo/training-plan.json` with its every-today test, eval cases (CI mode); OpenAPI regenerated.
 6. [ ] **backend-dotnet: demo seed.** Demo goal + suggestions in `DemoDataSeeder`, `DemoTrainingPlan` startup check; Api.Tests (fresh guest sees the demo plan, AC6).
@@ -446,6 +446,8 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 **Manual (G-P2/G-P4):** VoiceOver over a cell with suggestions; phone Safari; one real generation reviewed by the user for plausibility.
 
 ## 10. Open questions (recommended defaults in bold; the plan proceeds with them unless the user objects)
+
+**Confirmed by the user 2026-11-16: all recommended defaults below.**
 
 1. **Timeout handling:** **nginx per-route 200 s for the plan POST** (one config line), or asynchronous generation (202 + polling; more code), or a 1-attempt plan within 120 s.
 2. **Global budget weighting:** **plan attempts weigh 3 in the shared global budget** (keeps today's dollar ceiling), or unweighted sharing (ceiling up to ≈ $8.8/day), or a separate plan budget.
