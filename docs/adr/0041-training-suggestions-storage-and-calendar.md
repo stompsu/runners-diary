@@ -1,6 +1,6 @@
 # 0041 – Training suggestions: storage, accept/dismiss/regenerate, and the calendar display
 
-**Status:** Accepted (M9 plan approved 2026-11-16)
+**Status:** Accepted (M9 plan approved 2026-11-16; amended 2026-11-16 after the implementation and the review, see the end)
 **Date:** 2026-11-16
 **Related:** [0010](0010-current-user-and-data-scoping.md), [0013](0013-persistence-model-and-migrations.md), [0016](0016-calendar-grid-and-url-state.md) (grid, a11y), [0018](0018-run-forms-and-server-errors.md) (run form), [0028](0028-summary-cache-quotas-and-demo-summaries.md) §5 (demo precedent), [0036](0036-race-catalogue-model-and-race-runs.md) §5 (proposal → run precedent), [0037](0037-race-proposals-filtering-and-state.md) §4 (separate range endpoint), [0039](0039-training-goals-and-realistic-target-estimate.md), [0040](0040-training-plan-generation.md), [M9 plan](../plans/M9-adaptive-training-plan.md)
 
@@ -78,6 +78,17 @@ The diary reads suggestions with a separate range query, **`GET /api/training-su
 - **Suggestions inside `getCalendarMonth`:** the ADR 0037 §4 reasoning applies (hot endpoint, separate invalidation). Rejected.
 - **Server-side toggle** (a column on `Users` or `Goals`): a migration for a display preference. Rejected for M9; easy to add later.
 - **Demo suggestions computed on read** (M6 style): they would not support accept/dismiss. Rejected.
+
+## Amendment (2026-11-16, implementation and review)
+
+The decision stands, with these refinements. As built in `Infrastructure/Goals/` and the SPA (`web/src/features/calendar`, `features/goals`, `features/runs/RunFormPanels.tsx`; M9 plan §11.4–§11.5, review §12 L1 and L4):
+1. **Accept and dismiss under concurrency (§2; review L1).** Accept runs in one transaction under the per-user `GoalWriteLock` (shared with goal delete and plan commit) and reads the suggestion under the lock. A suggestion removed meanwhile (a concurrent accept, regenerate or goal delete) answers **404**, also when the run insert hits the goal FK (SQL 547 safety net). Dismiss takes no lock; a dismiss whose row was removed meanwhile (optimistic concurrency) also answers **404**.
+2. **Goal markers ignore the toggle (§4).** "Show suggestions" hides **suggestion bubbles and dots only**; goal markers always show (they come from `listGoals`, not the suggestions range). The Day panel lists suggestions regardless of the toggle, as decided.
+3. **"Suggested" badge (§4).** The text badge is shown from the `lg` breakpoint up. Between `sm` and `lg` the bubble is identified by the hatching and the `Sparkles` icon; below `sm` the phone dot is the sparkles glyph. The legend explains both, so the shape-and-icon rule (WCAG 1.4.1) still holds.
+4. **Edit & accept (§4).** The panel finds the suggestion in the month's grid-range list (there is no get-one endpoint; `includeDismissed: true`) and shows "no longer available" when it is gone. The run form submits through `acceptTrainingSuggestion` with `{ run }` and then opens the new run in place of the panel.
+5. **Goals page reads (§4).** A goal's suggestions are read as two consecutive 92-day ranges from today (about 26 weeks), because a plan can reach 112 days and the list endpoint spans at most 92.
+6. **Cancel (review L4).** Cancel aborts the request. If the abort reaches the server during the model call, nothing is stored, but the generation still counts toward the plan quota (a `Cancelled` ledger row). If the model had already answered, the server still commits the plan (ADR 0040 amendment §4). The SPA therefore says that cancelling does not give the generation back, says that a finished plan "will appear shortly", and refreshes the goal and the suggestions after cancel.
+7. **Demo plan (§5).** The demo goal (Sunday of week +10) is 70–76 days away, so it is always Short-term. Seeding does not depend on `Goals:Enabled`. A demo plan that does not validate at seed time is skipped with a warning (the guest gets the diary without the goal); the startup check `DemoTrainingPlanStartupCheck` fails the host instead.
 
 ## References
 

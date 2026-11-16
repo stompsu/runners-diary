@@ -1,6 +1,6 @@
 # M9 – Adaptive training plan: plan
 
-**Status:** Approved 2026-11-16 (outline and all four §7 defaults approved by the user on 2026-11-16; this plan turns the outline into contracts). **Part A in progress** on `m9-adaptive-training-plan`. Part B (gates G-P1…G-P4, §6.2) needs the user's explicit "yes" per gate.
+**Status:** Approved 2026-11-16 (outline and all four §7 defaults approved by the user on 2026-11-16; this plan turns the outline into contracts). **Part A implemented 2026-11-16** on `m9-adaptive-training-plan` (steps 1–11, reviewed: §12); **awaiting user approval**. Deviations: §11; follow-ups: §13. **Part B (gates G-P1…G-P4, §6.2) not started**; each gate needs the user's explicit "yes".
 **Builds on:**
 - M2/M3: `Runs`, run types, `Owner` filter, run form (ADR 0018), month grid and panel routes (ADR 0016), guest lifecycle and `DemoDataSeeder`.
 - M5: `InsightsReportBuilder` (weekly load, ACWR) and `RaceFact`; reused, unchanged (`metricsVersion` 1).
@@ -324,6 +324,8 @@ Strict output schema, envelope rules and validator codes: **ADR 0040 §4–§5**
 | `Ai:Plan:PromptsPath` | `prompts/training-plan` | copied to output like `prompts/training-insights` |
 | `Ai:Plan:Quotas:UserPer24h` / `GuestPerAccount` | 5 / 2 | per feature |
 | `Ai:Plan:GlobalAttemptWeight` | 3 | 1–10; weight of a plan attempt in `Ai:Quotas:GlobalPer24h` / `GuestGlobalPer24h` |
+| `Ai:Plan:MaxConcurrentGenerations` | 1 | *Added after the review (§12 L2).* Plan slots per replica, inside `Ai:MaxConcurrentGenerations` (default 2); validated ≤ shared − 1 when shared ≥ 2. A plan needs a plan slot **and** a shared slot |
+| `Ai:Plan:GuestGlobalPer24h` | 20 | *Added after the review (§12 L2).* Guest plans' sub-cap in weighted attempts per 24 h, inside the guest-global budget (60); → 429 `ai-quota`, `scope: global`, `limit: 20` |
 | `RateLimiting:AiPlan:UserPermitLimit` / `GuestPermitLimit` / `Window` | 3 / 2 / 10 min (Development 60 / 30) | policy `ai-plan` |
 
 ### 4.8 Client queries and invalidation
@@ -361,14 +363,14 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 1. [x] **backend-dotnet (+ qa-tester): Domain goals.** `Goals/` (rules, term, predictor, estimator) and `Goals/Planning/` envelope, fact sheet, suggestion entity, with hand-computed unit tests (§9). No API change.
 2. [x] **backend-dotnet: persistence.** Configurations, migration `TrainingGoals`, `Run.GoalId`, `AiGeneration.Feature`; **verify the ⚠ of ADR 0039 §3 first** on Testcontainers SQL (guest delete with mutual links); `DeleteRun` clear; AppHost `Goals__Enabled=true`.
 3. [x] **backend-dotnet: endpoints.** Goals CRUD + estimate, suggestions list/accept/dismiss, `RunDto.goalId`, client-config, problem types; OpenAPI → `npm --prefix web run generate:api`; Api.Tests (validation matrix, isolation, inventory, cascades, caps).
-4. [ ] **ai-insights: shared runner refactor.** `AiGenerationRunner`, ledger `Feature` + weighted global sum, guard per (feature, user), client network timeout. **All existing Ai.Tests and Api.Tests pass with their assertions unchanged.**
-5. [ ] **ai-insights: plan generation.** Prompt v1 + manifest, `TrainingPlanAgent`, `TrainingPlanValidator`, parsing, `TrainingPlanService`, `generateTrainingPlan` endpoint, `ai-plan` policy, fake plan mode, the demo fixture `seed/demo/training-plan.json` with its every-today test, eval cases (CI mode); OpenAPI regenerated.
-6. [ ] **backend-dotnet: demo seed.** Demo goal + suggestions in `DemoDataSeeder`, `DemoTrainingPlan` startup check; Api.Tests (fresh guest sees the demo plan, AC6).
-7. [ ] **frontend-react: Goals page** (+ qa-tester fake API for goals): list, form, estimate hint, detail, plan section, errors.
-8. [ ] **frontend-react: calendar integration.** Bubbles, dots, goal markers, toggle, legend, Day panel cards, Edit & accept route, run details link, invalidations, i18n, bundle budget.
-9. [ ] **azure-infra:** Bicep params/env, nginx per-route timeout (+ header/timeout check in `deploy-artifacts`), `ci.yml` full-stack env; `az bicep build/lint`, actionlint.
-10. [ ] **qa-tester: E2E** (fake API, phone, axe; full-stack journey).
-11. [ ] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits "M9: adaptive training plan" and stops for approval.
+4. [x] **ai-insights: shared runner refactor.** `AiGenerationRunner`, ledger `Feature` + weighted global sum, guard per (feature, user), client network timeout. **All existing Ai.Tests and Api.Tests pass with their assertions unchanged.**
+5. [x] **ai-insights: plan generation.** Prompt v1 + manifest, `TrainingPlanAgent`, `TrainingPlanValidator`, parsing, `TrainingPlanService`, `generateTrainingPlan` endpoint, `ai-plan` policy, fake plan mode, the demo fixture `seed/demo/training-plan.json` with its every-today test, eval cases (CI mode); OpenAPI regenerated.
+6. [x] **backend-dotnet: demo seed.** Demo goal + suggestions in `DemoDataSeeder`, `DemoTrainingPlan` startup check; Api.Tests (fresh guest sees the demo plan, AC6).
+7. [x] **frontend-react: Goals page** (+ qa-tester fake API for goals): list, form, estimate hint, detail, plan section, errors.
+8. [x] **frontend-react: calendar integration.** Bubbles, dots, goal markers, toggle, legend, Day panel cards, Edit & accept route, run details link, invalidations, i18n, bundle budget.
+9. [x] **azure-infra:** Bicep params/env, nginx per-route timeout (+ header/timeout check in `deploy-artifacts`), `ci.yml` full-stack env; `az bicep build/lint`, actionlint.
+10. [x] **qa-tester: E2E** (fake API, phone, axe; full-stack journey).
+11. [x] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits "M9: adaptive training plan" and stops for approval.
 
 ### 6.2 Part B: user-confirmed gates (each needs the user's explicit "yes")
 
@@ -401,7 +403,7 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 | Validator too strict (envelope v1 parameters) | Frequent 502s | Retry with rule codes; eval pass-rate gate G-P3; constants in one Domain file, bump `planFactSheetVersion` |
 | Validator too lax | Unsafe plan suggested | Caps from the user's own history, 10 % growth, taper, hard-day rules; suggestions are opt-in; "not medical advice" line |
 | Multiple cascade paths / NO ACTION on guest delete | Migration or cleanup fails | Verified in step 2; fallback soft links (ADR 0039 §3) |
-| A plan holds a replica slot for minutes | Summaries get `ai-busy` | Small scale; slots per replica; documented |
+| A plan holds a replica slot for minutes | Summaries get `ai-busy` | Small scale; slots per replica; after the review plans get at most `Ai:Plan:MaxConcurrentGenerations` (1) of the 2 shared slots, so a summary always finds one (§12 L2) |
 | Prompt-injection or personal data in the fact sheet | Data leaves the EU (Global Standard) | No free text, names or places by construction; a test asserts the fact sheet's member list |
 | Model text with markup or medical claims | XSS or harmful advice | Plain text rendering only; `markup` and `forbiddenTopic` rules |
 | Grid clutter (runs + suggestions + proposals) | Unreadable cells | Shared `MAX_BUBBLES`, toggles, "+n" → Day panel |
@@ -511,6 +513,65 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 31. Demo plan (for step 6): `seed/demo/training-plan.json` holds the demo goal (`Distance`, "Demo Beskids Trail 25K", 25,000 m, 900 m, `Trail`, Sunday of week +10) and 20 sessions in weeks +6...+10 (2 rest days; trail long runs, hill/tempo sessions; no paces, as the goal is a trail), week-relative like `runs.json`. The pure parser/expander is Domain `DemoTrainingPlanTemplate` (`Parse`, `Goal.TargetDate/Spec(today)`, `Draft(today)`); `DemoTrainingPlanFixtureTests` validates it against the pristine demo for every day of 2028 (also the goal against `GoalRules` and each session through `TrainingSuggestion.Create` and `RunRules`).
 32. Size check (plan §8 risk): the fake's 16-week plan (capped-horizon case, 48 sessions) is 11,491 characters, about 3,600 tokens (chars/3.2), i.e. 45 % of the 8,000 cap before reasoning tokens; a model writing 4-5 sessions a week would be about 5-6k. Fact sheets of the eval cases are 2.9-4.8k characters; prompt v1 is 5.4k characters (about 1.3k tokens).
 33. Tests changed beyond the new files: the endpoint inventory (`ai-plan` in `SpecificRateLimits`, goal-group count 10 with the plan route asserted separately), the 401 sweep (10 routes), the 503 group list, a stale comment in the client-config test (its assertions hold); `AiTestHost` raises the `ai-plan` burst limit; `ScriptedChatClient.ReplyValidTransformed`. The plan API tests delete their own ledger rows afterwards so the summary tests' global budgets on the shared database stay as they were.
+
+### 11.4 Part A step 6 (backend-dotnet; demo seed)
+
+34. `DemoTrainingPlan` is its **own singleton** in `Infrastructure/Goals/` (it reads `training-plan.json` from `Guests:DemoDataPath`, next to `runs.json`, parsed once per process), not part of `DemoDatasetLoader`, because existing tests load demo data from directories that have no `training-plan.json`. The startup check is a separate hosted service, `DemoTrainingPlanStartupCheck.cs`, registered right after `DemoDatasetStartupCheck` under the same condition (not in job mode).
+35. Seeding happens **regardless of `Goals:Enabled`**: a guest created while the feature is off already has the demo goal and suggestions when it is switched on (they are invisible until then, the groups answer 503).
+36. An invalid or missing demo plan **at seed time** (`DomainRuleException` or `IOException`) logs a warning (exception type and message length only) and seeds the guest **without** the goal and suggestions, so guest sign-in is never blocked; the **startup check still fails the host**, so a broken package does not reach a running replica.
+37. The demo plan is validated by the same `TrainingPlanValidator` against a fact sheet built from the in-memory demo diary for the same "today". Its commitments helper (`DemoTrainingPlan.Commitments`) duplicates the one in Ai.Tests `PlanSheets` (Infrastructure cannot reference test code). With the goal on Sunday of week +10 it is 70–76 days away depending on the weekday, so it is always **Short-term**.
+
+### 11.5 Part A steps 7–8 (frontend-react; one combined commit "M9 steps 7-8")
+
+38. **One commit for steps 7 and 8** (the calendar and the Goals page share the queries and the accept path).
+39. The Goals page loads a goal's suggestions as **two consecutive `listTrainingSuggestions` ranges** from today (92 + 92 days, about 26 weeks) and merges them: there is no get-one-suggestion or per-goal endpoint, and a plan can reach 112 days against the 92-day list limit. For the same reason the diary's "Edit & accept" panel finds the suggestion in the month's grid-range list (`includeDismissed: true`) and shows "no longer available" when it is gone.
+40. `RaceRunSelect` lists the caller's planned race runs from `listRuns` in a 92-day window around the target date (−45 … +46 days); picking one sets the date.
+41. **No goal location field** in the form (the API accepts and returns `location`; the SPA neither sends nor shows it). Follow-up §13.
+42. **Goal markers ignore the "Show suggestions" toggle** (the toggle hides suggestion bubbles only); goal markers come from the cached `listGoals`.
+43. Goal **delete** is on the detail page (with a confirmation), not on the cards.
+44. `RunForm` gained `createWith?: (body) => Promise<RunDto>` (create only: replaces `POST /api/runs`; Edit & accept passes `acceptTrainingSuggestion` with `{ run }`) and `onSaved(run)` now receives the saved run (Edit & accept navigates to it with `replace`).
+45. The **"Suggested" badge is hidden below `lg`**: between `sm` and `lg` the bubble keeps the hatching and the sparkles icon; below `sm` the phone dot (sparkles) is shown; the legend explains both.
+46. Fake API defaults: `goals.enabled` false and `planGeneration` false (existing tests unchanged); the fake plan and estimate are simplified (deterministic sessions, no envelope), enough for the UI states.
+
+### 11.6 Part A step 9 (azure-infra)
+
+47. `Ai__Plan__Enabled` is in **`sharedApiEnv`**, so the guest cleanup job (`cleanupEnv = sharedApiEnv + …`) gets it too: harmless, it never generates. The race import job has its own env list and does not get it. `Goals__Enabled` is API-only (`apiOnlyEnv`).
+48. `infra/main.json` (the compiled ARM template) is regenerated and committed with the Bicep change.
+49. nginx: a regex location `~ ^/api/goals/[0-9a-fA-F-]+/plan/?$` with 200 s read/send timeouts. A regex location inherits nothing from `/api/`, so it **repeats the whole proxy block** (upstream, TLS verification, forwarded headers, 21 MB body limit, hidden upstream headers) and **includes the security-headers snippet**. It matches every method on that path (only POST exists).
+50. `verify-web-image.sh` checks the per-route timeout with the stub upstream's `?delay=`: a 150 s response on the plan path is not cut, while the existing 90 s check covers the rest of `/api`.
+51. No Production override for any other `Ai:Plan:*` key (the `appsettings.json` defaults apply in Azure).
+
+### 11.7 Part A step 10 (qa-tester)
+
+52. **Results (2026-11-16, reported by qa-tester):** `dotnet test` 4,224 passed, 12 skipped (the live evals); Vitest 1,149 passed; `test:tz` 937 × 2 passed; Playwright (fake API) 133 passed, 3 skipped; full-stack 11/11 passed against CI-style containers with the fake model.
+53. New: `web/e2e-fullstack/goals.spec.ts` (demo goal and example plan, accept, generate with the fake model and the replace confirmation), Api.Tests `GoalPlanIsolationTests` and `GeneratePlanOtherGoalRulesTests`.
+54. `web/e2e-fullstack/insights-summary.spec.ts` now follows `client-config.ai.summaryGeneration`: with `Ai__Provider=Fake` in the CI full-stack env (needed for plans) summary generation became available and the old "not configured" assertion failed.
+55. **Not run:** the manual checks (VoiceOver over a cell with suggestions, phone Safari, one real generation reviewed for plausibility) and the live eval; they belong to gates G-P2…G-P4.
+
+## 12. Review (reviewer, 2026-11-16)
+
+**Verdict: approve with follow-ups; no blocker, no high finding.** Fixes landed in three commits.
+
+| # | Finding | Fix | Commit |
+|---|---|---|---|
+| M1 | Editing a goal whose linked race run had since been completed or moved failed with 400 on `raceRunId`, although the user did not touch the link | `GoalRules.Validate(..., previousRaceRunId)`: an **unchanged** link only has to exist and be the caller's; the Race-category / Planned / dated-on-`targetDate` rules apply when the link is set or changed (ADR 0039 amendment) | `f73be6c` |
+| L1 | Concurrent goal delete vs accept / plan commit could insert rows for a goal being deleted (FK error → 500) | Per-user **`GoalWriteLock`** (`sp_getapplock` on `user-goals:<id>`, exclusive, transaction-owned, 15 s timeout) taken by goal delete, suggestion accept and plan commit; FK 547 safety nets map to **404** (accept) and **409 `concurrency-conflict`** (plan commit); dismiss of a concurrently removed suggestion → **404** | `f73be6c` |
+| nit | Goals whose suggestions were replaced by `replaceOtherGoals` still showed a plan with nothing pending | Replaced goals are marked **`plan.outdated`** | `f73be6c` |
+| L2 | A plan could hold both replica slots (summaries `ai-busy`), and guests' plans could use up the whole guest-global budget | `Ai:Plan:MaxConcurrentGenerations` (default 1; validated ≤ `Ai:MaxConcurrentGenerations` − 1 when that is ≥ 2; a plan needs a plan slot **and** a shared slot) and `Ai:Plan:GuestGlobalPer24h` (default 20 weighted attempts inside the guest budget of 60; → 429 `ai-quota`, `scope: global`, `limit: 20`) | `f44f8d0` |
+| L3 | A session could pass with distance and duration each in range but an impossible pace (30 km in 10 min) and become an impossible planned run on accept | Implied pace **150–900 s/km** when both distance and duration are set: validator rule `schema` at `sessions[n].durationSeconds`, mirrored in `TrainingSuggestion.Create`'s own validation (`HasPlausibleImpliedPace`) | `f44f8d0` |
+| L4 | Cancel gave no hint that the generation still counts, and a plan committed after the abort did not show | Cancel hint ("still counts toward your plan limit"), "Cancelled. If the plan was already finished, it will appear shortly." and a refresh of the goal and suggestions after cancel | `aaf266f` |
+| L5 | Goal caps are count-then-insert (two concurrent creates can exceed the cap by one) | **Not fixed (accepted)**: same pattern and risk as the run caps; bounded overshoot, no security impact | — |
+
+Notes (no change): the suggestions toggle is per browser (approved default §10.8); the agent options (slots, timeouts) are read once at startup, so changing them needs a restart (as for summaries). One flaky M8 Playwright test (`races.spec.ts` "the details dialog", axe) was seen once and passed on re-run; unrelated to M9.
+
+## 13. Follow-ups
+
+1. **Goal location field** in the goal form (the API already supports `location`).
+2. **Polish strings** for `goals.json` and the new `calendar.json` keys (keys are ready).
+3. A **delayed second refresh after cancel** (a plan committed later than the first refresh still appears only on the next navigation or the 1-minute stale time).
+4. **Deterministic tests for `GoalWriteLock`** (today the concurrency is covered by racing requests, not by a held lock).
+5. Optional **hard goal cap** (lock or filtered count in the insert) if L5 ever matters.
+6. **G-P3 live eval** to confirm the 8,000-token output cap (record tokens, pass rate and cost in §11).
 
 ## Assumptions
 

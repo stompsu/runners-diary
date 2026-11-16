@@ -584,7 +584,10 @@ RunDto.catalogRaceId: string | null    // read-only; not part of RunWriteRequest
 
 ## Added in M9 (adaptive training plan)
 
-**Planned (plan approved 2026-11-16); not implemented yet.** Normative detail: [M9 plan](plans/M9-adaptive-training-plan.md) §4 (shapes, order of checks, configuration), ADRs [0039](adr/0039-training-goals-and-realistic-target-estimate.md) (goal rules, estimate), [0040](adr/0040-training-plan-generation.md) (generation, model schema, validator, quotas) and [0041](adr/0041-training-suggestions-storage-and-calendar.md) (suggestions, accept mapping).
+**Implemented 2026-11-16 on `m9-adaptive-training-plan`** (OpenAPI document and `web/src/api/generated/schema.d.ts` regenerated; every shape below checked against `src/RunnersDiary.Api/openapi/runnersdiary-api.json`); SPA done; reviewed 2026-11-16; awaiting approval/merge; nothing deployed (gates G-P1…G-P4).
+- Sources: [M9 plan](plans/M9-adaptive-training-plan.md) §4 (shapes, order of checks, configuration), §11 (deviations) and §12 (review); ADRs [0039](adr/0039-training-goals-and-realistic-target-estimate.md) (goal rules, estimate), [0040](adr/0040-training-plan-generation.md) (generation, model schema, validator, quotas) and [0041](adr/0041-training-suggestions-storage-and-calendar.md) (suggestions, accept mapping), all amended 2026-11-16.
+- **Contract changes from the review:** 429 `ai-quota` `scope: "global"` with `limit: 20` for a guest plan request past the guest plan sub-cap; 404 on dismiss of a suggestion removed concurrently; the plan commit's 409 `concurrency-conflict` also covers a goal deleted meanwhile; an unchanged `raceRunId` on `updateGoal` only has to name one of the caller's runs.
+- **Client usage:** the SPA treats a missing `client-config.goals` as disabled; the Goals page reads a goal's suggestions as two consecutive 92-day `listTrainingSuggestions` ranges (there is no per-goal or get-one endpoint).
 
 All routes are **Auth** (users and guests) on the general per-caller rate limiter, except `generateTrainingPlan` (policy **`ai-plan`**). No request carries a user id; goals and suggestions are `Owner`-filtered, so foreign ids answer 404 (a foreign `raceRunId` in a body is a 400, it is a member, not the resource). **Feature switch:** while `Goals:Enabled` is false, every `/api/goals` and `/api/training-suggestions` route answers **503 `feature-unavailable`** (after authentication), like `/api/races`.
 
@@ -594,19 +597,21 @@ All routes are **Auth** (users and guests) on the general per-caller rate limite
 | `GET /api/goals/{goalId}` | `getGoal` | 200 `GoalDto`, `private, no-store` | 401, 404, 503 |
 | `POST /api/goals` | `createGoal` | 201 `GoalDto` + `Location` | 400, 401, 409 `goal-limit`, 413, 503 |
 | `PUT /api/goals/{goalId}` | `updateGoal` | 200 `GoalDto` (full replace, `version` required) | 400, 401, 404, 409 `concurrency-conflict`, 503 |
-| `DELETE /api/goals/{goalId}` | `deleteGoal` | 204 | 401, 404, 503 |
+| `DELETE /api/goals/{goalId}` | `deleteGoal` | 204 (suggestions cascade; accepted runs stay with `goalId: null`) | 401, 404, 503 |
 | `POST /api/goals/estimate` | `estimateGoal` | 200 `GoalEstimateResponse` (no side effects) | 400, 401, 503 |
 | `POST /api/goals/{goalId}/plan` | `generateTrainingPlan` | 200 `TrainingPlanResponse` | 400, 401, 404, 409 (`plan-other-goal-active`, `plan-in-progress`, `concurrency-conflict`), 422 `insufficient-history`, 429 (`ai-quota`, `rate-limited`), 502 `plan-failed`, 503 (`feature-unavailable`, `ai-busy`) |
 | `GET /api/training-suggestions?from&to&includeDismissed` | `listTrainingSuggestions` | 200 `TrainingSuggestionListResponse` | 400, 401, 503 |
-| `POST /api/training-suggestions/{suggestionId}/accept` | `acceptTrainingSuggestion` | 201 `RunDto` + `Location: /api/runs/{id}` | 400, 401, 404, 409 `run-limit`, 413, 503 |
-| `POST /api/training-suggestions/{suggestionId}/dismiss` | `dismissTrainingSuggestion` | 200 `TrainingSuggestionDto` | 401, 404, 503 |
+| `POST /api/training-suggestions/{suggestionId}/accept` | `acceptTrainingSuggestion` | 201 `RunDto` + `Location: /api/runs/{id}` | 400 (`run.*` with a body), 401, 404 (also: removed meanwhile, or its goal deleted meanwhile; a concurrent double accept creates one run, the loser gets 404), 409 `run-limit`, 413, 503. Order: 404 → 400 → 409 |
+| `POST /api/training-suggestions/{suggestionId}/dismiss` | `dismissTrainingSuggestion` | 200 `TrainingSuggestionDto` (idempotent) | 401, 404 (also when a regenerate, accept or goal delete removed it meanwhile), 503 |
 | `GET /api/client-config` (changed) | `getClientConfig` | + `goals`, `ai.planGeneration` | — |
 | Runs endpoints (changed) | `getRun`, `listRuns`, `createRun`, `updateRun`, `getCalendarMonth` | `RunDto` gains read-only `goalId`; `updateRun` preserves it | unchanged |
 | `DELETE /api/runs/{id}` (changed) | `deleteRun` | also clears `raceRunId` of a goal linked to the run | unchanged |
 
-**Validation highlights** (400, camelCase keys): goal rules of ADR 0039 §2 (`distanceMeters` 1,000–250,000; `elevationGainMeters` 0–10,000; `targetDate` today+7 … today+730 on create or when changed; implied target pace 150–900 s/km; type-specific `eventName` / `targetDurationSeconds`; `raceRunId` = the caller's own planned race run on `targetDate`); `listTrainingSuggestions` dates 1950–2100, `to ≥ from`, span `to − from + 1 ≤ 92`; `generateTrainingPlan` → `errors.goalId` when the goal is not Active or `targetDate < today + 2`; `acceptTrainingSuggestion` with `{ run }` → the `createRun` rules.
+**Validation highlights** (400, camelCase keys): goal rules of ADR 0039 §2, checked in the handler through `GoalRules` (same `errors` shape as the DataAnnotations errors; on create 400 comes before 409 `goal-limit`): `distanceMeters` 1,000–250,000; `elevationGainMeters` 0–10,000; `targetDate` today+7 … today+730 on create or when changed; implied target pace 150–900 s/km; type-specific `eventName` / `targetDurationSeconds`; `raceRunId` = the caller's own planned race run on `targetDate` when set or changed, while an **unchanged** `raceRunId` on update only has to name one of the caller's runs (ADR 0039 amendment); `estimateGoal`: `targetDate` today … today+730, no type-specific requirements; `listTrainingSuggestions` dates 1950–2100, `to ≥ from`, span `to − from + 1 ≤ 92`; `generateTrainingPlan` → `errors.goalId` when the goal is not Active or `targetDate < today + 2`; `acceptTrainingSuggestion` with `{ run }` → the `createRun` rules.
 
-**Generate order of checks** (after the group's `Goals:Enabled` 503): 404 → 400 → 503 `feature-unavailable` → 422 → 409 `plan-other-goal-active` → 409 `plan-in-progress` → 429 `ai-quota` → 503 `ai-busy` → model (≤ 2 attempts, 90 s each, 190 s total) → 502 `plan-failed` → commit (409 `concurrency-conflict` if the goal changed meanwhile) → 200. Item-level collisions are dropped and counted (`droppedCount`), not errors.
+**Generate order of checks** (after the group's `Goals:Enabled` 503): 404 → 400 → 503 `feature-unavailable` → 422 → 409 `plan-other-goal-active` → 409 `plan-in-progress` → 429 `ai-quota` → 503 `ai-busy` → model (≤ 2 attempts, 90 s each, 190 s total) → 502 `plan-failed` → commit under the per-user goal lock (409 `concurrency-conflict` if the goal changed, left `Active` or was deleted meanwhile; the quota is spent) → 200. Item-level collisions are dropped and counted (`droppedCount`), not errors. The commit is not cancelled by a client abort once the model has answered, so an aborted request may still store a plan.
+
+**429 `ai-quota` on this route:** `scope: "account"` with `limit` 5 (users, rolling 24 h; `resetsAt` and `Retry-After`) or 2 (guests, per account; no `resetsAt`); `scope: "global"` with `limit` 200 (global budget), 60 (guest-global budget) or **20** (the guest plan sub-cap `Ai:Plan:GuestGlobalPer24h`, guests only), always without `resetsAt`. The limits are checked in that order.
 
 **New problem types:**
 
@@ -614,11 +619,11 @@ All routes are **Auth** (users and guests) on the general per-caller rate limite
 |---|---|---|---|
 | 409 | `urn:runnersdiary:problem:goal-limit` | Goals per account reached (users 50, guests 10) | — |
 | 409 | `urn:runnersdiary:problem:plan-other-goal-active` | Another goal has Pending suggestions and `replaceOtherGoals` is not true | `goalId` |
-| 409 | `urn:runnersdiary:problem:plan-in-progress` | A plan generation of this account is already running (per replica) | — |
+| 409 | `urn:runnersdiary:problem:plan-in-progress` | A plan generation of this account is already running (per replica; a running summary does not block it) | — |
 | 422 | `urn:runnersdiary:problem:insufficient-history` | Fewer than 3 completed running sessions in the last 84 days | — |
 | 502 | `urn:runnersdiary:problem:plan-failed` | Invalid output twice, timeout or provider error; nothing stored, attempts count | `reason: "invalidOutput" \| "timeout" \| "provider"` |
 
-`ai-quota`, `ai-busy`, `feature-unavailable`, `rate-limited` keep their M6 meaning and extensions; on this route they refer to plan generation.
+`ai-quota`, `ai-busy`, `feature-unavailable`, `rate-limited`, `concurrency-conflict` keep their meaning and extensions; on the plan route they refer to plan generation (`ai-busy`: no free plan slot or shared slot on this replica, or the provider throttled).
 
 ### Shapes (M9)
 
@@ -645,8 +650,8 @@ GoalEstimateResponse = { today: string; daysToGoal: number; weeksToGoal: number;
   prediction: { durationSeconds: number; paceSecondsPerKm: number; confidence: "High" | "Low";
                 basis: { runId: string; date: string; kind: "Race" | "Training"; distanceMeters: number; durationSeconds: number;
                          elevationGainMeters: number | null } } | null;
-  warnings: { code: "noRecentEffort" | "targetMuchFasterThanPredicted" | "tooLittleTime" | "lowWeeklyVolume" | "beyondPlanHorizon";
-              value: number | null }[] }
+  warnings: { code: string /* "noRecentEffort" | "targetMuchFasterThanPredicted" | "tooLittleTime" | "lowWeeklyVolume" | "beyondPlanHorizon";
+                              a plain string in OpenAPI, not an enum */; value: number | null }[] }
 
 GenerateTrainingPlanRequest = { replaceOtherGoals?: boolean }   // body optional
 TrainingPlanResponse = { goal: GoalDto; suggestions: TrainingSuggestionDto[]; droppedCount: number; replacedGoalIds: string[] }
@@ -671,11 +676,13 @@ Enum casing follows the API-wide rule (PascalCase for new domain enums, like `Ra
 | Goals per account | users 50, guests 10 | `Goals:MaxGoalsPerUser`, `MaxGoalsPerGuest` | 409 `goal-limit` |
 | Plan generations, users, rolling 24 h | 5 | `Ai:Plan:Quotas:UserPer24h` | 429 `ai-quota` (`scope: account`) |
 | Plan generations, guests, per account | 2 | `Ai:Plan:Quotas:GuestPerAccount` | 429 `ai-quota` (`scope: account`) |
-| Global / guest-global budgets | shared with summaries; a plan attempt weighs 3 | `Ai:Quotas:*`, `Ai:Plan:GlobalAttemptWeight` | 429 `ai-quota` (`scope: global`) |
+| Global / guest-global budgets | shared with summaries (200 / 60 weighted attempts per 24 h); a plan attempt weighs 3 | `Ai:Quotas:*`, `Ai:Plan:GlobalAttemptWeight` | 429 `ai-quota` (`scope: global`, `limit` 200 / 60) |
+| Guest plans, all guests, rolling 24 h | 20 weighted attempts (inside the guest-global 60) | `Ai:Plan:GuestGlobalPer24h` | 429 `ai-quota` (`scope: global`, `limit: 20`) |
+| Concurrent plans per replica | 1 (inside the 2 shared slots) | `Ai:Plan:MaxConcurrentGenerations` | 503 `ai-busy` |
 | Plan POSTs per caller (policy `ai-plan`) | users 3 / 10 min, guests 2 / 10 min | `RateLimiting:AiPlan:*` | 429 `rate-limited` |
 | Attempts; per-attempt and total timeout | 2; 90 s; 190 s | `Ai:Plan:MaxAttempts`, `AttemptTimeout`, `TotalTimeout` | 502 `plan-failed` |
 | Suggestions per generation | ≤ 7 per plan week (≤ 112) | validator | 502 `plan-failed` |
 
 ## Planned for later milestones
 
-M9 (above) is planned; nothing else. A real Foundry deployment (M7 Part B, gate G7) changes no contract.
+Nothing planned. M9 (above) is implemented; its gates G-P1…G-P4 change no contract, and neither did the real Foundry deployment (M7 Part B, gate G7).

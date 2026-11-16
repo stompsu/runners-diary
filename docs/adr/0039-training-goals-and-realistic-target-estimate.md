@@ -1,6 +1,6 @@
 # 0039 – Training goals: model, rules, and the realistic-target estimate
 
-**Status:** Accepted (M9 plan approved 2026-11-16)
+**Status:** Accepted (M9 plan approved 2026-11-16; amended 2026-11-16 after the implementation and the review, see the end; **the §2 `raceRunId` rule is refined for an unchanged link**)
 **Date:** 2026-11-16
 **Related:** [0008](0008-run-date-and-time-storage.md) (dates), [0010](0010-current-user-and-data-scoping.md) (scoping), [0012](0012-request-validation.md), [0013](0013-persistence-model-and-migrations.md), [0024](0024-training-metrics-definitions-v1.md) (metrics), [0036](0036-race-catalogue-model-and-race-runs.md) (race runs), [0040](0040-training-plan-generation.md), [0041](0041-training-suggestions-storage-and-calendar.md), [M9 plan](../plans/M9-adaptive-training-plan.md)
 
@@ -101,6 +101,15 @@ The UI shows "Based on your recent runs, ~1:52 looks realistic" with **Use as ta
 - **Goals as rows of `Runs`** (a "goal" run type): mixes targets into totals, insights and the AI fact sheet. Rejected.
 - **VDOT/Daniels tables or a fitted model:** more accurate for road races but needs tables or heart-rate data; trail elevation still needs a heuristic. Riegel + km-effort is transparent and testable. Revisit with feedback.
 - **Blocking unrealistic targets:** the user decides; warnings only.
+
+## Amendment (2026-11-16, implementation and review)
+
+The decision stands, with these refinements. As built in Domain `Goals/GoalRules.cs` and `Infrastructure/Goals/GoalService.cs` (M9 plan §11.1, review §12 M1 and L1, commit `f73be6c`):
+1. **Unchanged race-run link (§2; review M1).** `GoalRules.Validate` takes the stored `previousRaceRunId` on update. When `raceRunId` equals it, the link only has to **still name one of the caller's runs** (else 400 "Unknown run."); the Race-category, `Planned` and dated-on-`targetDate` rules apply only when the link is set on create or changed. The linked run may have been completed or moved since, and editing another field of the goal must not fail on it. `raceRunDate` still exposes a moved run's date.
+2. **Verified (§3 ⚠).** Deleting a guest whose goal links a run and whose run links the goal succeeds in one statement on SQL Server 2022; **no fallback was needed** (plan §11.1).
+3. **Goal delete is serialised (§3; review L1).** The delete transaction takes the per-user application lock `GoalWriteLock` (`sp_getapplock`, resource `user-goals:<userId>`), which suggestion accept and plan commit also take, before clearing `Runs.GoalId` and deleting the goal. An accept or a plan commit therefore cannot insert a run or suggestions for a goal that is being deleted; they see the goal gone afterwards (accept → 404, plan commit → 409 `concurrency-conflict`, ADR 0040 amendment).
+4. **Estimate validation.** `POST /api/goals/estimate` uses `GoalRules.ValidateEstimate`: `targetDate` from **today** to today + 730 (no 7-day minimum), no type-specific requirements; distance, elevation and implied pace as for goals. Warning `code` is a plain string in the OpenAPI document.
+5. **Caps (§1).** The goal caps are count-then-insert, like the run caps: two concurrent creates can exceed the cap by one. Accepted (review L5).
 
 ## References
 
