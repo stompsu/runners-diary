@@ -9,8 +9,11 @@ using RunnersDiary.Domain.Insights.Narrative;
 
 namespace RunnersDiary.Infrastructure.Ai;
 
-/// <summary>The raw result of one model call: the text to validate, token usage and the model id the provider reported.</summary>
-public sealed record AgentAttempt(string Text, int InputTokens, int OutputTokens, string? ModelId);
+/// <summary>
+/// The raw result of one model call: the text to validate, token usage, the model id the provider reported and the finish reason when the
+/// provider gave one (<c>length</c> = cut at the output token cap).
+/// </summary>
+public sealed record AgentAttempt(string Text, int InputTokens, int OutputTokens, string? ModelId, string? FinishReason = null);
 
 /// <summary>
 /// The "TrainingInsights" agent (ADR 0026 §5): a Microsoft Agent Framework <see cref="ChatClientAgent"/> with the versioned prompt as

@@ -1,6 +1,6 @@
 # M9 – Adaptive training plan: plan
 
-**Status:** Approved 2026-11-16 (outline and all four §7 defaults approved by the user on 2026-11-16; this plan turns the outline into contracts). **Part A implemented 2026-11-16** on `m9-adaptive-training-plan` (steps 1–11, reviewed: §12); **awaiting user approval**. Deviations: §11; follow-ups: §13. **Part B (gates G-P1…G-P4, §6.2) not started**; each gate needs the user's explicit "yes".
+**Status:** Approved 2026-11-16 (outline and all four §7 defaults approved by the user on 2026-11-16; this plan turns the outline into contracts). **Part A implemented 2026-11-16** on `m9-adaptive-training-plan` (steps 1–11, reviewed: §12); **awaiting user approval**. Deviations: §11; follow-ups: §13. **Merged (stompsu/runners-diary#42); Part B: G-P1, G-P2 and G-P3 done 2026-11-16, G-P4 waits for the plan-reliability fixes (§11.8, gate log in §6.2)**; each gate needs the user's explicit "yes".
 **Builds on:**
 - M2/M3: `Runs`, run types, `Owner` filter, run form (ADR 0018), month grid and panel routes (ADR 0016), guest lifecycle and `DemoDataSeeder`.
 - M5: `InsightsReportBuilder` (weekly load, ACWR) and `RaceFact`; reused, unchanged (`metricsVersion` 1).
@@ -383,6 +383,19 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 
 **Rollback / kill:** `PLANS_AI_ENABLED=false` (generation off, suggestions stay) and/or `PLANS_UI_ENABLED=false` (everything 503, UI hidden), then `azd provision --no-state`. `AI_ENABLED=false` still stops all AI.
 
+#### Gate log
+
+The user merged stompsu/runners-diary#42 and gave an explicit "yes" to G-P1…G-P4 on 2026-11-16.
+
+| When (UTC) | Gate | What happened |
+|---|---|---|
+| 2026-11-16 ~19:5x | — | CI on `main` (8eee943) green, all five jobs incl. e2e-fullstack with the M9 journey. |
+| 2026-11-16 19:58–20:05 | **G-P1** | `prod` approval given for deploy run 43944867985: images, migration job **Succeeded** (`TrainingGoals`, `AiGenerationsFeatureIndex`), smoke test 9/9 (guest creation seeds the demo plan). `client-config`: `goals.enabled=false`, `planGeneration=false`. |
+| 2026-11-16 19:50–19:59 | **G-P3** (run 1) | Live eval, prompt v1: **12/18** runs (2 cases 3/3; ambitious 10k 2/3, collisions 2/3, trail 44k 1/3, capped horizon 1/3); every failure `invalidOutput` on both attempts; no per-attempt diagnostics. No attempt hit the 8,000-token cap. **G-P4 held** by the main agent; the user agreed ("hold and fix first"). |
+| 2026-11-16 20:06–20:08 | **G-P2** | `PLANS_UI_ENABLED=true` (`PLANS_AI_ENABLED=false`), pre-provision hook → `azd provision` → post-provision hook. Live check as a guest (API + browser): Goals nav, "Demo Beskids Trail 25K" (Short-term, demo plan, 20 pending suggestions 2026-12-28…2027-01-30), hatched "Suggested" bubbles, toggle, goal marker; accept → planned run with `goalId`; generate → 503 `feature-unavailable`. |
+| 2026-11-16 20:19–21:48 | G-P3 (runs 2–4) | On `m9-plan-reliability` (§11.8): run 2 with diagnostics **14/18** (first-week `weeklyVolume`, trail pace widths 95–135 s); run 3 with prompt v2, rounded caps, numeric retry notes, 135 s for long/trail **14/18** (retries trading one local slip for another); run 4 with the deterministic repair step **18/18, every run on the first attempt** (≈ $0.35). Total live-eval spend ≈ $1.7. |
+| pending | **G-P4** | After the reliability fixes are merged and deployed: `PLANS_AI_ENABLED=true` → `azd provision --no-state` → one guest generation + ledger row (`Feature = 1`). |
+
 ## 7. Cost
 
 | Item | Estimate |
@@ -548,6 +561,22 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 54. `web/e2e-fullstack/insights-summary.spec.ts` now follows `client-config.ai.summaryGeneration`: with `Ai__Provider=Fake` in the CI full-stack env (needed for plans) summary generation became available and the old "not configured" assertion failed.
 55. **Not run:** the manual checks (VoiceOver over a cell with suggestions, phone Safari, one real generation reviewed for plausibility) and the live eval; they belong to gates G-P2…G-P4.
 
+### 11.8 Follow-up "plan reliability" (ai-insights, 2026-11-16, branch `m9-plan-reliability`)
+
+56. **G-P3 live eval** (gpt-5.4-mini Global Standard, prompt v1, fact sheet v1): first run **12/18**. With the new failure diagnostics (commit "M9: plan generation failure diagnostics for the live eval": per-attempt rule codes, locations, tokens and finish reason; `RD_AI_LIVE_DUMP_DIR` for raw answers, test code only), a second run gave **14/18, 3 of them saved by the retry**. Nothing was truncated (at most ~4.5k output tokens per attempt, cap 8,000). Every failure was `invalidOutput` on both attempts.
+57. **Root causes** (from the dumped answers, re-validated offline):
+    - `weeklyVolume` on the partial first week (2026-11-16, cap 28,286 m, nothing fixed) in 7 of 12 failed attempts: the model wrote round sessions adding up to 30–38 km. The retry note gave only the date, so attempt 2 often overshot again.
+    - `schema` at `sessions[n].paceMinSecondsPerKm` (trail case, up to 12 per attempt). These were **long trail runs with pace ranges 95–135 s wide** (e.g. 390–485, 390–525), above the existing 90 s limit. The limit was already 90 s, not 60 s as first assumed. The location named the faster bound although the slower bound or the width was the problem.
+    - Occasional genuine `pace`, `phase`, `taperIntensity` and `longRun` violations: the retry handles them, and the rules stay.
+58. **Changes** (one commit "M9: plan reliability — weekly caps the model can hit, precise retry notes, pace spread"):
+    - The envelope rounds `maxDistanceMeters`, `availableDistanceMeters` and `maxLongRunMeters` **down to 500 m** (`PlanEnvelopeRules.CapStepMeters`, `FloorToStep`). The fact sheet sends these values and the validator checks the same ones. The +5 % tolerance is unchanged. Envelope v2, **plan fact sheet v2** (same shape).
+    - **Plan prompt v2** (`prompts/training-plan/v2.md`, `current: 2`; v1 stays listed and loadable). It tells the model to add up each week's `distanceMeters` and stay at or below `availableDistanceMeters`, that the first week is partial, that caps are multiples of 500 m, the pace widths with examples (90 s: 390 and 480; 135 s for long/trail runs and, on a trail goal, easy/recovery runs: 390 and 520), and to fix the numbers a rejection note lists.
+    - **Retry note with numbers**: `PlanViolation` gains optional validator-computed integers `Value`/`Limit`. These are set for `weeklyVolume` (the suggested sum vs `availableDistanceMeters`), `longRun` (distance vs `maxLongRunMeters`) and a too-wide pace range (width vs 90). The note adds "Numbers to fix: week 2026-11-16: your running sessions add up to 33000 m, its availableDistanceMeters is 28000 m; …". It still contains only codes, safe locations and integers, never model text.
+    - **Pace range** (second commit "M9: plan reliability — wider pace range for long and trail runs", coordinator decision): the width may be **135 s for `long` and `trailTraining`, and for `easy`/`recovery` when the goal surface is Trail**, and 90 s otherwise. One rule, `TrainingSuggestion.MaxPaceSpreadSeconds(runTypeId, trailGoal)`, is used by the validator and by `TrainingSuggestion.Create(…, trailGoal)`; the plan service and the demo plan pass the goal surface. Folded into prompt v2, which was not yet released. A missing or too-slow faster bound is reported at `paceMinSecondsPerKm`. A missing slower bound, a slower bound above 900, faster > slower, or a range wider than 90 s is reported at **`paceMaxSecondsPerKm`**, which is now an allowed retry-note location.
+59. Not changed: the API contract (no OpenAPI change), the ledger, quotas and the data-residency position. Only app-computed numbers are added to what the model sees. The live eval was not re-run; expect fewer first-week `weeklyVolume` failures and more precise retries. The trail case's 95–135 s ranges on long runs now pass.
+60. **Live eval run 3** (prompt v2, fact sheet v2, wider pace range): **14/18**. The failures were again one local issue fixed and another created on the retry: `phase`, `taperIntensity`, `pace`, pace spreads of 92/90 and 120/90, and a `weeklyVolume` of 43,000/36,000 after the retry. In the taper-only case `weeklyVolume` 19,000/16,500 and `longRun` 10,000/7,500 were rescued by the retry in some runs and failed in others. These are all within about 25 % of their caps, and all-or-nothing validation over about 40 sessions turns one small slip into a failed plan.
+61. **Deterministic repair step** (commit "M9: plan reliability — deterministic repair of local plan issues", ADR 0040 amendment "repair step"): `TrainingPlanRepair` (Domain) and the pace clamp in `TrainingPlanValidator` fix local, mechanical issues before the verdict: phase set from the week (the rule can no longer fail), slower pace bound clamped to the allowed spread, hard-in-taper and too-fast sessions dropped (counted in `droppedCount`), long run and weekly volume scaled down when at most 25 % above the tolerant cap. Everything else stays plan-level (retry, then `plan-failed`). Repairs are in `PlanAttemptDetails.Repairs` and in the live eval output. Not changed: API contract, prompt v2 and its hash. The demo plan and the fake writer stay repair-free (tested). The live eval was not re-run; expect the 4 failures above to pass on the first attempt.
+
 ## 12. Review (reviewer, 2026-11-16)
 
 **Verdict: approve with follow-ups; no blocker, no high finding.** Fixes landed in three commits.
@@ -571,7 +600,8 @@ Notes (no change): the suggestions toggle is per browser (approved default §10.
 3. A **delayed second refresh after cancel** (a plan committed later than the first refresh still appears only on the next navigation or the 1-minute stale time).
 4. **Deterministic tests for `GoalWriteLock`** (today the concurrency is covered by racing requests, not by a held lock).
 5. Optional **hard goal cap** (lock or filtered count in the insert) if L5 ever matters.
-6. **G-P3 live eval** to confirm the 8,000-token output cap (record tokens, pass rate and cost in §11).
+6. **G-P3 live eval** to confirm the 8,000-token output cap (record tokens, pass rate and cost in §11). Run twice (12/18, then 14/18; no truncation, §11.8); re-run after the plan reliability changes.
+7. ~~**Pace range width for long trail runs**~~ **Resolved (2026-11-16):** 135 s for `long`/`trailTraining`, and for `easy`/`recovery` on a trail goal; 90 s otherwise (§11.8, ADR 0040 amendment "plan reliability" item 4).
 
 ## Assumptions
 

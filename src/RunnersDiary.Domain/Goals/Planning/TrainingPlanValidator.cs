@@ -1,6 +1,7 @@
 using System.Globalization;
 using RunnersDiary.Domain.Calendar;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.RunTypes;
 
 namespace RunnersDiary.Domain.Goals.Planning;
@@ -20,7 +21,6 @@ public static class TrainingPlanValidator
     public const int DescriptionMaxLength = TrainingSuggestion.DescriptionMaxLength;
     public const double Tolerance = 1.05;
     public const double MinPaceShareOfReference = 0.85;
-    public const int MaxPaceSpreadSeconds = 90;
     public const int TaperQuietDays = 3;
 
     /// <summary>Training types that count as hard when they are commitments (the history's hard types, ADR 0040 §3).</summary>
@@ -61,10 +61,11 @@ public static class TrainingPlanValidator
 
         // Per session: shape, then the plan range.
         var candidates = new List<PlannedSession>();
+        var repairs = new List<PlanRepair>();
         for (var i = 0; i < draft.Sessions.Count; i++)
         {
             var location = $"sessions[{i.ToString(CultureInfo.InvariantCulture)}]";
-            var session = Convert(draft.Sessions[i], location, deny, violations);
+            var session = Convert(draft.Sessions[i], location, IsTrailGoal(sheet), deny, violations, repairs);
             if (session is null)
             {
                 continue;
@@ -80,7 +81,13 @@ public static class TrainingPlanValidator
         }
 
         // Item level: a session on a blocked day is dropped and counted (never a retry).
-        var (kept, dropped) = DropCollisions(candidates, sheet.Commitments);
+        var (collisionKept, dropped) = DropCollisions(candidates, sheet.Commitments);
+
+        // Repair (local, mechanical issues never fail a plan): phase from the week, hard-in-taper and too-fast sessions dropped, caps scaled.
+        var repaired = TrainingPlanRepair.Apply(collisionKept, sheet);
+        var kept = repaired.Sessions.ToList();
+        dropped += repaired.Dropped;
+        repairs.AddRange(repaired.Repairs);
 
         CheckSessionsPerDay(kept, violations);
         CheckSessions(kept, sheet, violations);
@@ -96,7 +103,10 @@ public static class TrainingPlanValidator
             Distinct(violations),
             [.. kept.OrderBy(s => s.Date)],
             dropped,
-            notes.Length == 0 ? null : notes);
+            notes.Length == 0 ? null : notes)
+        {
+            Repairs = repairs,
+        };
     }
 
     /// <summary>
@@ -134,10 +144,31 @@ public static class TrainingPlanValidator
             && (type.Category == RunTypeCategory.Race || HardTypeCodes.Contains(type.Code));
     }
 
-    private static PlannedSession? Convert(DraftSession s, string location, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
+    /// <summary>The goal's surface is Trail: easy/recovery runs get the wider terrain pace range (<see cref="TrainingSuggestion.MaxPaceSpreadSeconds"/>).</summary>
+    public static bool IsTrailGoal(PlanFactSheet sheet)
+    {
+        ArgumentNullException.ThrowIfNull(sheet);
+        return sheet.Goal.Surface == Surface.Trail;
+    }
+
+    /// <summary>A hard session in the last <see cref="TaperQuietDays"/> days before the goal (only when the goal is inside the horizon).</summary>
+    internal static bool IsHardInQuietWindow(PlannedSession s, PlanFactSheet sheet) =>
+        !sheet.Envelope.HorizonCapped && s.Intensity.IsHard()
+        && s.Date >= sheet.Goal.TargetDate.AddDays(-TaperQuietDays) && s.Date < sheet.Goal.TargetDate;
+
+    /// <summary>The target pace's faster bound is faster than the reference pace allows (85 %; easy and recovery: not faster than the reference).</summary>
+    internal static bool IsTooFast(PlannedSession s, int? reference) =>
+        reference is { } r && s.TargetPaceMinSecondsPerKm is { } min
+        && (min < MinPaceShareOfReference * r || (s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && min < r));
+
+    private static PlannedSession? Convert(
+        DraftSession s, string location, bool trailGoal, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations, List<PlanRepair> repairs)
     {
         var before = violations.Count;
-        void Fail(string member) => violations.Add(new PlanViolation(PlanRuleCode.Schema, location + "." + member));
+        var paceMax = s.PaceMaxSecondsPerKm;
+        PlanRepair? paceClamp = null;
+        void Fail(string member, int? value = null, int? limit = null) =>
+            violations.Add(new PlanViolation(PlanRuleCode.Schema, location + "." + member, value, limit));
 
         var dateOk = DateOnly.TryParseExact(s.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date);
         if (!dateOk)
@@ -158,6 +189,7 @@ public static class TrainingPlanValidator
 
         if (!TrainingPhases.TryFromWire(s.Phase, out var phase))
         {
+            // The value must still be a known code (strict schema); whether it is the right one no longer matters, the repair step sets it from the week.
             Fail("phase");
         }
 
@@ -200,12 +232,25 @@ public static class TrainingPlanValidator
 
             if ((s.PaceMinSecondsPerKm is null) != (s.PaceMaxSecondsPerKm is null))
             {
-                Fail("paceMinSecondsPerKm");
+                Fail(s.PaceMinSecondsPerKm is null ? "paceMinSecondsPerKm" : "paceMaxSecondsPerKm");
             }
-            else if (s.PaceMinSecondsPerKm is { } min && s.PaceMaxSecondsPerKm is { } max
-                && (min < GoalRules.MinPaceSecondsPerKm || max > GoalRules.MaxPaceSecondsPerKm || min > max || max > min + MaxPaceSpreadSeconds))
+            else if (s.PaceMinSecondsPerKm is { } min && s.PaceMaxSecondsPerKm is { } max)
             {
-                Fail("paceMinSecondsPerKm");
+                if (min < GoalRules.MinPaceSecondsPerKm || min > GoalRules.MaxPaceSecondsPerKm)
+                {
+                    Fail("paceMinSecondsPerKm");
+                }
+                else if (max > GoalRules.MaxPaceSecondsPerKm || min > max)
+                {
+                    Fail("paceMaxSecondsPerKm");
+                }
+                else if (TrainingSuggestion.MaxPaceSpreadSeconds(type?.Id ?? 0, trailGoal) is var spreadLimit && max > min + spreadLimit)
+                {
+                    // Repair (ADR 0040 amendment "repair"): a range too wide for the run type gets its slower bound clamped to min + the allowed spread.
+                    // Only makes the target tighter, never looser; recorded only when the session survives the other checks.
+                    paceMax = min + spreadLimit;
+                    paceClamp = new PlanRepair(PlanRuleCode.Schema, location + ".paceMaxSecondsPerKm", PlanRepairAction.Clamp, max, paceMax);
+                }
             }
         }
 
@@ -215,8 +260,13 @@ public static class TrainingPlanValidator
             return null;
         }
 
+        if (paceClamp is not null)
+        {
+            repairs.Add(paceClamp);
+        }
+
         return new PlannedSession(
-            date, type.Id, s.DistanceMeters, s.DurationSeconds, intensity, s.PaceMinSecondsPerKm, s.PaceMaxSecondsPerKm, s.Description.Trim(), phase);
+            date, type.Id, s.DistanceMeters, s.DurationSeconds, intensity, s.PaceMinSecondsPerKm, paceMax, s.Description.Trim(), phase);
     }
 
     private static void CheckText(string text, string location, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
@@ -251,8 +301,6 @@ public static class TrainingPlanValidator
         var envelope = sheet.Envelope;
         var weeks = envelope.Weeks.ToDictionary(w => w.Start);
         var reference = envelope.ReferencePaceSecondsPerKm;
-        var goalInHorizon = !envelope.HorizonCapped;
-        var quietFrom = sheet.Goal.TargetDate.AddDays(-TaperQuietDays);
 
         foreach (var s in kept.OrderBy(s => s.Date))
         {
@@ -264,23 +312,18 @@ public static class TrainingPlanValidator
                 continue;
             }
 
-            if (s.Phase != week.Phase)
-            {
-                violations.Add(new PlanViolation(PlanRuleCode.Phase, where));
-            }
-
             if (s.DistanceMeters is { } distance && distance > week.MaxLongRunMeters * Tolerance)
             {
-                violations.Add(new PlanViolation(PlanRuleCode.LongRun, where));
+                violations.Add(new PlanViolation(PlanRuleCode.LongRun, where, Meters(distance), Meters(week.MaxLongRunMeters)));
             }
 
-            if (goalInHorizon && s.Intensity.IsHard() && s.Date >= quietFrom && s.Date < sheet.Goal.TargetDate)
+            // taperIntensity and pace are item-level repairs now (the sessions are dropped before this point); kept as a safety net.
+            if (IsHardInQuietWindow(s, sheet))
             {
                 violations.Add(new PlanViolation(PlanRuleCode.TaperIntensity, where));
             }
 
-            if (reference is { } r && s.TargetPaceMinSecondsPerKm is { } min
-                && (min < MinPaceShareOfReference * r || (s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && min < r)))
+            if (IsTooFast(s, reference))
             {
                 violations.Add(new PlanViolation(PlanRuleCode.Pace, where));
             }
@@ -301,7 +344,7 @@ public static class TrainingPlanValidator
             var suggested = running.Sum(s => s.DistanceMeters ?? 0);
             if (suggested > 0 && week.FixedDistanceMeters + suggested > week.MaxDistanceMeters * Tolerance)
             {
-                violations.Add(new PlanViolation(PlanRuleCode.WeeklyVolume, where));
+                violations.Add(new PlanViolation(PlanRuleCode.WeeklyVolume, where, Meters(suggested), Meters(week.AvailableDistanceMeters)));
             }
 
             if (running.Count > 0 && week.FixedRunningSessions + running.Count > envelope.MaxSessionsPerWeek)
@@ -346,5 +389,7 @@ public static class TrainingPlanValidator
 
     private static List<PlanViolation> Distinct(List<PlanViolation> violations) => [.. violations.Distinct()];
 
-    private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    internal static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    internal static int Meters(double meters) => (int)Math.Clamp(Math.Round(meters, MidpointRounding.AwayFromZero), 0, int.MaxValue);
 }

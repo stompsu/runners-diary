@@ -2,10 +2,16 @@ using RunnersDiary.Domain.RunTypes;
 
 namespace RunnersDiary.Domain.Goals.Planning;
 
-/// <summary>The v1 constants of the plan envelope (ADR 0040 §2). Changing one bumps <see cref="PlanFactSheet.CurrentVersion"/>.</summary>
+/// <summary>The constants of the plan envelope (ADR 0040 §2; v2 = v1 plus the 500 m cap step). Changing one bumps <see cref="PlanFactSheet.CurrentVersion"/>.</summary>
 public static class PlanEnvelopeRules
 {
-    public const int Version = 1;
+    public const int Version = 2;
+
+    /// <summary>
+    /// Weekly caps, available distance and long-run caps are rounded <b>down</b> to this step (v2, ADR 0040 amendment "plan reliability"): the
+    /// model hits round numbers it can add up (28,000 m, not 28,286 m), and the validator checks the same rounded values.
+    /// </summary>
+    public const double CapStepMeters = 500;
     public const int MaxHorizonWeeks = 16;
     public const double WeeklyGrowth = 1.10;
     public const double MinBaseVolumeMeters = 10_000;
@@ -14,6 +20,10 @@ public static class PlanEnvelopeRules
     public const int MinSessionsPerWeek = 3;
     public const int MaxSessionsPerWeek = 7;
     public const double ReferencePaceFromMeanPace = 0.90;
+
+    /// <summary>Rounds a non-negative cap down to <see cref="CapStepMeters"/>.</summary>
+    public static double FloorToStep(double meters) =>
+        meters <= 0 ? 0 : Math.Floor((meters + 1e-6) / CapStepMeters) * CapStepMeters;
 
     /// <summary>Taper length in weeks by goal distance: under 15 km 1, under 30 km 2, otherwise 3.</summary>
     public static int TaperWeeks(double goalDistanceMeters) =>

@@ -38,7 +38,8 @@ public sealed class CapturingTransport : IDisposable
     }
 
     /// <summary>A chat completion with <paramref name="content"/> as the assistant message.</summary>
-    public CapturingTransport RespondCompletion(string content, int promptTokens = 5000, int completionTokens = 600, string model = "gpt-5.4-mini-2026-03-17")
+    public CapturingTransport RespondCompletion(
+        string content, int promptTokens = 5000, int completionTokens = 600, string model = "gpt-5.4-mini-2026-03-17", string finishReason = "stop")
     {
         var body = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object?>
         {
@@ -52,7 +53,7 @@ public sealed class CapturingTransport : IDisposable
                 {
                     ["index"] = 0,
                     ["message"] = new Dictionary<string, object?> { ["role"] = "assistant", ["content"] = content, ["refusal"] = null },
-                    ["finish_reason"] = "stop",
+                    ["finish_reason"] = finishReason,
                 },
             },
             ["usage"] = new Dictionary<string, object?>

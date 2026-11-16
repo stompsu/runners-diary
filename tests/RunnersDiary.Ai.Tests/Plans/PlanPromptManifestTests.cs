@@ -13,20 +13,22 @@ public sealed class PlanPromptManifestTests
     {
         var catalog = PlanPromptCatalog.Load(RepoPaths.PlanPrompts);
 
-        Assert.Equal(1, catalog.Current.Version);
-        Assert.Equal([1], catalog.Versions.Keys);
-        Assert.Equal(PromptCatalog.Hash(File.ReadAllBytes(Path.Combine(RepoPaths.PlanPrompts, "v1.md"))), catalog.Current.Sha256);
+        Assert.Equal(2, catalog.Current.Version);
+        Assert.Equal([1, 2], catalog.Versions.Keys.Order());
+        Assert.Equal(PromptCatalog.Hash(File.ReadAllBytes(Path.Combine(RepoPaths.PlanPrompts, "v2.md"))), catalog.Current.Sha256);
+        Assert.Equal(PromptCatalog.Hash(File.ReadAllBytes(Path.Combine(RepoPaths.PlanPrompts, "v1.md"))), catalog.Versions[1].Sha256);
+        Assert.Equal(catalog.Versions[1].Policy.DenyList, catalog.Current.Policy.DenyList);
         Assert.Equal(["en"], catalog.Languages);
         Assert.Equal(SummaryValidationPolicy.DefaultDenyList, catalog.Current.Policy.DenyList);
         Assert.Equal(PlanValidationPolicy.Default.DenyList, catalog.Current.Policy.DenyList);
         Assert.StartsWith("# Role", catalog.Current.Instructions, StringComparison.Ordinal);
-        Assert.DoesNotContain("version: 1", catalog.Current.Instructions, StringComparison.Ordinal);
+        Assert.DoesNotContain("version: 2", catalog.Current.Instructions, StringComparison.Ordinal);
     }
 
     [Fact]
     public void The_copy_next_to_the_binaries_equals_the_repository_files()
     {
-        foreach (var file in new[] { "manifest.json", "v1.md" })
+        foreach (var file in new[] { "manifest.json", "v1.md", "v2.md" })
         {
             Assert.Equal(File.ReadAllBytes(Path.Combine(RepoPaths.PlanPrompts, file)), File.ReadAllBytes(Path.Combine(RepoPaths.PlanPromptsInOutput, file)));
         }
@@ -42,6 +44,7 @@ public sealed class PlanPromptManifestTests
         {
             "planStart", "planEnd", "availableDistanceMeters", "maxLongRunMeters", "maxSessionsPerWeek", "phase", "referencePaceSecondsPerKm",
             "usualWeekdays", "dismissed", "otherGoal", "120 characters", "three short sentences", "medical",
+            "at most 90 more than the faster one", "up to 135 more", "`trailTraining`", "multiples of 500 m", "add up the `distanceMeters`", "previous plan was rejected",
         })
         {
             Assert.Contains(term, instructions, StringComparison.Ordinal);
@@ -55,14 +58,15 @@ public sealed class PlanPromptManifestTests
         try
         {
             File.Copy(Path.Combine(RepoPaths.PlanPrompts, "manifest.json"), Path.Combine(dir.FullName, "manifest.json"));
+            File.Copy(Path.Combine(RepoPaths.PlanPrompts, "v2.md"), Path.Combine(dir.FullName, "v2.md"));
             File.WriteAllText(Path.Combine(dir.FullName, "v1.md"), File.ReadAllText(Path.Combine(RepoPaths.PlanPrompts, "v1.md")) + "\nOne more line.\n");
             Assert.Contains("does not match its manifest hash", Assert.Throws<InvalidOperationException>(() => PlanPromptCatalog.Load(dir.FullName)).Message, StringComparison.Ordinal);
 
             File.Copy(Path.Combine(RepoPaths.PlanPrompts, "v1.md"), Path.Combine(dir.FullName, "v1.md"), overwrite: true);
             File.WriteAllText(
                 Path.Combine(dir.FullName, "manifest.json"),
-                File.ReadAllText(Path.Combine(RepoPaths.PlanPrompts, "manifest.json")).Replace("\"planFactSheetVersion\": 1", "\"planFactSheetVersion\": 2", StringComparison.Ordinal));
-            Assert.Contains("plan fact sheet version 2", Assert.Throws<InvalidOperationException>(() => PlanPromptCatalog.Load(dir.FullName)).Message, StringComparison.Ordinal);
+                File.ReadAllText(Path.Combine(RepoPaths.PlanPrompts, "manifest.json")).Replace("\"planFactSheetVersion\": 2", "\"planFactSheetVersion\": 1", StringComparison.Ordinal));
+            Assert.Contains("plan fact sheet version 1", Assert.Throws<InvalidOperationException>(() => PlanPromptCatalog.Load(dir.FullName)).Message, StringComparison.Ordinal);
         }
         finally
         {

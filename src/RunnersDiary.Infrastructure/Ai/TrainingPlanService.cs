@@ -232,7 +232,8 @@ public sealed partial class TrainingPlanService(
                 }
             }
 
-            var rows = kept.Select(s => TrainingSuggestion.Create(currentUser.UserId, goal.Id, record.GenerationId, s, now)).ToList();
+            var trailGoal = goal.Surface == Domain.Runs.Surface.Trail;
+            var rows = kept.Select(s => TrainingSuggestion.Create(currentUser.UserId, goal.Id, record.GenerationId, s, now, trailGoal)).ToList();
             db.TrainingSuggestions.AddRange(rows);
             goal.RecordPlan(record, now);
             db.Entry(goal).Property(g => g.RowVersion).OriginalValue = loaded.RowVersion;

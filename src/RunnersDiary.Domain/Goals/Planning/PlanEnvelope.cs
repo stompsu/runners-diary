@@ -4,10 +4,10 @@ namespace RunnersDiary.Domain.Goals.Planning;
 /// One ISO week of the plan horizon. <paramref name="Start"/> is the Monday, also for a partial first week; the plannable days are
 /// <c>[max(Start, planStart), min(Start + 6, planEnd)]</c>.
 /// </summary>
-/// <param name="MaxDistanceMeters">The weekly cap for running distance, including commitments (scaled by days/7 in a partial first week).</param>
+/// <param name="MaxDistanceMeters">The weekly cap for running distance, including commitments (scaled by days/7 in a partial first week), rounded down to 500 m.</param>
 /// <param name="FixedDistanceMeters">Distance of commitments in the week that count as running (Race and Training categories).</param>
-/// <param name="AvailableDistanceMeters"><c>max(0, cap - fixed)</c>.</param>
-/// <param name="MaxLongRunMeters">The longest single session allowed in the week.</param>
+/// <param name="AvailableDistanceMeters"><c>max(0, cap - fixed)</c>, rounded down to 500 m.</param>
+/// <param name="MaxLongRunMeters">The longest single session allowed in the week, rounded down to 500 m.</param>
 /// <param name="FixedRunningSessions">Commitments in the week that count as running sessions (for the frequency rule).</param>
 public sealed record PlanWeek(
     DateOnly Start,

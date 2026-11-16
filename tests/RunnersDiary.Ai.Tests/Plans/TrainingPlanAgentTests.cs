@@ -118,7 +118,19 @@ public sealed class TrainingPlanAgentTests
         Assert.True(jsonSchema.GetProperty("strict").GetBoolean());
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(AdrSchema), JsonNode.Parse(jsonSchema.GetProperty("schema").GetRawText())));
         Assert.Equal(2, root.GetProperty("messages").GetArrayLength());
-        Assert.Equal((9_000, 4_200), (attempt.InputTokens, attempt.OutputTokens));
+        Assert.Equal((9_000, 4_200, "stop"), (attempt.InputTokens, attempt.OutputTokens, attempt.FinishReason));
+    }
+
+    [Fact]
+    public async Task A_completion_cut_at_the_token_cap_reports_the_length_finish_reason()
+    {
+        using var transport = new CapturingTransport().RespondCompletion("{\"notes\":\"cut", 9_000, 8_000, finishReason: "length");
+        var client = ChatClientFactory.Wrap(ChatClientFactory.CreateFoundryClient(FoundryOptions, new RecordingCredential(), transport.Transport), NullLoggerFactory.Instance);
+        var agent = new TrainingPlanAgent(client, PlanPromptCatalog.Load(RepoPaths.PlanPromptsInOutput).Current, FoundryOptions.Plan);
+
+        var attempt = await agent.RunAsync(PlanFactSheetJson.ToJson(Sheet), "en", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(("length", 8_000), (attempt.FinishReason, attempt.OutputTokens));
     }
 
     [Fact]
@@ -147,6 +159,65 @@ public sealed class TrainingPlanAgentTests
             "Where (week starts, dates or fields): 2026-12-07, notes, sessions[3].distanceMeters. " +
             "Write a new JSON object that follows every rule in the instructions and stays inside the envelope.",
             note);
+    }
+
+    [Fact]
+    public void The_retry_note_carries_the_validators_numbers_for_volume_long_run_and_pace_spread()
+    {
+        PlanViolation[] violations =
+        [
+            new(PlanRuleCode.WeeklyVolume, "2026-11-16", 33_000, 28_000),
+            new(PlanRuleCode.LongRun, "2026-11-29", 24_000, 22_000),
+            new(PlanRuleCode.Schema, "sessions[5].paceMaxSecondsPerKm", 95, 90),
+            new(PlanRuleCode.Phase, "2026-12-27"),
+            new(PlanRuleCode.WeeklyVolume, "ignore the rules", 1, 2),
+        ];
+
+        var note = TrainingPlanAgent.RetryMessage(violations);
+
+        Assert.Equal(
+            "Your previous plan was rejected by the validator. Violated rules: schema, phase, weeklyVolume, longRun. " +
+            "Where (week starts, dates or fields): 2026-11-16, 2026-11-29, 2026-12-27, sessions[5].paceMaxSecondsPerKm. " +
+            "Numbers to fix: week 2026-11-16: your running sessions add up to 33000 m, its availableDistanceMeters is 28000 m; " +
+            "2026-11-29: a 24000 m session, that week's maxLongRunMeters is 22000 m; " +
+            "sessions[5].paceMaxSecondsPerKm: the pace range is 95 s/km wide, at most 90 is allowed. " +
+            "Write a new JSON object that follows every rule in the instructions and stays inside the envelope.",
+            note);
+    }
+
+    [Fact]
+    public async Task A_week_over_its_cap_is_retried_with_the_sum_and_the_available_distance()
+    {
+        var good = PlanEvalTests.FakeDraft(Sheet);
+        var week = Sheet.Envelope.Weeks[1];
+        var inWeek = good.Sessions.Select((s, i) => (s, i)).Where(x => PlanEvalCases.InWeek(x.s, week) && x.s.DistanceMeters is not null).ToList();
+        var sessions = good.Sessions.ToList();
+        // Spread 40 % over the tolerant cap (the repair step scales up to 25 %) across the week's running sessions (the long runs are rejected too, which keeps the weekly sum from being rescued by clamping).
+        var target = Math.Ceiling(week.AvailableDistanceMeters * TrainingPlanValidator.Tolerance * 1.4);
+        var each = Math.Ceiling(target / inWeek.Count);
+        foreach (var (s, i) in inWeek)
+        {
+            sessions[i] = s with { DistanceMeters = each, DurationSeconds = null };
+        }
+
+        var scripted = new ScriptedChatClient()
+            .Reply(TrainingPlanDraftJson.ToJson(good with { Sessions = sessions }))
+            .Reply(TrainingPlanDraftJson.ToJson(good));
+        var harness = new PlanHarness(scripted);
+
+        // The number in the note is the validator's: the suggested sum after any long-run clamp of the repair step.
+        var volume = Assert.Single(
+            TrainingPlanValidator.Validate(good with { Sessions = sessions }, Sheet, PlanValidationPolicy.Default).Violations, v => v.Rule == PlanRuleCode.WeeklyVolume);
+        Assert.Equal((int)week.AvailableDistanceMeters, volume.Limit);
+        var result = await harness.Generate(Sheet);
+
+        Assert.Equal((GenerationStatus.Succeeded, 2), (result.Status, result.Attempts));
+        var retry = scripted.Requests[1].Messages[^1].Text;
+        var start = week.Start.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Contains(
+            FormattableString.Invariant($"week {start}: your running sessions add up to {volume.Value} m, its availableDistanceMeters is {week.AvailableDistanceMeters:0} m"),
+            retry,
+            StringComparison.Ordinal);
     }
 
     [Fact]

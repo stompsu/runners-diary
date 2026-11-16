@@ -96,10 +96,11 @@ public sealed class PlanEnvelopeBuilderTests
         Assert.Equal(new DateOnly(2026, 11, 16), e.Weeks[0].Start);
         Assert.Equal(new DateOnly(2027, 1, 18), e.Weeks[9].Start);
 
-        // 30,000 x 1.1^k; week 1 scaled by 6/7 (33,000 x 6/7 = 28,285.7); taper = 30,000 x 1.1^9 x 0.6 = 42,443.
-        Assert.Equal([28_286, 36_300, 39_930, 43_923, 48_315, 53_147, 58_462, 64_308, 70_738, 42_443], e.Weeks.Select(w => w.MaxDistanceMeters));
-        // 12,000 x 1.1^k up to the 18 km ceiling of a 10K goal; taper 18,000 x 0.6.
-        Assert.Equal([13_200, 14_520, 15_972, 17_569, 18_000, 18_000, 18_000, 18_000, 18_000, 10_800], e.Weeks.Select(w => w.MaxLongRunMeters));
+        // 30,000 x 1.1^k; week 1 scaled by 6/7 (33,000 x 6/7 = 28,285.7); taper = 30,000 x 1.1^9 x 0.6 = 42,443; all rounded down to 500 m (v2).
+        Assert.Equal([28_000, 36_000, 39_500, 43_500, 48_000, 53_000, 58_000, 64_000, 70_500, 42_000], e.Weeks.Select(w => w.MaxDistanceMeters));
+        // 12,000 x 1.1^k up to the 18 km ceiling of a 10K goal; taper 18,000 x 0.6; rounded down to 500 m.
+        Assert.Equal([13_000, 14_500, 15_500, 17_500, 18_000, 18_000, 18_000, 18_000, 18_000, 10_500], e.Weeks.Select(w => w.MaxLongRunMeters));
+        Assert.All(e.Weeks, w => Assert.Equal(0, w.MaxDistanceMeters % PlanEnvelopeRules.CapStepMeters));
         Assert.All(e.Weeks, w => Assert.Equal(w.MaxDistanceMeters, w.AvailableDistanceMeters));
         Assert.Equal(PlanEnvelopeRules.AllowedRunTypeCodes, e.AllowedRunTypes);
     }
@@ -117,9 +118,9 @@ public sealed class PlanEnvelopeBuilderTests
         Assert.Equal(new DateOnly(2027, 3, 1), e.Weeks[^1].Start);
         Assert.Equal(new string('B', 13) + "UUU", Letters(e.Weeks.Select(w => w.Phase)));
         Assert.Null(e.ReferencePaceSecondsPerKm);
-        // 40,000 x 1.1^k (week 1 scaled by 6/7: 44,000 x 6/7 = 37,714.3), held at the 160 km ceiling from week 15.
+        // 40,000 x 1.1^k (week 1 scaled by 6/7: 44,000 x 6/7 = 37,714.3), held at the 160 km ceiling from week 15; rounded down to 500 m.
         Assert.Equal(
-            [37_714, 48_400, 53_240, 58_564, 64_420, 70_862, 77_949, 85_744, 94_318, 103_750, 114_125, 125_537, 138_091, 151_900, 160_000, 160_000],
+            [37_500, 48_000, 53_000, 58_500, 64_000, 70_500, 77_500, 85_500, 94_000, 103_500, 114_000, 125_500, 138_000, 151_500, 160_000, 160_000],
             e.Weeks.Select(w => w.MaxDistanceMeters));
     }
 
@@ -131,8 +132,8 @@ public sealed class PlanEnvelopeBuilderTests
 
         Assert.Equal("TTT", Letters(e.Weeks.Select(w => w.Phase)));
         Assert.Equal(new DateOnly(2026, 12, 5), e.PlanEnd);
-        Assert.Equal([19_286, 22_500, 16_500], e.Weeks.Select(w => w.MaxDistanceMeters)); // 22,500 x 6/7 = 19,285.7
-        Assert.Equal([9_000, 9_000, 6_600], e.Weeks.Select(w => w.MaxLongRunMeters));
+        Assert.Equal([19_000, 22_500, 16_500], e.Weeks.Select(w => w.MaxDistanceMeters)); // 22,500 x 6/7 = 19,285.7, rounded down to 500 m
+        Assert.Equal([9_000, 9_000, 6_500], e.Weeks.Select(w => w.MaxLongRunMeters)); // 6,600 rounded down
     }
 
     [Fact]
@@ -141,9 +142,9 @@ public sealed class PlanEnvelopeBuilderTests
         var e = PlanEnvelopeBuilder.Build(Goal(new DateOnly(2026, 12, 6)), Today, History(weekly: 2_000, longest: 3_000), [], null);
 
         Assert.Equal(10_000, e.BaseVolumeMeters);
-        // Week 1 of W = 3 (T = 1): U P T. Build: 10,000 x 1.1 x 6/7 = 9,428.6; long run 8,000 x 1.1 = 8,800.
-        Assert.Equal(9_429, e.Weeks[0].MaxDistanceMeters);
-        Assert.Equal(8_800, e.Weeks[0].MaxLongRunMeters);
+        // Week 1 of W = 3 (T = 1): U P T. Build: 10,000 x 1.1 x 6/7 = 9,428.6; long run 8,000 x 1.1 = 8,800; rounded down to 500 m.
+        Assert.Equal(9_000, e.Weeks[0].MaxDistanceMeters);
+        Assert.Equal(8_500, e.Weeks[0].MaxLongRunMeters);
     }
 
     [Theory]
@@ -175,7 +176,7 @@ public sealed class PlanEnvelopeBuilderTests
         var e = PlanEnvelopeBuilder.Build(Goal(new DateOnly(2027, 1, 24)), Today, History(), commitments, null);
 
         Assert.Equal([15_000, 0, 10_000], e.Weeks.Take(3).Select(w => w.FixedDistanceMeters));
-        Assert.Equal([13_286, 36_300, 29_930], e.Weeks.Take(3).Select(w => w.AvailableDistanceMeters));
+        Assert.Equal([13_000, 36_000, 29_500], e.Weeks.Take(3).Select(w => w.AvailableDistanceMeters)); // rounded caps minus fixed
         Assert.Equal([2, 0, 1], e.Weeks.Take(3).Select(w => w.FixedRunningSessions));
         Assert.All(e.Weeks.Skip(3), w => Assert.Equal(0, w.FixedDistanceMeters));
     }
@@ -201,7 +202,7 @@ public sealed class PlanEnvelopeBuilderTests
         Assert.Equal(oneDay.PlanStart, oneDay.PlanEnd);
         Assert.Single(oneDay.Weeks);
         Assert.Equal(TrainingPhase.Taper, oneDay.Weeks[0].Phase);
-        Assert.Equal(15_429, oneDay.Weeks[0].MaxDistanceMeters); // 30,000 x 0.6 x 6/7
+        Assert.Equal(15_000, oneDay.Weeks[0].MaxDistanceMeters); // 30,000 x 0.6 x 6/7 = 15,428.6, rounded down to 500 m
         Assert.False(none.HasPlannableDays);
         Assert.Empty(none.Weeks);
     }
@@ -238,6 +239,28 @@ public sealed class PlanEnvelopeBuilderTests
         Assert.Equal(
             ["easy", "recovery", "long", "tempo", "intervals", "fartlek", "hillRepeats", "progression", "racePace", "stridesDrills", "trailTraining", "treadmill", "rest"],
             PlanEnvelopeRules.AllowedRunTypeCodes);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(-10, 0)]
+    [InlineData(499.9, 0)]
+    [InlineData(500, 500)]
+    [InlineData(28_285.7, 28_000)]
+    [InlineData(28_499.999_999_9, 28_500)]
+    [InlineData(160_000, 160_000)]
+    public void Caps_are_rounded_down_to_the_500_metre_step(double meters, double expected) =>
+        Assert.Equal(expected, PlanEnvelopeRules.FloorToStep(meters));
+
+    [Fact]
+    public void Available_distance_is_on_the_step_even_when_the_fixed_distance_is_not()
+    {
+        var commitments = new List<CommitmentFact> { new(new DateOnly(2026, 11, 19), RunTypeIds.Easy, 7_340, null, CommitmentKind.Planned, false) };
+
+        var e = PlanEnvelopeBuilder.Build(Goal(new DateOnly(2027, 1, 24)), Today, History(), commitments, null);
+
+        // 28,000 - 7,340 = 20,660 -> 20,500.
+        Assert.Equal((28_000, 7_340, 20_500), (e.Weeks[0].MaxDistanceMeters, e.Weeks[0].FixedDistanceMeters, e.Weeks[0].AvailableDistanceMeters));
     }
 }
 
