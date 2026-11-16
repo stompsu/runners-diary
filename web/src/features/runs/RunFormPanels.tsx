@@ -8,7 +8,14 @@ import { useRunTypeCodes } from '@/features/calendar/calendarQueries'
 import { QueryError } from '@/features/errors/QueryError'
 import { isValid, todayFromMe } from '@/lib/dates/plainDate'
 import { parseProblem } from '@/lib/api/problem'
-import { diaryPath } from '@/features/diary/diaryMonth'
+import { diaryPath, gridBounds } from '@/features/diary/diaryMonth'
+import { acceptSuggestionWithRun } from '@/features/goals/goalQueries'
+import { paceText } from '@/features/goals/goalFormat'
+import { useSuggestionRange } from '@/features/calendar/suggestionQueries'
+import { formatDuration } from '@/lib/format/duration'
+import { formatKmInput } from '@/lib/format/units'
+import { Button } from '@/components/ui/button'
+import '@/i18n/lazyBundles'
 import { RunForm } from './RunForm'
 import { RunGone } from './RunGone'
 import { defaultFormValues } from './runFormMapping'
@@ -57,6 +64,88 @@ export function RunNewPanel() {
           onGone={close}
           onCancel={close}
         />
+      ) : (
+        <Skeleton className="h-64 w-full" />
+      )}
+    </ResponsiveDialog>
+  )
+}
+
+/**
+ * `/diary/:year/:month/suggestions/:suggestionId/accept` (Edit & accept, ADR 0041 §4): the run form pre-filled from the
+ * suggestion (date, type, distance, duration, notes = description); the pace range is a read-only hint. Saving calls
+ * `acceptTrainingSuggestion` with `{ run }` and then opens the new run in place of this panel.
+ */
+export function AcceptSuggestionPanel() {
+  const { t } = useTranslation('goals')
+  const { suggestionId = '' } = useParams()
+  const close = useClosePanel()
+  const navigate = useNavigate()
+  const month = usePanelMonth()
+  const base = diaryPath(month)
+  const me = useMe()
+  const { query: types, codes } = useRunTypeCodes()
+  // The same cached range as the Day panel's (the diary has no "get one suggestion" endpoint).
+  const list = useSuggestionRange(gridBounds(month), { enabled: true, includeDismissed: true })
+  const suggestion = list.data?.items.find((item) => item.id === suggestionId)
+
+  const initialValues = useMemo(() => {
+    if (!suggestion) return null
+    const values = defaultFormValues({ date: suggestion.date, runTypeId: suggestion.runTypeId })
+    return {
+      ...values,
+      notes: suggestion.description,
+      distanceKm: suggestion.distanceMeters ? formatKmInput(suggestion.distanceMeters) : '',
+      duration: suggestion.durationSeconds ? formatDuration(suggestion.durationSeconds) : '',
+    }
+  }, [suggestion])
+
+  const failed = [me, types, list].find((query) => query.isError)
+  const gone = list.data && !suggestion
+  const min = suggestion?.targetPaceMinSecondsPerKm
+  const max = suggestion?.targetPaceMaxSecondsPerKm
+
+  return (
+    <ResponsiveDialog
+      title={gone ? t('suggestion.goneTitle') : t('suggestion.acceptTitle')}
+      onClose={close}
+      size="lg"
+      restoreFocusDate={suggestion?.date}
+      panel="run-form"
+    >
+      {failed ? (
+        <QueryError
+          error={failed.error}
+          onRetry={() => {
+            for (const query of [me, types, list]) if (query.isError) void query.refetch()
+          }}
+        />
+      ) : gone ? (
+        <div className="flex flex-col items-start gap-3">
+          <p>{t('suggestion.gone')}</p>
+          <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={close}>
+            {t('suggestion.close')}
+          </Button>
+        </div>
+      ) : initialValues && types.data && me.data ? (
+        <>
+          {min != null && max != null ? (
+            <p className="mb-3 text-sm text-muted-foreground" data-testid="pace-hint">
+              {t('suggestion.paceHint', { min: paceText(min), max: paceText(max) })}
+            </p>
+          ) : null}
+          <RunForm
+            key={suggestionId}
+            initialValues={initialValues}
+            types={types.data}
+            codes={codes}
+            profileZone={me.data.timeZoneId}
+            createWith={(body) => acceptSuggestionWithRun(suggestionId, body)}
+            onSaved={(saved) => void navigate(`${base}/runs/${saved.id}`, { replace: true })}
+            onGone={close}
+            onCancel={close}
+          />
+        </>
       ) : (
         <Skeleton className="h-64 w-full" />
       )}

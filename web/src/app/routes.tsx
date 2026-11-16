@@ -10,6 +10,9 @@ import { panelRoutes } from '@/features/runs/panelRoutes'
 
 export const loadInsightsPage = () => import('@/features/insights/InsightsPage')
 export const loadRaceInterestsPage = () => import('@/features/races/RaceInterestsPage')
+export const loadGoalsPage = () => import('@/features/goals/GoalsPage')
+export const loadGoalDetailPage = () => import('@/features/goals/GoalDetailPage')
+export const loadGoalFormPage = () => import('@/features/goals/GoalFormPage')
 
 // The URL is the source of truth for navigation state (brief §1.1.2): /diary/2026/11.
 // Everything except /signin sits behind RequireAuth (ADR 0014 §7).
@@ -39,6 +42,11 @@ export const routes: RouteObject[] = [
             path: 'settings/races',
             lazy: async () => ({ Component: (await loadRaceInterestsPage()).RaceInterestsPage }),
           },
+          // M9: the Goals pages, their forms and the `goals` strings load only when a goals route is opened.
+          { path: 'goals', lazy: async () => ({ Component: (await loadGoalsPage()).default }) },
+          { path: 'goals/new', lazy: async () => ({ Component: (await loadGoalFormPage()).GoalFormPage }) },
+          { path: 'goals/:goalId', lazy: async () => ({ Component: (await loadGoalDetailPage()).default }) },
+          { path: 'goals/:goalId/edit', lazy: async () => ({ Component: (await loadGoalFormPage()).GoalFormPage }) },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

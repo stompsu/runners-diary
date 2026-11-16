@@ -2,6 +2,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { getSessionEpoch } from '@/auth/session'
 import { $api } from '@/api/client'
+import { GOAL_QUERY_KEY, GOALS_QUERY_KEY, SUGGESTIONS_QUERY_KEY } from '@/features/goals/goalKeys'
 import { RACE_DETAILS_QUERY_KEY, RACE_PROPOSALS_QUERY_KEY } from '@/features/races/raceQueries'
 import type { RunDto } from './runFormTypes'
 
@@ -40,6 +41,11 @@ export function useInvalidateRuns() {
         // Signed-up and dateChanged derive from runs, so a run write changes the proposals and the linked race (M8 §4.6).
         queryClient.invalidateQueries({ queryKey: RACE_PROPOSALS_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: RACE_DETAILS_QUERY_KEY }),
+        // M9 (plan §4.8): accepting turns a suggestion into a run, and a run write changes a goal's raceRunDate and
+        // acceptedCount.
+        queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: GOAL_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: SUGGESTIONS_QUERY_KEY }),
       ]
       if (runId) {
         jobs.push(

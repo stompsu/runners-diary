@@ -18,7 +18,9 @@ export function AppShell() {
   const { t } = useTranslation()
   useTimeZoneSync()
   // Settings only hold race interests so far (M8): hidden while race proposals are switched off.
-  const racesEnabled = useClientConfig().data?.races?.enabled === true
+  const config = useClientConfig().data
+  const racesEnabled = config?.races?.enabled === true
+  const goalsEnabled = config?.goals?.enabled === true
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -36,6 +38,11 @@ export function AppShell() {
             <NavLink to="/insights" className={navLinkClass}>
               {t('nav.insights')}
             </NavLink>
+            {goalsEnabled ? (
+              <NavLink to="/goals" className={navLinkClass}>
+                {t('nav.goals')}
+              </NavLink>
+            ) : null}
             {racesEnabled ? (
               <NavLink to="/settings" className={navLinkClass}>
                 {t('nav.settings')}

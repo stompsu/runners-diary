@@ -81,7 +81,9 @@
   "details": {
     "loading": "Loading the run…",
     "zone": "Time zone",
-    "fromRaceListing": "From race listing"
+    "fromRaceListing": "From race listing",
+    "fromPlan": "From your plan for {{goal}}",
+    "fromPlanUnnamed": "From your training plan"
   },
   "form": {
     "addTitle": "Add run",

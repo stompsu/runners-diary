@@ -11,6 +11,7 @@ import {
   startOfIsoWeek,
 } from '../../lib/dates/plainDate.ts'
 import { RUN_TYPES } from './seed.ts'
+import type { StoredGoal, TrainingSuggestionDto } from './goals.ts'
 import type { RaceInterestsDto } from './races.ts'
 import type { StoredTrack } from './tracks.ts'
 
@@ -53,6 +54,16 @@ export type HandledOperations = Pick<
   | 'getRace'
   | 'setRaceProposalState'
   | 'signUpForRace'
+  | 'listGoals'
+  | 'getGoal'
+  | 'createGoal'
+  | 'updateGoal'
+  | 'deleteGoal'
+  | 'estimateGoal'
+  | 'generateTrainingPlan'
+  | 'listTrainingSuggestions'
+  | 'acceptTrainingSuggestion'
+  | 'dismissTrainingSuggestion'
 >
 
 export interface Account {
@@ -72,6 +83,10 @@ export interface Account {
   raceStates: Map<string, { state: 'Interested' | 'Dismissed'; dateWhenMarked: string }>
   /** `ProposalsSeenUtc`: proposals updated after it are `isNew`. */
   raceSeenUtc: string | null
+  /** Training goals by id (M9). */
+  goals: Map<string, StoredGoal>
+  /** Pending and dismissed training suggestions by id; accepting one deletes it (ADR 0041 §2). */
+  suggestions: Map<string, TrainingSuggestionDto>
 }
 
 export interface Limits {

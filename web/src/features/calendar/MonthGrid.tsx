@@ -15,6 +15,7 @@ import {
   weekdayLabels,
   type PlainDate,
 } from '@/lib/dates/plainDate'
+import type { GoalDto, TrainingSuggestion } from '@/features/goals/goalTypes'
 import type { RaceProposal } from '@/features/races/raceTypes'
 import { DayCell } from './DayCell'
 import { NAVIGATION_KEYS, targetForKey } from './gridNavigation'
@@ -23,6 +24,10 @@ import type { CalendarMonth, Run } from './types'
 
 const NO_PROPOSALS: readonly RaceProposal[] = []
 const NO_PROPOSALS_OF_DAY: RaceProposal[] = []
+const NO_SUGGESTIONS: readonly TrainingSuggestion[] = []
+const NO_SUGGESTIONS_OF_DAY: TrainingSuggestion[] = []
+const NO_GOALS_OF_DAY: GoalDto[] = []
+const NO_GOALS: ReadonlyMap<PlainDate, GoalDto[]> = new Map()
 const NO_OP = () => undefined
 
 /** A pending request to put the keyboard focus on a day once the grid for `month` is on screen. */
@@ -39,6 +44,10 @@ export interface MonthGridProps {
   codes: ReadonlyMap<number, string>
   /** Race proposals to show (already without signed-up and dismissed ones); empty while they are off. */
   proposals?: readonly RaceProposal[]
+  /** Pending training suggestions to show; empty while the layer is off (they never count in the week totals). */
+  suggestions?: readonly TrainingSuggestion[]
+  /** Active goals by target date (markers). */
+  goalMarkers?: ReadonlyMap<PlainDate, GoalDto[]>
   /** The day whose panel is open (URL), if any. */
   selectedDate?: PlainDate
   focusRequest: FocusRequest | null
@@ -61,6 +70,8 @@ export function MonthGrid({
   today,
   codes,
   proposals = NO_PROPOSALS,
+  suggestions = NO_SUGGESTIONS,
+  goalMarkers = NO_GOALS,
   selectedDate,
   focusRequest,
   onFocusHandled,
@@ -91,6 +102,12 @@ export function MonthGrid({
     for (const proposal of proposals) map.set(proposal.date, [...(map.get(proposal.date) ?? []), proposal])
     return map
   }, [proposals])
+
+  const suggestionsByDate = useMemo(() => {
+    const map = new Map<PlainDate, TrainingSuggestion[]>()
+    for (const suggestion of suggestions) map.set(suggestion.date, [...(map.get(suggestion.date) ?? []), suggestion])
+    return map
+  }, [suggestions])
 
   const weeks = useMemo(() => {
     const count = Math.round((diffDays(gridStart, gridEnd) + 1) / 7)
@@ -182,6 +199,8 @@ export function MonthGrid({
                   isTabStop={date === tabStop}
                   isSelected={date === validSelected}
                   runs={runsByDate.get(date) ?? []}
+                  suggestions={suggestionsByDate.get(date) ?? NO_SUGGESTIONS_OF_DAY}
+                  goals={goalMarkers.get(date) ?? NO_GOALS_OF_DAY}
                   proposals={proposalsByDate.get(date) ?? NO_PROPOSALS_OF_DAY}
                   codes={codes}
                   onActivate={setActive}

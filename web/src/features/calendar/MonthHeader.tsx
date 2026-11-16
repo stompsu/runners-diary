@@ -8,6 +8,7 @@ import { diaryPath, type DiaryMonth } from '@/features/diary/diaryMonth'
 import type { PlainDate } from '@/lib/dates/plainDate'
 import { monthLabel } from '@/lib/dates/plainDate'
 import { ProposalsToggle } from './ProposalsToggle'
+import { SuggestionsToggle } from './SuggestionsToggle'
 
 // The picker's popover (Radix Popper + floating-ui) is ~12 kB gzip that nothing else in the initial load needs.
 const MonthYearPicker = lazy(() => import('./MonthYearPicker').then((m) => ({ default: m.MonthYearPicker })))
@@ -77,6 +78,7 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
           <MonthYearPicker month={month} onSelect={onSelectMonth} />
         </Suspense>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <SuggestionsToggle />
           <ProposalsToggle />
           {racesEnabled ? (
             <Button asChild variant="outline" className="h-11 sm:h-9">

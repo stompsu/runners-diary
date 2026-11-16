@@ -36,7 +36,13 @@
     "bubble": "{{type}}, {{status}}",
     "proposals_one": "{{count}} race proposal: {{proposals}}",
     "proposals_other": "{{count}} race proposals: {{proposals}}",
-    "proposalInterested": "interested"
+    "proposalInterested": "interested",
+    "suggestions_one": "{{count}} suggested training: {{suggestions}}",
+    "suggestions_other": "{{count}} suggested trainings: {{suggestions}}",
+    "suggestion": "{{type}}",
+    "suggestionWithDistance": "{{type}}, {{distance}}",
+    "goal": "goal: {{title}}",
+    "fromPlan": "from plan"
   },
   "status": {
     "planned": "Planned",
@@ -51,11 +57,20 @@
     "completed": "Completed",
     "planned": "Planned",
     "race": "Race",
-    "proposal": "Race proposal"
+    "proposal": "Race proposal",
+    "suggested": "Suggested (hatched, sparkles)",
+    "goal": "Goal (target)",
+    "fromPlan": "From plan",
+    "suggestedBadge": "Suggested"
   },
   "proposalsToggle": {
     "label": "Show race proposals",
     "setup": "Set up race proposals",
     "failed": "Could not save the setting. Please try again."
+  },
+  "suggestionBubble": "Suggested training: {{type}}",
+  "goalMarker": "Goal: {{title}}",
+  "suggestionsToggle": {
+    "label": "Show suggestions"
   }
 }

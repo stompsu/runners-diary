@@ -2,6 +2,7 @@ import { addDays, parse } from '../../lib/dates/plainDate.ts'
 import {
   buildRun,
   calendarMonth,
+  encodeVersion,
   json,
   notFound,
   problem,
@@ -18,6 +19,15 @@ import {
   type RunWriteRequest,
 } from './handlers.ts'
 import { matches, type Fault } from './faults.ts'
+import {
+  FEATURE_UNAVAILABLE as GOALS_FEATURE_UNAVAILABLE,
+  routeGoals,
+  routeSuggestions,
+  seedGoal,
+  type GoalDto,
+  type GoalRouteContext,
+  type TrainingSuggestionDto,
+} from './goals.ts'
 import { buildInsightsReport, validateInsightsQuery, type InsightsScenario } from './insights.ts'
 import {
   defaultRaceInterests,
@@ -66,6 +76,7 @@ export { GUEST_LIMIT, USER_LIMIT, sampleSummaryContent } from './summary.ts'
 export type { InsightsSummaryDto, SummaryOptions, SummaryPostOutcome, SummaryScenario } from './summary.ts'
 export type { CatalogueRace, RaceInterestsDto } from './races.ts'
 export { DEMO_RACE_IDS } from './races.ts'
+export { PLAN_PROBLEMS, type GoalDto, type TrainingSuggestionDto } from './goals.ts'
 export { DEMO_REPORT_TODAY, demoReport, type InsightsReportDto, type InsightsScenario } from './insights.ts'
 
 /** A track to put straight into an account (test setup; the upload path is `POST /api/runs/{id}/tracks`). */
@@ -104,6 +115,10 @@ export interface FakeApiOptions {
   raceCatalogue?: CatalogueRace[]
   /** `catalogueUpdatedUtc` of the proposals response. Default = creation time. */
   catalogueUpdatedUtc?: string | null
+  /** `client-config.goals.enabled`; false = the goals and suggestions groups answer 503. Default false. */
+  goalsEnabled?: boolean
+  /** `client-config.ai.planGeneration`; false = generating answers 503 feature-unavailable. Default = `goalsEnabled`. */
+  planGeneration?: boolean
   limits?: Partial<Limits>
   /** Clock in ms, for token expiry and timestamps. Default `Date.now`. */
   now?: () => number
@@ -147,7 +162,15 @@ export interface FakeApi {
   tracksOf(token: string, runId: string): TrackDto[]
   setGeocodingEnabled(enabled: boolean): void
   setRacesEnabled(enabled: boolean): void
-  /** Test inspection: the saved race interests of the account behind a token (null = none saved). */
+  setGoalsEnabled(enabled: boolean): void
+  setPlanGeneration(enabled: boolean): void
+  /** Puts a goal straight into the account behind `token` (test set-up); returns its DTO. */
+  addGoal(token: string, patch?: Partial<GoalDto>): GoalDto
+  /** Test inspection: the goals of the account behind a token. */
+  goalsOf(token: string): GoalDto[]
+  /** Test inspection: the suggestions (pending and dismissed) of the account behind a token, by date. */
+  suggestionsOf(token: string): TrainingSuggestionDto[]
+  /** Test inspection: the saved race interests race interests of the account behind a token (null = none saved). */
   raceInterestsOf(token: string): RaceInterestsDto | null
   /** Test inspection: the caller's state of a race (`None` when unmarked). */
   raceStateOf(token: string, raceId: string): 'None' | 'Interested' | 'Dismissed' | 'SignedUp'
@@ -184,6 +207,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   let geocodingEnabled = options.geocodingEnabled ?? false
   let racesEnabled = options.racesEnabled ?? true
   let insightsScenario: InsightsScenario = options.insights ?? 'demo'
+  let goalsEnabled = options.goalsEnabled ?? false
+  let planGeneration = options.planGeneration ?? goalsEnabled
 
   const summaryService = createSummaryService({
     now,
@@ -199,6 +224,16 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   let catalogueUpdatedUtc: string | null =
     options.catalogueUpdatedUtc === undefined ? new Date(now()).toISOString() : options.catalogueUpdatedUtc
   const raceContext = (): RaceRouteContext => ({ today, catalogue, catalogueUpdatedUtc })
+
+  const goalContext = (): GoalRouteContext => ({
+    today,
+    nowIso: new Date(now()).toISOString(),
+    nextId,
+    nextVersion: () => ++versionCounter,
+    encodeVersion,
+    planGeneration,
+    limitProblem: (account, date) => limitProblem(account, date),
+  })
 
   const accounts = new Map<string, Account>() // token -> account
   const faultList: Fault[] = []
@@ -230,6 +265,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
           : null,
       raceStates: kind === 'Guest' && (options.guestRaceProfile ?? true) ? demoRaceStates(catalogue) : new Map(),
       raceSeenUtc: null,
+      goals: new Map(),
+      suggestions: new Map(),
     }
     accounts.set(token, account)
     const seed = overrides.seed ?? (kind === 'Guest' ? (options.guestSeed ?? demoRuns(today)) : [])
@@ -369,8 +406,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
             enabled: racesEnabled,
             sources: [{ id: 'running-life', name: 'running.life', url: 'https://running.life/' }],
           },
-          ai: { summaryGeneration: summaryService.generationEnabled(), planGeneration: false },
-          goals: { enabled: false },
+          ai: { summaryGeneration: summaryService.generationEnabled(), planGeneration: goalsEnabled && planGeneration },
+          goals: { enabled: goalsEnabled },
         } satisfies ClientConfigResponse,
         200,
         { 'Cache-Control': 'public, max-age=300' },
@@ -497,6 +534,15 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       }
       const raceResponse = await routeRaces(request, account, path)
       if (raceResponse) return raceResponse
+    }
+
+    if (path.startsWith('/api/goals') || path.startsWith('/api/training-suggestions')) {
+      // The real API answers 503 feature-unavailable for both groups while Goals:Enabled is false.
+      if (!goalsEnabled) return problem(503, 'Goals are not available.', { type: GOALS_FEATURE_UNAVAILABLE })
+      const goalResponse = path.startsWith('/api/goals')
+        ? await routeGoals(goalContext(), request, account, path, () => readJson(request))
+        : await routeSuggestions(goalContext(), request, account, path)
+      if (goalResponse) return goalResponse
     }
 
     if (method === 'GET' && path === '/api/insights/report') {
@@ -785,6 +831,25 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       [...(accounts.get(token)?.tracks.values() ?? [])].filter((t) => t.dto.runId === runId).map((t) => t.dto),
     setGeocodingEnabled: (enabled) => void (geocodingEnabled = enabled),
     setRacesEnabled: (enabled) => void (racesEnabled = enabled),
+    setGoalsEnabled: (enabled) => void (goalsEnabled = enabled),
+    setPlanGeneration: (enabled) => void (planGeneration = enabled),
+    addGoal: (token, patch) => {
+      const account = accounts.get(token)
+      if (!account) throw new Error('Unknown token')
+      const id = nextId()
+      const dto: GoalDto = {
+        ...seedGoal(today, patch),
+        id,
+        version: encodeVersion(++versionCounter),
+        createdAt: new Date(now()).toISOString(),
+        updatedAt: new Date(now()).toISOString(),
+      }
+      account.goals.set(id, { dto })
+      return dto
+    },
+    goalsOf: (token) => [...(accounts.get(token)?.goals.values() ?? [])].map((g) => g.dto),
+    suggestionsOf: (token) =>
+      [...(accounts.get(token)?.suggestions.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
     raceInterestsOf: (token) => accounts.get(token)?.raceInterests ?? null,
     raceStateOf: (token, raceId) => {
       const account = accounts.get(token)

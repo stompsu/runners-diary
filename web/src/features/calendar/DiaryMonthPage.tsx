@@ -11,6 +11,13 @@ import { firstOfMonth, isValid, monthOf, todayFromMe, type PlainDate } from '@/l
 import { useCalendarMonth, usePrefetchAdjacentMonths, useRunTypeCodes } from './calendarQueries'
 import { bubbleProposals, useMonthProposals, usePrefetchAdjacentProposals } from '@/features/races/raceQueries'
 import { preloadPanels } from '@/features/runs/panelRoutes'
+import {
+  useGoalList,
+  useGoalMarkers,
+  useGoalsEnabled,
+  useMonthSuggestions,
+  usePrefetchAdjacentSuggestions,
+} from './suggestionQueries'
 import { CalendarLegend } from './CalendarLegend'
 import { MonthGrid, type FocusRequest } from './MonthGrid'
 import { MonthHeader } from './MonthHeader'
@@ -39,6 +46,16 @@ function DiaryMonthView({ month }: { month: DiaryMonth }) {
   const proposals = useMemo(
     () => (proposalsShown ? bubbleProposals(proposalsQuery.data?.items) : []),
     [proposalsShown, proposalsQuery.data],
+  )
+  // The suggestions and goal markers are optional layers too (ADR 0041 §4): a failure never blocks the grid.
+  const goalsEnabled = useGoalsEnabled()
+  const { query: suggestionsQuery, enabled: suggestionsShown } = useMonthSuggestions(month)
+  usePrefetchAdjacentSuggestions(month, suggestionsShown && !!suggestionsQuery.data)
+  const goals = useGoalList(goalsEnabled)
+  const goalMarkers = useGoalMarkers(goals.data?.items)
+  const suggestions = useMemo(
+    () => (suggestionsShown ? (suggestionsQuery.data?.items ?? []).filter((item) => item.status === 'Pending') : []),
+    [suggestionsShown, suggestionsQuery.data],
   )
   useEffect(() => {
     if (ready) preloadPanels()
@@ -107,6 +124,8 @@ function DiaryMonthView({ month }: { month: DiaryMonth }) {
           today={today}
           codes={codes}
           proposals={proposals}
+          suggestions={suggestions}
+          goalMarkers={goalMarkers}
           selectedDate={selectedDate}
           focusRequest={focusRequest}
           onFocusHandled={clearFocusRequest}
@@ -116,7 +135,9 @@ function DiaryMonthView({ month }: { month: DiaryMonth }) {
           onOpenProposal={(raceId) => navigate(`${base}/races/${raceId}`)}
         />
       ) : null}
-      {ready && today ? <CalendarLegend showProposals={proposalsShown} /> : null}
+      {ready && today ? (
+        <CalendarLegend showProposals={proposalsShown} showSuggestions={suggestionsShown} goalsEnabled={goalsEnabled} />
+      ) : null}
       <Outlet />
     </section>
   )

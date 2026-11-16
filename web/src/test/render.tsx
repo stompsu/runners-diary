@@ -2,7 +2,14 @@ import { render } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { Providers } from '@/app/providers'
 import { createQueryClient } from '@/app/queryClient'
-import { loadInsightsPage, loadRaceInterestsPage, routes } from '@/app/routes'
+import {
+  loadGoalDetailPage,
+  loadGoalFormPage,
+  loadGoalsPage,
+  loadInsightsPage,
+  loadRaceInterestsPage,
+  routes,
+} from '@/app/routes'
 import { registerEntraController, startEntraSession, startGuestSession, type EntraController } from '@/auth/session'
 import { loadAllPanels } from '@/features/runs/panelRoutes'
 import { getFakeApi } from './fake'
@@ -11,7 +18,14 @@ import { getFakeApi } from './fake'
 // by Vite and under CPU load took longer than testing-library's findBy timeout, which made the first test of a file
 // flaky. Loading the chunks during collection (no test timeout applies) makes every later `lazy()` resolve from the
 // module cache. Only files that render routes import this module, so unit tests do not pay for it.
-await Promise.all([loadAllPanels(), loadInsightsPage(), loadRaceInterestsPage()])
+await Promise.all([
+  loadAllPanels(),
+  loadInsightsPage(),
+  loadRaceInterestsPage(),
+  loadGoalsPage(),
+  loadGoalDetailPage(),
+  loadGoalFormPage(),
+])
 
 export type TestSession = 'guest' | 'user' | 'none'
 

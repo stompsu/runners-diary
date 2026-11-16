@@ -14,6 +14,8 @@ const ALLOWED_GROWTH_BYTES = 5 * 1024
 // M7: the Azure Maps Web SDK (azure-maps-vendor, AzureMapsMap) loads only when client-config selects it.
 // M8: the Settings -> Race interests page (form, pickers, `races` strings) and the race panels (list, details, signup
 // form) load only through their lazy routes; the grid shows proposals with eager code that imports no `races` strings.
+// M9: the Goals pages (list, form, detail, plan section) and the suggestion cards load only through their lazy routes
+// or the lazy Day/accept panels; the grid's suggestion bubbles, goal marker and toggle are eager and import no goals strings.
 const LAZY_ONLY = [
   'map-vendor',
   'azure-maps-vendor',
@@ -25,6 +27,13 @@ const LAZY_ONLY = [
   'ProposalsListPanel',
   'ProposalRow',
   'RaceSignupForm',
+  'GoalsPage',
+  'GoalDetailPage',
+  'GoalFormPage',
+  'PlanSection',
+  'SuggestionCard',
+  'SuggestionWeekList',
+  'ReplaceOtherGoalDialog',
 ]
 
 const dist = join(import.meta.dirname, '..', 'dist')
