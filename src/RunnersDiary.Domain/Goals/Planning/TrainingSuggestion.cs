@@ -17,8 +17,24 @@ public sealed class TrainingSuggestion : IUserOwned
     public const int MinDurationSeconds = 600;
     public const int MaxDurationSeconds = 21_600;
 
-    /// <summary>The widest target pace range (slower minus faster bound), s/km; the validator, the prompt and the retry note use the same 90.</summary>
-    public const int MaxPaceSpreadSeconds = 90;
+    /// <summary>The widest target pace range (slower minus faster bound), s/km, for most sessions.</summary>
+    public const int PaceSpreadSeconds = 90;
+
+    /// <summary>The widest target pace range where terrain makes pace vary: long and trail runs, and easy/recovery runs for a trail goal.</summary>
+    public const int TerrainPaceSpreadSeconds = 135;
+
+    /// <summary>
+    /// The one pace-range rule (ADR 0040 amendment "plan reliability"), used by <see cref="TrainingPlanValidator"/>, by <see cref="Create"/> and
+    /// stated in the plan prompt: <see cref="TerrainPaceSpreadSeconds"/> for <c>long</c> and <c>trailTraining</c>, and also for <c>easy</c> and
+    /// <c>recovery</c> when <paramref name="trailGoal"/> (the goal's surface is Trail); <see cref="PaceSpreadSeconds"/> otherwise.
+    /// </summary>
+    public static int MaxPaceSpreadSeconds(short runTypeId, bool trailGoal) =>
+        RunTypeCatalog.Find(runTypeId)?.Code switch
+        {
+            "long" or "trailTraining" => TerrainPaceSpreadSeconds,
+            "easy" or "recovery" when trailGoal => TerrainPaceSpreadSeconds,
+            _ => PaceSpreadSeconds,
+        };
 
     /// <summary>
     /// True unless both distance and duration are set and their implied pace is outside <see cref="GoalRules.MinPaceSecondsPerKm"/>–<see
@@ -75,7 +91,8 @@ public sealed class TrainingSuggestion : IUserOwned
     public static bool IsSuggestibleRunType(short runTypeId) =>
         RunTypeCatalog.Find(runTypeId) is { } type && (type.Category == RunTypeCategory.Training || type.IsRestDay);
 
-    public static TrainingSuggestion Create(Guid userId, Guid goalId, Guid generationId, PlannedSession session, DateTimeOffset now)
+    /// <param name="trailGoal">The goal's surface is Trail (widens the pace range of easy/recovery runs, <see cref="MaxPaceSpreadSeconds"/>); pass the same value the validator saw.</param>
+    public static TrainingSuggestion Create(Guid userId, Guid goalId, Guid generationId, PlannedSession session, DateTimeOffset now, bool trailGoal = false)
     {
         ArgumentNullException.ThrowIfNull(session);
         if (userId == Guid.Empty || goalId == Guid.Empty)
@@ -83,7 +100,7 @@ public sealed class TrainingSuggestion : IUserOwned
             throw new DomainRuleException("A suggestion needs an owner and a goal.");
         }
 
-        var errors = Validate(session);
+        var errors = Validate(session, trailGoal);
         if (errors.Count > 0)
         {
             throw new DomainRuleException(errors);
@@ -129,7 +146,7 @@ public sealed class TrainingSuggestion : IUserOwned
         Notes = Description,
     };
 
-    private static List<DomainError> Validate(PlannedSession s)
+    private static List<DomainError> Validate(PlannedSession s, bool trailGoal)
     {
         var errors = new List<DomainError>();
         if (!IsSuggestibleRunType(s.RunTypeId))
@@ -189,9 +206,11 @@ public sealed class TrainingSuggestion : IUserOwned
             errors.Add(new("targetPaceMinSecondsPerKm", "Both pace bounds or neither."));
         }
         else if (s.TargetPaceMinSecondsPerKm is { } min && s.TargetPaceMaxSecondsPerKm is { } max
-            && (min < GoalRules.MinPaceSecondsPerKm || max > GoalRules.MaxPaceSecondsPerKm || min > max || max > min + MaxPaceSpreadSeconds))
+            && (min < GoalRules.MinPaceSecondsPerKm || max > GoalRules.MaxPaceSecondsPerKm || min > max || max > min + MaxPaceSpreadSeconds(s.RunTypeId, trailGoal)))
         {
-            errors.Add(new("targetPaceMinSecondsPerKm", "Paces must be 150 to 900 seconds per km, minimum at most maximum, at most 90 seconds apart."));
+            errors.Add(new(
+                "targetPaceMinSecondsPerKm",
+                $"Paces must be 150 to 900 seconds per km, minimum at most maximum, at most {MaxPaceSpreadSeconds(s.RunTypeId, trailGoal)} seconds apart."));
         }
 
         return errors;

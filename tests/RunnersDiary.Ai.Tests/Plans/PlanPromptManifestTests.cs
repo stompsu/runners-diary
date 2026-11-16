@@ -44,7 +44,7 @@ public sealed class PlanPromptManifestTests
         {
             "planStart", "planEnd", "availableDistanceMeters", "maxLongRunMeters", "maxSessionsPerWeek", "phase", "referencePaceSecondsPerKm",
             "usualWeekdays", "dismissed", "otherGoal", "120 characters", "three short sentences", "medical",
-            "at most 90 more than the faster one", "multiples of 500 m", "add up the `distanceMeters`", "previous plan was rejected",
+            "at most 90 more than the faster one", "up to 135 more", "`trailTraining`", "multiples of 500 m", "add up the `distanceMeters`", "previous plan was rejected",
         })
         {
             Assert.Contains(term, instructions, StringComparison.Ordinal);

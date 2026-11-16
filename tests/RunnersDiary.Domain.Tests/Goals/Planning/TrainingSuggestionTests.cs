@@ -76,6 +76,40 @@ public sealed class TrainingSuggestionTests
         { "unknown phase", Easy(s => s with { Phase = (TrainingPhase)9 }) },
     };
 
+    /// <summary>Create applies the validator's pace width rule (90 s; 135 s for long/trail runs and, with a trail goal, easy/recovery).</summary>
+    [Theory]
+    [InlineData("long", false, 130, true)]
+    [InlineData("trailTraining", false, 135, true)]
+    [InlineData("trailTraining", false, 136, false)]
+    [InlineData("easy", false, 95, false)]
+    [InlineData("easy", true, 130, true)]
+    [InlineData("recovery", true, 136, false)]
+    [InlineData("tempo", true, 95, false)]
+    [InlineData("intervals", false, 95, false)]
+    public void The_pace_range_width_follows_the_run_type_and_the_trail_goal(string runType, bool trailGoal, int width, bool accepted)
+    {
+        var intensity = runType switch { "tempo" => TrainingIntensity.Tempo, "intervals" => TrainingIntensity.Interval, _ => TrainingIntensity.Easy };
+        var session = Easy(s => s with
+        {
+            RunTypeId = RunTypeCatalog.FindByCode(runType)!.Id,
+            Intensity = intensity,
+            DurationSeconds = null,
+            TargetPaceMinSecondsPerKm = 390,
+            TargetPaceMaxSecondsPerKm = 390 + width,
+        });
+
+        var create = () => TrainingSuggestion.Create(User, Goal, Guid.NewGuid(), session, Now, trailGoal);
+
+        if (accepted)
+        {
+            Assert.Equal(390 + width, create().TargetPaceMaxSecondsPerKm);
+        }
+        else
+        {
+            Assert.Throws<DomainRuleException>(create);
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Invalid))]
     public void Invalid_sessions_are_rejected(string reason, PlannedSession session)

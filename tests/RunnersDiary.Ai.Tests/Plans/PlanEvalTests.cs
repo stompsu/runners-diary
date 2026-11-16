@@ -46,7 +46,7 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         // Every kept session is a valid suggestion and its accept mapping passes the run rules (ADR 0041 §2).
         foreach (var session in result.Plan.Kept)
         {
-            var suggestion = TrainingSuggestion.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), session, DateTimeOffset.UtcNow);
+            var suggestion = TrainingSuggestion.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), session, DateTimeOffset.UtcNow, TrainingPlanValidator.IsTrailGoal(c.Sheet));
             Assert.Empty(RunRules.Validate(suggestion.ToRunValues("Europe/Warsaw")));
         }
 

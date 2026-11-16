@@ -3,6 +3,7 @@ using RunnersDiary.Domain.Goals;
 using RunnersDiary.Domain.Goals.Planning;
 using RunnersDiary.Domain.Insights;
 using RunnersDiary.Domain.Runs;
+using RunnersDiary.Domain.RunTypes;
 
 namespace RunnersDiary.Domain.Tests.Goals.Planning;
 
@@ -16,9 +17,10 @@ public sealed class TrainingPlanValidatorTests
     private static readonly int[] VolumeDays = [0, 2, 4, 5, 6];
     private static readonly int[] FrequencyDays = [0, 1, 2, 6];
 
-    internal static PlanFactSheet Sheet(IReadOnlyList<CommitmentFact>? commitments = null, double sessionsPerWeek = 3.0, DateOnly? target = null, int? referencePace = 270)
+    internal static PlanFactSheet Sheet(
+        IReadOnlyList<CommitmentFact>? commitments = null, double sessionsPerWeek = 3.0, DateOnly? target = null, int? referencePace = 270, Surface surface = Surface.Road)
     {
-        var goal = new GoalSpec(GoalType.Performance, 10_000, null, target ?? Target, 2_700, Surface.Road);
+        var goal = new GoalSpec(GoalType.Performance, 10_000, null, target ?? Target, 2_700, surface);
         var history = new TrainingHistory(Today, [], 30_000, 12_000, sessionsPerWeek, 330, 12, [DayOfWeek.Tuesday, DayOfWeek.Sunday]);
         var envelope = PlanEnvelopeBuilder.Build(goal, Today, history, commitments ?? [], referencePace);
         return new PlanFactSheet(
@@ -188,31 +190,55 @@ public sealed class TrainingPlanValidatorTests
         Assert.DoesNotContain(result.Kept, k => k.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) == s.Date);
     }
 
-    /// <summary>A pace range up to 90 s wide is fine (also for long and trail runs); a wider one is reported at the slower bound with the spread and the limit.</summary>
+    /// <summary>
+    /// The pace range width (ADR 0040 amendment "plan reliability"): 90 s in general; 135 s for long and trail runs, and for easy/recovery runs when
+    /// the goal is on trail. A wider range is reported at the slower bound with the width and the run type's limit.
+    /// </summary>
     [Theory]
-    [InlineData(375, 450, null)]
-    [InlineData(400, 475, null)]
-    [InlineData(390, 480, null)]
-    [InlineData(390, 485, 95)]
-    [InlineData(390, 525, 135)]
-    public void The_pace_spread_is_at_most_ninety_seconds(int min, int max, int? spread)
+    [InlineData("easy", "easy", false, 375, 450, null)]
+    [InlineData("easy", "easy", false, 390, 480, null)]
+    [InlineData("easy", "easy", false, 390, 485, 90)]
+    [InlineData("tempo", "tempo", false, 300, 395, 90)]
+    [InlineData("intervals", "interval", false, 280, 375, 90)]
+    [InlineData("long", "easy", false, 390, 520, null)]
+    [InlineData("long", "easy", false, 390, 525, null)]
+    [InlineData("long", "easy", false, 390, 526, 135)]
+    [InlineData("trailTraining", "steady", false, 400, 530, null)]
+    [InlineData("trailTraining", "steady", false, 400, 540, 135)]
+    [InlineData("easy", "easy", true, 390, 520, null)]
+    [InlineData("recovery", "recovery", true, 420, 555, null)]
+    [InlineData("recovery", "recovery", true, 420, 556, 135)]
+    [InlineData("tempo", "tempo", true, 300, 395, 90)]
+    public void The_pace_range_width_depends_on_the_run_type_and_a_trail_goal(string runType, string intensity, bool trailGoal, int min, int max, int? limit)
     {
-        var sheet = Sheet();
+        var sheet = Sheet(surface: trailGoal ? Surface.Trail : Surface.Road);
         var sessions = Good(sheet);
-        sessions[2] = sessions[2] with { PaceMinSecondsPerKm = min, PaceMaxSecondsPerKm = max };
+        sessions[2] = sessions[2] with { RunType = runType, Intensity = intensity, PaceMinSecondsPerKm = min, PaceMaxSecondsPerKm = max };
 
         var result = Validate(sheet, sessions);
 
         var paceSchema = result.Violations.Where(v => v.Rule == PlanRuleCode.Schema && v.Location.StartsWith("sessions[2].pace", StringComparison.Ordinal)).ToList();
-        if (spread is null)
+        if (limit is null)
         {
             Assert.Empty(paceSchema);
         }
         else
         {
-            Assert.Equal(new PlanViolation(PlanRuleCode.Schema, "sessions[2].paceMaxSecondsPerKm", spread, TrainingPlanValidator.MaxPaceSpreadSeconds), Assert.Single(paceSchema));
+            Assert.Equal(new PlanViolation(PlanRuleCode.Schema, "sessions[2].paceMaxSecondsPerKm", max - min, limit), Assert.Single(paceSchema));
         }
     }
+
+    [Theory]
+    [InlineData("long", false, 135)]
+    [InlineData("trailTraining", false, 135)]
+    [InlineData("easy", false, 90)]
+    [InlineData("easy", true, 135)]
+    [InlineData("recovery", true, 135)]
+    [InlineData("tempo", true, 90)]
+    [InlineData("intervals", false, 90)]
+    [InlineData("progression", true, 90)]
+    public void The_pace_spread_rule_lives_in_one_place(string runType, bool trailGoal, int expected) =>
+        Assert.Equal(expected, TrainingSuggestion.MaxPaceSpreadSeconds(RunTypeCatalog.FindByCode(runType)!.Id, trailGoal));
 
     /// <summary>Distance and duration each in range but together an impossible pace (review L3): schema at the duration, the plan is retried.</summary>
     [Theory]

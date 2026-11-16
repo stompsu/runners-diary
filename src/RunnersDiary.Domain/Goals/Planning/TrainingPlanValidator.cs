@@ -1,6 +1,7 @@
 using System.Globalization;
 using RunnersDiary.Domain.Calendar;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.RunTypes;
 
 namespace RunnersDiary.Domain.Goals.Planning;
@@ -20,8 +21,6 @@ public static class TrainingPlanValidator
     public const int DescriptionMaxLength = TrainingSuggestion.DescriptionMaxLength;
     public const double Tolerance = 1.05;
     public const double MinPaceShareOfReference = 0.85;
-    /// <summary>See <see cref="TrainingSuggestion.MaxPaceSpreadSeconds"/>.</summary>
-    public const int MaxPaceSpreadSeconds = TrainingSuggestion.MaxPaceSpreadSeconds;
     public const int TaperQuietDays = 3;
 
     /// <summary>Training types that count as hard when they are commitments (the history's hard types, ADR 0040 §3).</summary>
@@ -65,7 +64,7 @@ public static class TrainingPlanValidator
         for (var i = 0; i < draft.Sessions.Count; i++)
         {
             var location = $"sessions[{i.ToString(CultureInfo.InvariantCulture)}]";
-            var session = Convert(draft.Sessions[i], location, deny, violations);
+            var session = Convert(draft.Sessions[i], location, IsTrailGoal(sheet), deny, violations);
             if (session is null)
             {
                 continue;
@@ -135,7 +134,15 @@ public static class TrainingPlanValidator
             && (type.Category == RunTypeCategory.Race || HardTypeCodes.Contains(type.Code));
     }
 
-    private static PlannedSession? Convert(DraftSession s, string location, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
+    /// <summary>The goal's surface is Trail: easy/recovery runs get the wider terrain pace range (<see cref="TrainingSuggestion.MaxPaceSpreadSeconds"/>).</summary>
+    public static bool IsTrailGoal(PlanFactSheet sheet)
+    {
+        ArgumentNullException.ThrowIfNull(sheet);
+        return sheet.Goal.Surface == Surface.Trail;
+    }
+
+    private static PlannedSession? Convert(
+        DraftSession s, string location, bool trailGoal, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
     {
         var before = violations.Count;
         void Fail(string member, int? value = null, int? limit = null) =>
@@ -214,10 +221,10 @@ public static class TrainingPlanValidator
                 {
                     Fail("paceMaxSecondsPerKm");
                 }
-                else if (max > min + MaxPaceSpreadSeconds)
+                else if (TrainingSuggestion.MaxPaceSpreadSeconds(type?.Id ?? 0, trailGoal) is var spreadLimit && max > min + spreadLimit)
                 {
-                    // The range is too wide: reported at the slower bound with the spread and the limit, for a precise retry note.
-                    Fail("paceMaxSecondsPerKm", max - min, MaxPaceSpreadSeconds);
+                    // The range is too wide for this run type: reported at the slower bound with the width and the limit, for a precise retry note.
+                    Fail("paceMaxSecondsPerKm", max - min, spreadLimit);
                 }
             }
         }

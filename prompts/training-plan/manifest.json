@@ -9,7 +9,7 @@
     },
     "2": {
       "file": "v2.md",
-      "sha256": "c22bd9a810afd7b88049fbd3e72cb547cc1a32fadeb106f7a8fb476d1bb20810",
+      "sha256": "17df06f7ffece2dcc8500bfa19149b3fdf99e47ebbd2ac8c106f43540136d13a",
       "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
     }
   },

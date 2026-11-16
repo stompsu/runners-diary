@@ -51,7 +51,7 @@ public static class PlanRuleCodes
 /// <see cref="Value"/> and <see cref="Limit"/> are integers computed by the validator (ADR 0040 amendment "plan reliability"), set for
 /// <c>weeklyVolume</c> (the week's suggested running distance and its <c>availableDistanceMeters</c>), <c>longRun</c> (the session's distance and
 /// the week's <c>maxLongRunMeters</c>) and a too-wide pace range (<c>schema</c> at <c>paceMaxSecondsPerKm</c>: the spread and
-/// <see cref="TrainingPlanValidator.MaxPaceSpreadSeconds"/>), so the retry note can say by how much. Numbers only, never text.
+/// the run type's limit from <see cref="TrainingSuggestion.MaxPaceSpreadSeconds"/>), so the retry note can say by how much. Numbers only, never text.
 /// </para>
 /// </summary>
 public sealed record PlanViolation(PlanRuleCode Rule, string Location, int? Value = null, int? Limit = null);
