@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
+using RunnersDiary.Domain.Goals.Planning;
 using RunnersDiary.Domain.Insights.Narrative;
 
 namespace RunnersDiary.Infrastructure.Ai;
@@ -7,6 +8,8 @@ namespace RunnersDiary.Infrastructure.Ai;
 /// <summary>
 /// A deterministic <see cref="IChatClient"/> for local development and tests (provider <c>Fake</c>, never in production, ADR 0027 §2).
 /// It reads the fact sheet from the user message and writes a valid draft from fixed rules, so the UI can be exercised without a cloud.
+/// A request for the <c>training_plan</c> schema (or, without options, a message with the plan fact sheet header) gets a plan from
+/// <see cref="RuleBasedFakePlanWriter"/> instead (ADR 0040 §7).
 /// </summary>
 public sealed class RuleBasedFakeChatClient : IChatClient
 {
@@ -19,8 +22,9 @@ public sealed class RuleBasedFakeChatClient : IChatClient
 
         var list = messages.ToList();
         var input = string.Concat(list.Select(m => m.Text));
-        var sheet = FactSheetJson.Parse(ExtractFactSheet(input));
-        var json = SummaryDraftJson.ToJson(Write(sheet));
+        var json = IsPlanRequest(options, input)
+            ? TrainingPlanDraftJson.ToJson(RuleBasedFakePlanWriter.Write(ExtractFactSheet(input)))
+            : SummaryDraftJson.ToJson(Write(FactSheetJson.Parse(ExtractFactSheet(input))));
         var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, json))
         {
             ModelId = ModelId,
@@ -83,6 +87,11 @@ public sealed class RuleBasedFakeChatClient : IChatClient
 
         return new SummaryDraft(headline, wentWell, watchOuts, new SummaryItem("Keep easy days easy and build load gradually."), dataNotes);
     }
+
+    private static bool IsPlanRequest(ChatOptions? options, string input) =>
+        options?.ResponseFormat is ChatResponseFormatJson format
+            ? format.SchemaName == TrainingPlanAgent.SchemaName
+            : input.Contains(TrainingPlanAgent.FactSheetHeader, StringComparison.Ordinal);
 
     private static string ExtractFactSheet(string text)
     {

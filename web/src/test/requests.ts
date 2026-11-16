@@ -77,7 +77,16 @@ export async function editElsewhere(id: string, patch: Record<string, unknown>):
   const current = (await (
     await fake.handle(new Request(`http://localhost/api/runs/${id}`, { headers }))
   ).json()) as Record<string, unknown>
-  const { id: _id, startUtc: _u, tracks: _t, createdAt: _c, updatedAt: _a, catalogRaceId: _race, ...writable } = current
+  const {
+    id: _id,
+    startUtc: _u,
+    tracks: _t,
+    createdAt: _c,
+    updatedAt: _a,
+    catalogRaceId: _race,
+    goalId: _goal,
+    ...writable
+  } = current
   const response = await fake.handle(
     new Request(`http://localhost/api/runs/${id}`, {
       method: 'PUT',

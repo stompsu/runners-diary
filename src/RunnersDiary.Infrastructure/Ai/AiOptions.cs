@@ -55,8 +55,20 @@ public sealed class AiOptions
 
     public QuotaOptions Quotas { get; set; } = new();
 
+    /// <summary>Training plan generation (M9, ADR 0040 §4, §6; plan §4.7).</summary>
+    public PlanOptions Plan { get; set; } = new();
+
     /// <summary>True when generation can run: a provider is configured and the kill switch is on.</summary>
     public bool GenerationAvailable => Enabled && Provider != AiProvider.None;
+
+    /// <summary>True when plan generation can run: <see cref="GenerationAvailable"/> and the plan-only switch <c>Ai:Plan:Enabled</c>.</summary>
+    public bool PlanGenerationAvailable => GenerationAvailable && Plan.Enabled;
+
+    /// <summary>
+    /// The network timeout of the shared client: the longest per-attempt timeout of any feature (ADR 0040 §4), so a plan attempt is not cut at
+    /// the summary's 30 s. Each feature still enforces its own attempt timeout with a cancellation token.
+    /// </summary>
+    public TimeSpan ClientNetworkTimeout => AttemptTimeout >= Plan.AttemptTimeout ? AttemptTimeout : Plan.AttemptTimeout;
 
     public sealed class FoundryOptions
     {
@@ -79,6 +91,55 @@ public sealed class AiOptions
         public int GlobalPer24h { get; set; } = 200;
 
         public int GuestGlobalPer24h { get; set; } = 60;
+    }
+
+    /// <summary>The <c>Ai:Plan</c> section. Quotas are per feature; the global budgets of <see cref="QuotaOptions"/> are shared, with a plan attempt weighted.</summary>
+    public sealed class PlanOptions
+    {
+        /// <summary>Plan-only kill switch on top of <see cref="Enabled"/> (Bicep keeps it false until gate G-P4).</summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>Output cap per attempt, reasoning tokens included; a 16-week plan needs about 5-6k tokens.</summary>
+        public int MaxOutputTokens { get; set; } = 8_000;
+
+        public string ReasoningEffort { get; set; } = "low";
+
+        public TimeSpan AttemptTimeout { get; set; } = TimeSpan.FromSeconds(90);
+
+        /// <summary>The whole generation (both attempts); at most 200 s, the per-route proxy timeout of the web tier.</summary>
+        public TimeSpan TotalTimeout { get; set; } = TimeSpan.FromSeconds(190);
+
+        /// <summary>1 or 2; the second attempt runs only if at least 30 s of <see cref="TotalTimeout"/> remain.</summary>
+        public int MaxAttempts { get; set; } = 2;
+
+        public int MaxFactSheetChars { get; set; } = 24_000;
+
+        /// <summary>Directory of the plan prompt manifest and prompts; relative paths resolve against the app base directory.</summary>
+        public string PromptsPath { get; set; } = "prompts/training-plan";
+
+        public PlanQuotaOptions Quotas { get; set; } = new();
+
+        /// <summary>What one plan attempt counts in the shared global budgets (a plan attempt costs about three summary attempts).</summary>
+        public int GlobalAttemptWeight { get; set; } = 3;
+
+        /// <summary>
+        /// Concurrent plan generations per replica, inside <see cref="AiOptions.MaxConcurrentGenerations"/>. At most
+        /// <c>MaxConcurrentGenerations − 1</c> when that is ≥ 2, so a summary always finds a slot while plans (up to ~3 minutes each) run.
+        /// </summary>
+        public int MaxConcurrentGenerations { get; set; } = 1;
+
+        /// <summary>
+        /// A guest-global sub-cap for plans, in weighted attempts per 24 h, inside <see cref="QuotaOptions.GuestGlobalPer24h"/>: guest plans
+        /// can use at most this much of the shared guest budget (default 20 of 60, about 6 plan attempts), so they cannot drain the summaries'.
+        /// </summary>
+        public int GuestGlobalPer24h { get; set; } = 20;
+    }
+
+    public sealed class PlanQuotaOptions
+    {
+        public int UserPer24h { get; set; } = 5;
+
+        public int GuestPerAccount { get; set; } = 2;
     }
 }
 
@@ -143,6 +204,71 @@ public sealed class AiOptionsValidator(IHostEnvironment environment) : IValidate
             failures.Add("Ai:Quotas values must not be negative.");
         }
 
+        ValidatePlan(options.Plan, failures);
+
+        // Plans hold a slot for up to ~3 minutes: with two or more slots per replica, one always stays free for summaries.
+        var planSlots = options.Plan.MaxConcurrentGenerations;
+        if (planSlots < 0 || (options.MaxConcurrentGenerations >= 2 && planSlots > options.MaxConcurrentGenerations - 1))
+        {
+            failures.Add("Ai:Plan:MaxConcurrentGenerations must be >= 0 and at most Ai:MaxConcurrentGenerations - 1 when that is 2 or more.");
+        }
+
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    /// <summary>The ceiling of <c>Ai:Plan:TotalTimeout</c>: the web tier's per-route proxy timeout for the plan POST (ADR 0040 §6).</summary>
+    public static readonly TimeSpan MaxPlanTotalTimeout = TimeSpan.FromSeconds(200);
+
+    private static void ValidatePlan(AiOptions.PlanOptions plan, List<string> failures)
+    {
+        if (!Efforts.Contains(plan.ReasoningEffort, StringComparer.Ordinal))
+        {
+            failures.Add("Ai:Plan:ReasoningEffort must be low, medium or high.");
+        }
+
+        if (plan.MaxOutputTokens is < 256 or > 16_000)
+        {
+            failures.Add("Ai:Plan:MaxOutputTokens must be between 256 and 16000.");
+        }
+
+        if (plan.MaxAttempts is < 1 or > 2)
+        {
+            failures.Add("Ai:Plan:MaxAttempts must be 1 or 2.");
+        }
+
+        if (plan.AttemptTimeout <= TimeSpan.Zero || plan.AttemptTimeout > TimeSpan.FromMinutes(2))
+        {
+            failures.Add("Ai:Plan:AttemptTimeout must be positive and at most 2 minutes.");
+        }
+
+        if (plan.TotalTimeout < plan.AttemptTimeout || plan.TotalTimeout > MaxPlanTotalTimeout)
+        {
+            failures.Add("Ai:Plan:TotalTimeout must be at least Ai:Plan:AttemptTimeout and at most 200 seconds.");
+        }
+
+        if (plan.MaxFactSheetChars < 1_000)
+        {
+            failures.Add("Ai:Plan:MaxFactSheetChars must be >= 1000.");
+        }
+
+        if (string.IsNullOrWhiteSpace(plan.PromptsPath))
+        {
+            failures.Add("Ai:Plan:PromptsPath is required.");
+        }
+
+        if (plan.Quotas.UserPer24h < 0 || plan.Quotas.GuestPerAccount < 0)
+        {
+            failures.Add("Ai:Plan:Quotas values must not be negative.");
+        }
+
+        if (plan.GlobalAttemptWeight is < 1 or > 10)
+        {
+            failures.Add("Ai:Plan:GlobalAttemptWeight must be between 1 and 10.");
+        }
+
+        if (plan.GuestGlobalPer24h < 0)
+        {
+            failures.Add("Ai:Plan:GuestGlobalPer24h must not be negative.");
+        }
     }
 }

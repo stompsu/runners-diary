@@ -18,6 +18,7 @@ const fullRun: RunDto = {
   startTime: '08:30',
   timeZoneId: 'Europe/Warsaw',
   catalogRaceId: null,
+  goalId: null,
   startUtc: '2026-11-14T07:30:00Z',
   status: 'Completed',
   runTypeId: 1,
@@ -71,6 +72,7 @@ function writableSubset(dto: RunDto) {
     updatedAt: _updated,
     timeZoneId: _zone,
     catalogRaceId: _catalogRaceId,
+    goalId: _goalId,
     ...rest
   } = dto
   return rest

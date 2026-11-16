@@ -5,6 +5,7 @@ using RunnersDiary.Api.Auth;
 using RunnersDiary.Api.Features.Calendar;
 using RunnersDiary.Api.Features.ClientConfig;
 using RunnersDiary.Api.Features.Geocoding;
+using RunnersDiary.Api.Features.Goals;
 using RunnersDiary.Api.Features.GuestSessions;
 using RunnersDiary.Api.Features.Health;
 using RunnersDiary.Api.Features.Insights;
@@ -158,6 +159,7 @@ static async Task RunApiAsync(string[] args)
     api.MapGeocodingEndpoints();
     api.MapMapsEndpoints();
     api.MapRaceEndpoints();
+    api.MapGoalEndpoints();
 
     await app.RunAsync();
 }

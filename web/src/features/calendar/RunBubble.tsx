@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { formatDistance } from '@/lib/format/units'
@@ -7,7 +8,7 @@ import type { Run } from './types'
 /**
  * Desktop bubble: the type's icon (trophy for races), label and distance. Completed = filled, planned = dashed
  * outline, so status never relies on colour alone. Presentational for keyboard and screen-reader users (the cell's
- * accessible name lists the runs); mouse and touch users can click it to open the run directly.
+ * accessible name lists the runs); a run accepted from a training plan carries a small sparkles icon; mouse and touch users can click it to open the run directly.
  */
 export function RunBubble({
   run,
@@ -31,6 +32,7 @@ export function RunBubble({
       data-run-id={run.id}
       data-status={run.status}
       data-family={family}
+      data-from-plan={run.goalId ? 'true' : undefined}
       style={familyStyle(code)}
       onClick={(event) => {
         event.stopPropagation()
@@ -43,6 +45,7 @@ export function RunBubble({
     >
       <Icon className="size-3 shrink-0" />
       <span className="truncate">{t(runTypeLabelKey(code))}</span>
+      {run.goalId ? <Sparkles aria-hidden="true" className="size-3 shrink-0" /> : null}
       {run.distanceMeters ? (
         <span className="ml-auto shrink-0">{formatDistance(run.distanceMeters, i18n.language, 1)}</span>
       ) : null}

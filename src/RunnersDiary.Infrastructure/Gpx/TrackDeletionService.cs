@@ -59,6 +59,8 @@ public sealed partial class TrackDeletionService(RunnersDiaryDbContext db, ICurr
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             await UserTrackLock.AcquireAsync(db, currentUser.UserId, cancellationToken);
             var current = await db.GpxTracks.AsNoTracking().Where(t => t.RunId == runId).Select(t => t.Id).ToListAsync(cancellationToken);
+            // A goal's race-run link is a NO ACTION FK (no second cascade path from Users, ADR 0039 §3): clear it in the same transaction.
+            await db.Goals.Where(g => g.RaceRunId == runId).ExecuteUpdateAsync(s => s.SetProperty(g => g.RaceRunId, (Guid?)null), cancellationToken);
             await db.Runs.Where(r => r.Id == runId).ExecuteDeleteAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return current.Where(id => !knownIds.Contains(id)).ToList();

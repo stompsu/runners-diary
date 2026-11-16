@@ -21,6 +21,7 @@ COPY seed/demo seed/demo
 # The synthetic demo race catalogue is content of the Api project too (M8); the bundle build needs the file to exist.
 COPY seed/races seed/races
 COPY prompts/training-insights prompts/training-insights
+COPY prompts/training-plan prompts/training-plan
 
 # The bundle command builds and publishes the startup project for the target runtime itself. OpenApiGenerateDocuments=false
 # (an MSBuild property, read from the environment) keeps the build from starting the app to write the OpenAPI document.

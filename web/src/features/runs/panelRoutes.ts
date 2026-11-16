@@ -11,6 +11,7 @@ const loaders = {
   races: () => import('@/features/races/ProposalsListPanel').then((m) => m.ProposalsListPanel),
   race: () => import('@/features/races/RaceDetailsDialog').then((m) => m.RaceDetailsDialog),
   track: () => import('@/features/tracks/TrackViewPanel').then((m) => m.TrackViewPanel),
+  suggestionAccept: () => import('./RunFormPanels').then((m) => m.AcceptSuggestionPanel),
   runNew: () => import('./RunFormPanels').then((m) => m.RunNewPanel),
   runEdit: () => import('./RunFormPanels').then((m) => m.RunEditPanel),
 }
@@ -25,6 +26,7 @@ export const panelRoutes: RouteObject[] = [
   lazyRoute('list', loaders.list),
   lazyRoute('races', loaders.races),
   lazyRoute('races/:raceId', loaders.race),
+  lazyRoute('suggestions/:suggestionId/accept', loaders.suggestionAccept),
   lazyRoute('runs/new', loaders.runNew),
   lazyRoute('runs/:runId', loaders.details),
   lazyRoute('runs/:runId/edit', loaders.runEdit),

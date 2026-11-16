@@ -79,7 +79,8 @@ public static class ChatClientFactory
             Endpoint = V1Endpoint(foundry.Endpoint!),
             // Transport retry at most once; the pipeline's own retry is for invalid output only (ADR 0027 §1).
             RetryPolicy = new ClientRetryPolicy(maxRetries: 1),
-            NetworkTimeout = options.AttemptTimeout,
+            // The longest attempt timeout of any feature (plans: 90 s); each feature enforces its own with a cancellation token (ADR 0040 §4).
+            NetworkTimeout = options.ClientNetworkTimeout,
         };
         if (transport is not null)
         {

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using RunnersDiary.Infrastructure.Ai;
+using RunnersDiary.Infrastructure.Goals;
 using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Guests;
 using RunnersDiary.Infrastructure.Identity;
@@ -92,8 +93,10 @@ public static class DependencyInjection
         if (!jobMode)
         {
             builder.Services.AddHostedService<DemoDatasetStartupCheck>();
+            builder.Services.AddHostedService<DemoTrainingPlanStartupCheck>();
         }
 
+        builder.Services.AddSingleton<DemoTrainingPlan>();
         builder.Services.AddSingleton<DemoDataSeeder>();
 
         // Race catalogue (M8): options, the synthetic demo catalogue and, in Development/Testing only, its idempotent seeding after the migrator.
@@ -106,6 +109,13 @@ public static class DependencyInjection
         {
             builder.Services.AddHostedService<DemoRaceCatalogueSeeder>();
         }
+
+        // Training goals and suggestions (M9): options plus the scoped services behind /api/goals and /api/training-suggestions.
+        builder.Services.Configure<GoalsOptions>(builder.Configuration.GetSection(GoalsOptions.SectionName));
+        builder.Services.AddScoped<TrainingHistoryReader>();
+        builder.Services.AddScoped<GoalService>();
+        builder.Services.AddScoped<GoalEstimateService>();
+        builder.Services.AddScoped<TrainingSuggestionService>();
 
         builder.Services.AddSingleton<GuestCleanup>();
         builder.Services.AddSingleton<IGuestCleanupPass>(services => services.GetRequiredService<GuestCleanup>());

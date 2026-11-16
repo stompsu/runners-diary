@@ -24,20 +24,31 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton(sp => PromptCatalog.Load(sp.GetRequiredService<IOptions<AiOptions>>().Value.PromptsPath));
         services.AddSingleton(sp => TemplateCatalog.Load(sp.GetRequiredService<PromptCatalog>()));
         services.AddSingleton(sp => DemoSummaryCatalog.Load(sp.GetRequiredService<PromptCatalog>()));
+        services.AddSingleton(sp => PlanPromptCatalog.Load(sp.GetRequiredService<IOptions<AiOptions>>().Value.Plan.PromptsPath));
 
         // Tests replace this registration with a scripted client wrapped by ChatClientFactory.Wrap.
         services.TryAddSingleton(sp => ChatClientFactory.Create(sp.GetRequiredService<IOptions<AiOptions>>().Value, sp.GetRequiredService<ILoggerFactory>()));
         services.AddSingleton<TrainingInsightsAgentProvider>();
+        services.AddSingleton<TrainingPlanAgentProvider>();
         services.AddSingleton<GenerationSlots>();
         services.AddSingleton<GenerationInFlightGuard>();
 
         services.AddScoped<AiUsageLedger>();
+        services.AddScoped(sp => new AiGenerationRunner(
+            sp.GetRequiredService<AiUsageLedger>(),
+            sp.GetRequiredService<GenerationSlots>(),
+            sp.GetRequiredService<GenerationInFlightGuard>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<AiGenerationRunner>>()));
         services.AddScoped<SummaryGenerator>();
         services.AddScoped<InsightsSummaryService>();
+        services.AddScoped<TrainingPlanGenerator>();
+        services.AddScoped<TrainingPlanService>();
 
         if (runStartupChecks)
         {
             services.AddHostedService<AiStartupCheck>();
+            services.AddHostedService<PlanPromptStartupCheck>();
         }
 
         return builder;

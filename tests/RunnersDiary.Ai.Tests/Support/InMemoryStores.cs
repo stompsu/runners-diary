@@ -32,25 +32,31 @@ public sealed class InMemoryAiGenerationStore : IAiGenerationStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<DateTimeOffset>> GetUserGenerationTimesAsync(Guid userId, DateTimeOffset? since, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<DateTimeOffset>> GetUserGenerationTimesAsync(Guid userId, AiFeature feature, DateTimeOffset? since, CancellationToken cancellationToken)
     {
         lock (_rows)
         {
             IReadOnlyList<DateTimeOffset> times =
             [
-                .. _rows.Where(r => r.UserId == userId && r.Outcome != AiGenerationOutcome.Throttled && (since is null || r.CreatedAt > since))
+                .. _rows.Where(r => r.UserId == userId && r.Feature == feature && r.Outcome != AiGenerationOutcome.Throttled && (since is null || r.CreatedAt > since))
                     .Select(r => r.CreatedAt).Order(),
             ];
             return Task.FromResult(times);
         }
     }
 
-    public Task<GlobalAiUsage> GetGlobalUsageAsync(DateTimeOffset since, CancellationToken cancellationToken)
+    /// <summary>Unweighted attempts (every feature counts 1): what the M6 tests read.</summary>
+    public Task<GlobalAiUsage> GetGlobalUsageAsync(DateTimeOffset since, CancellationToken cancellationToken) =>
+        GetGlobalUsageAsync(since, 1, cancellationToken);
+
+    public Task<GlobalAiUsage> GetGlobalUsageAsync(DateTimeOffset since, int planAttemptWeight, CancellationToken cancellationToken)
     {
         lock (_rows)
         {
             var window = _rows.Where(r => r.CreatedAt > since).ToList();
-            return Task.FromResult(new GlobalAiUsage(window.Sum(r => r.Attempts), window.Where(r => r.IsGuest).Sum(r => r.Attempts)));
+            int Weighted(AiGenerationRecord r) => r.Feature == AiFeature.Plan ? r.Attempts * planAttemptWeight : r.Attempts;
+            return Task.FromResult(new GlobalAiUsage(
+                window.Sum(Weighted), window.Where(r => r.IsGuest).Sum(Weighted), window.Where(r => r.IsGuest && r.Feature == AiFeature.Plan).Sum(Weighted)));
         }
     }
 

@@ -21,6 +21,8 @@
     <Content Include="..\..\prompts\training-insights\manifest.json;..\..\prompts\training-insights\v*.md" Link="prompts\training-insights\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\prompts\training-insights\templates\*.json" Link="prompts\training-insights\templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\prompts\training-insights\demo\**\*.json" Link="prompts\training-insights\demo\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Training plan prompts (M9, ADR 0040 §4): copied as prompts/training-plan/ and checked at startup. README stays out. -->
+    <Content Include="..\..\prompts\training-plan\manifest.json;..\..\prompts\training-plan\v*.md" Link="prompts\training-plan\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

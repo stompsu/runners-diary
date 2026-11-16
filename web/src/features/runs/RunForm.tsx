@@ -60,7 +60,9 @@ export interface RunFormProps {
   codes: ReadonlyMap<number, string>
   /** The profile zone, used as the zone of a new run. */
   profileZone: string
-  onSaved: () => void
+  onSaved: (saved: RunDto) => void
+  /** Create only: replaces `POST /api/runs` (accepting a training suggestion with the edited run, M9). */
+  createWith?: (body: RunWriteRequest) => Promise<RunDto>
   /** Create only: "Save & add GPX" saves, then hands the new run over so its upload dialog can open. */
   onSavedAndAddGpx?: (run: RunDto) => void
   /** Edit opened from the GPX review (ADR 0023 §3): the values to put into the form, applied once as dirty values. */
@@ -88,6 +90,7 @@ export function RunForm({
   codes,
   profileZone,
   onSaved,
+  createWith,
   onSavedAndAddGpx,
   prefill,
   onGone,
@@ -170,7 +173,8 @@ export function RunForm({
 
   async function send(values: RunFormValues, target: RunDto | undefined): Promise<RunDto> {
     const body: RunWriteRequest = toWriteRequest(values, target)
-    return target ? update.mutateAsync({ params: { path: { id: target.id } }, body }) : create.mutateAsync({ body })
+    if (target) return update.mutateAsync({ params: { path: { id: target.id } }, body })
+    return createWith ? createWith(body) : create.mutateAsync({ body })
   }
 
   function showProblem(apiProblem: ApiProblem) {
@@ -224,7 +228,7 @@ export function RunForm({
       await invalidate(saved.id)
       toast.success(t(target ? 'toast.saved' : 'toast.created'))
       if (addGpx && onSavedAndAddGpx) onSavedAndAddGpx(saved)
-      else onSaved()
+      else onSaved(saved)
     } catch (caught) {
       const apiProblem = parseProblem(caught)
       if (apiProblem.kind === 'notFound' && target) {

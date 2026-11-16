@@ -115,6 +115,33 @@ server {
     include /etc/nginx/conf.d/snippets/security-headers.conf;
   }
 
+  # Training plan generation (M9, ADR 0040): one model call with a retry can take up to the API's 190 s total timeout, so this
+  # route alone gets 200 s; the rest of /api stays at 120 s. A regex location does not inherit anything from /api/, so the
+  # proxy settings and the security-headers include are repeated here (add_header inheritance: the include must be in this block).
+  location ~ ^/api/goals/[0-9a-fA-F-]+/plan/?$ {
+    client_max_body_size 21m;
+    proxy_http_version 1.1;
+    proxy_pass $rd_api_upstream;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 200s;
+    proxy_send_timeout 200s;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $rd_forwarded_proto;
+    proxy_set_header X-Real-IP "";
+    proxy_set_header Connection "";
+    proxy_hide_header Content-Security-Policy;
+    proxy_hide_header Strict-Transport-Security;
+    proxy_hide_header X-Content-Type-Options;
+    proxy_hide_header Referrer-Policy;
+    proxy_hide_header Permissions-Policy;
+    proxy_hide_header Cross-Origin-Opener-Policy;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+
   # Hashed build output: files only, a missing file is a 404 (never the SPA fallback), cached for a year.
   location /assets/ {
     try_files $uri =404;

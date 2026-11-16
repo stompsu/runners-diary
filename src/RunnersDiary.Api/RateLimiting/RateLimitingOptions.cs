@@ -21,6 +21,9 @@ public sealed class RateLimitingOptions
     /// <summary>AI summary generations per caller, burst guard on top of the durable quotas (M6 plan Q4: users 6, guests 3 per 10 minutes).</summary>
     public PerCallerLimit AiSummary { get; set; } = new() { UserPermitLimit = 6, GuestPermitLimit = 3, Window = TimeSpan.FromMinutes(10) };
 
+    /// <summary>AI plan generations per caller, burst guard on top of the durable plan quotas (M9 plan §4.7: users 3, guests 2 per 10 minutes).</summary>
+    public PerCallerLimit AiPlan { get; set; } = new() { UserPermitLimit = 3, GuestPermitLimit = 2, Window = TimeSpan.FromMinutes(10) };
+
     /// <summary>GET /api/health, anonymous or not (per client IP when anonymous): a light guard, the anonymous answer costs no SQL.</summary>
     public PerCallerLimit Health { get; set; } = new() { UserPermitLimit = 30, GuestPermitLimit = 30, Window = TimeSpan.FromMinutes(1) };
 

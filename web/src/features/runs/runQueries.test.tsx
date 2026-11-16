@@ -23,12 +23,16 @@ describe('useInvalidateRuns', () => {
 
     await result.current('run-1')
 
-    expect(invalidate).toHaveBeenCalledTimes(7)
+    expect(invalidate).toHaveBeenCalledTimes(10)
     // Signed-up and dateChanged derive from runs: proposals and the linked race go stale with every run write (M8 §4.6).
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/races/proposals'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/races/{raceId}'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/insights/report'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/insights/summary'] })
+    // M9 (plan §4.8): goals (raceRunDate, acceptedCount) and suggestions follow a run write.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/goals'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/goals/{goalId}'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['get', '/api/training-suggestions'] })
   })
 
   it('does nothing when the session ended or changed while the mutation was in flight', async () => {

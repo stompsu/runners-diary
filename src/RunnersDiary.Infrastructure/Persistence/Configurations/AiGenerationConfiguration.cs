@@ -14,13 +14,15 @@ internal sealed class AiGenerationConfiguration : IEntityTypeConfiguration<AiGen
         // Per-user quota reads are "this user's rows by time": cluster on (UserId, CreatedAt); the GUID primary key is non-clustered.
         b.HasKey(g => g.Id).IsClustered(false);
         b.HasIndex(g => new { g.UserId, g.CreatedAt }).IsClustered().HasDatabaseName("CX_AiGenerations_User_Created");
-        // Global quotas and the 30-day purge scan by time only.
-        b.HasIndex(g => g.CreatedAt).IncludeProperties(g => g.IsGuest).HasDatabaseName("IX_AiGenerations_Created");
+        // Global quotas and the 30-day purge scan by time only; the weighted global sum (M9) reads IsGuest, Feature and Attempts.
+        b.HasIndex(g => g.CreatedAt).IncludeProperties(g => new { g.IsGuest, g.Feature, g.Attempts }).HasDatabaseName("IX_AiGenerations_Created");
 
         b.Property(g => g.Id).ValueGeneratedNever();
         b.Property(g => g.Outcome).HasColumnType("tinyint");
         b.Property(g => g.Attempts).HasColumnType("tinyint");
         b.Property(g => g.PromptVersion).HasColumnType("smallint");
+        // Default 0 (Summary): the previous release does not write the column, and its rows must stay valid (expand rule, ADR 0032).
+        b.Property(g => g.Feature).HasColumnType("tinyint").HasDefaultValue(AiFeature.Summary);
         b.Property(g => g.ModelDeployment).HasMaxLength(64).IsUnicode(false).IsRequired();
     }
 }

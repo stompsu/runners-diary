@@ -74,6 +74,7 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
         ["GET /api/geocoding/search"] = "geocode",
         ["GET /api/maps/token"] = "maps-token",
         ["POST /api/insights/summary"] = "ai-summary",
+        ["POST /api/goals/{goalId:guid}/plan"] = "ai-plan",
     };
 
     private static string Key(RouteEndpoint e) =>
@@ -159,6 +160,43 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
 
         // Nothing else lives under /api/races: a new race route must be added to this list on purpose.
         Assert.Equal(expected.Length, endpoints.Count(e => Route(e).StartsWith("/api/races", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void All_goal_and_training_suggestion_routes_exist_require_authorization_and_use_the_general_limiter()
+    {
+        var endpoints = Endpoints();
+        string[] expected =
+        [
+            "GET /api/goals",
+            "POST /api/goals",
+            "POST /api/goals/estimate",
+            "GET /api/goals/{goalId:guid}",
+            "PUT /api/goals/{goalId:guid}",
+            "DELETE /api/goals/{goalId:guid}",
+            "GET /api/training-suggestions",
+            "POST /api/training-suggestions/{suggestionId:guid}/accept",
+            "POST /api/training-suggestions/{suggestionId:guid}/dismiss",
+        ];
+
+        foreach (var key in expected)
+        {
+            var endpoint = Assert.Single(endpoints, e => Key(e) == key);
+            Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+            Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+            Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+        }
+
+        // The plan generation route exists, requires authorization and has its own limiter instead of the general one.
+        var plan = Assert.Single(endpoints, e => Key(e) == "POST /api/goals/{goalId:guid}/plan");
+        Assert.Null(plan.Metadata.GetMetadata<IAllowAnonymous>());
+        Assert.NotEmpty(plan.Metadata.GetOrderedMetadata<IAuthorizeData>());
+        Assert.Equal("ai-plan", plan.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+
+        // Nothing else lives under these groups: a new route must be added to this list on purpose.
+        Assert.Equal(
+            expected.Length + 1,
+            endpoints.Count(e => Route(e).StartsWith("/api/goals", StringComparison.Ordinal) || Route(e).StartsWith("/api/training-suggestions", StringComparison.Ordinal)));
     }
 
     [Fact]

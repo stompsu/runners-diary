@@ -213,6 +213,9 @@ public sealed record RunDto
     /// <summary>The catalogue race this run was created from by <c>signUpForRace</c>; read-only (not part of the write request), kept by <c>updateRun</c>, null once the race is purged.</summary>
     public required Guid? CatalogRaceId { get; init; }
 
+    /// <summary>The goal whose training suggestion this run was accepted from (M9); read-only (not part of the write request), kept by <c>updateRun</c>, null once the goal is deleted.</summary>
+    public required Guid? GoalId { get; init; }
+
     /// <summary>Opaque concurrency token (base64 rowversion); send it back as <c>version</c> on update.</summary>
     public required string Version { get; init; }
 

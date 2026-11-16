@@ -16,6 +16,7 @@ public static class RateLimitingSetup
     public const string GpxUploadPolicy = "gpx-upload";
     public const string GeocodePolicy = "geocode";
     public const string AiSummaryPolicy = "ai-summary";
+    public const string AiPlanPolicy = "ai-plan";
     public const string MapsTokenPolicy = "maps-token";
     public const string HealthPolicy = "health";
 
@@ -54,6 +55,7 @@ public static class RateLimitingSetup
             options.AddPolicy(HealthPolicy, context => PerCaller(context, limits.Value.Health));
             options.AddPolicy(MapsTokenPolicy, context => PerCaller(context, limits.Value.MapsToken));
             options.AddPolicy(AiSummaryPolicy, context => PerCaller(context, limits.Value.AiSummary));
+            options.AddPolicy(AiPlanPolicy, context => PerCaller(context, limits.Value.AiPlan));
 
             options.AddPolicy(GeneralPolicy, context => RateLimitPartition.GetTokenBucketLimiter(
                 context.User.FindFirst(AppClaims.UserId)?.Value ?? "ip:" + ClientIp(context),

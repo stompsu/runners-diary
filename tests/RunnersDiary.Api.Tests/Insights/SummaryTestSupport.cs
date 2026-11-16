@@ -75,14 +75,23 @@ internal static class SummaryTestSupport
         });
     }
 
-    /// <summary>The global budgets' view of the last 24 h: model attempts (sum of <c>Attempts</c>) of everybody and of guests.</summary>
+    /// <summary>
+    /// The global budgets' view of the last 24 h: weighted model attempts of everybody and of guests (a plan attempt counts
+    /// <see cref="PlanAttemptWeight"/>, ADR 0040 §6), so plan rows written by other tests in the shared database are counted like the API does.
+    /// </summary>
     public static async Task<(int Total, int Guests)> GlobalLedgerAsync(this WebApplicationFactory<Program> factory)
     {
         var since = DateTime.UtcNow.AddHours(-24);
-        return await factory.WithDbAsync(async db => (
-            await db.AiGenerations.Where(g => g.CreatedAt > since).SumAsync(g => (int)g.Attempts, Ct),
-            await db.AiGenerations.Where(g => g.CreatedAt > since && g.IsGuest).SumAsync(g => (int)g.Attempts, Ct)));
+        var sums = await factory.WithDbAsync(db => db.AiGenerations.Where(g => g.CreatedAt > since)
+            .GroupBy(g => new { g.Feature, g.IsGuest })
+            .Select(group => new { group.Key.Feature, group.Key.IsGuest, Attempts = group.Sum(g => (int)g.Attempts) })
+            .ToListAsync(Ct));
+        int Weighted(AiFeature feature, int attempts) => feature == AiFeature.Plan ? attempts * PlanAttemptWeight : attempts;
+        return (sums.Sum(s => Weighted(s.Feature, s.Attempts)), sums.Where(s => s.IsGuest).Sum(s => Weighted(s.Feature, s.Attempts)));
     }
+
+    /// <summary>The default <c>Ai:Plan:GlobalAttemptWeight</c>.</summary>
+    public const int PlanAttemptWeight = 3;
 
     public static string ProblemType(this JsonElement problem) => problem.GetProperty("type").GetString()!;
 }

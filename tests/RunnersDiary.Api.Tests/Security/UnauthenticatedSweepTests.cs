@@ -69,6 +69,16 @@ public sealed class UnauthenticatedSweepTests(OfflineApiFactory factory) : IClas
         Assert.Equal(7, races.Count);
     }
 
+    [Fact]
+    public void Sweep_covers_every_goal_and_training_suggestion_route()
+    {
+        var routes = NonAllowlistedEndpoints().Select(d => d.Data).Where(d =>
+            d.Item2.StartsWith("/api/goals", StringComparison.Ordinal) || d.Item2.StartsWith("/api/training-suggestions", StringComparison.Ordinal)).ToList();
+
+        Assert.Equal(10, routes.Count);
+        Assert.Contains(routes, r => r.Item1 == "POST" && r.Item2.EndsWith("/plan", StringComparison.Ordinal));
+    }
+
     [Theory]
     [MemberData(nameof(NonAllowlistedEndpoints))]
     public async Task Endpoint_WithoutToken_Returns401Problem(string method, string path)

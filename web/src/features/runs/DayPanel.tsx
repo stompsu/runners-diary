@@ -11,6 +11,8 @@ import { QueryError } from '@/features/errors/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { compare, dayLabel, isValid } from '@/lib/dates/plainDate'
 import '@/i18n/lazyBundles'
+import { useGoalList, useGoalsEnabled, useMonthSuggestions } from '@/features/calendar/suggestionQueries'
+import { SuggestionCard } from '@/features/goals/SuggestionCard'
 import { ProposalRow } from '@/features/races/ProposalRow'
 import { bubbleProposals, useMonthProposals } from '@/features/races/raceQueries'
 import { ManagedRunList } from './ManagedRunList'
@@ -25,6 +27,7 @@ export function DayPanel() {
 function DayPanelView({ date }: { date: string }) {
   const { t, i18n } = useTranslation('runs')
   const { t: tRaces } = useTranslation('races')
+  const { t: tGoals } = useTranslation('goals')
   const month = usePanelMonth()
   const close = useClosePanel()
   const calendar = useCalendarMonth(month)
@@ -35,6 +38,17 @@ function DayPanelView({ date }: { date: string }) {
   const proposals = useMemo(
     () => bubbleProposals(proposalsQuery.data?.items).filter((proposal) => proposal.date === date),
     [proposalsQuery.data, date],
+  )
+  // Suggestions are listed whatever the grid toggle says (ADR 0041 §4); a dismissed one offers "Accept anyway".
+  const { query: suggestionsQuery } = useMonthSuggestions(month, { always: true, includeDismissed: true })
+  const goalsEnabled = useGoalsEnabled()
+  const goals = useGoalList(goalsEnabled)
+  const suggestions = useMemo(
+    () =>
+      (suggestionsQuery.data?.items ?? []).filter(
+        (item) => item.date === date && goals.data?.items.find((g) => g.id === item.goalId)?.status !== 'Archived',
+      ),
+    [suggestionsQuery.data, date, goals.data],
   )
   const failed = [calendar, types].find((query) => query.isError)
   const ready = calendar.data && types.data
@@ -58,6 +72,23 @@ function DayPanelView({ date }: { date: string }) {
       ) : (
         <ManagedRunList runs={runs} codes={codes} month={month} />
       )}
+      {suggestions.length > 0 ? (
+        <section aria-labelledby="day-suggestions" className="mt-6">
+          <h3 id="day-suggestions" className="mb-2 font-semibold">
+            {tGoals('suggestion.section')}
+          </h3>
+          <ul className="flex flex-col gap-3">
+            {suggestions.map((suggestion) => (
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                goalTitle={goals.data?.items.find((g) => g.id === suggestion.goalId)?.title}
+                panel="day"
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {proposals.length > 0 ? (
         <section aria-labelledby="day-proposals" className="mt-6">
           <h3 id="day-proposals" className="mb-2 font-semibold">

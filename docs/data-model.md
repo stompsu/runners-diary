@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; part A implemented on `m8-race-proposals`, UI done; awaiting approval/merge; not deployed): see [Added in M8](#added-in-m8-race-proposals).**
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; merged and deployed 2026-11-14): see [Added in M8](#added-in-m8-race-proposals).** **M9 (adaptive training plan) adds migrations `20261116122838_TrainingGoals` (tables `Goals`, `TrainingSuggestions`, columns `Runs.GoalId`, `AiGenerations.Feature`) and `20261116130010_AiGenerationsFeatureIndex` (index rebuild); implemented 2026-11-16 on `m9-adaptive-training-plan`, reviewed, awaiting approval; not deployed: see [Added in M9](#added-in-m9-adaptive-training-plan).**
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -11,7 +11,8 @@ Conventions: SI units (metres, seconds, metres of elevation); enums stored as `t
 Users 1 ──< Runs >── 1 RunTypes (catalog, seeded)
   │           │  └─ (complex, same row) Location?, Race?, Rating?
   │           └──< GpxTracks  (0..1 per Kind; blobs = original GPX + processed GeoJSON)
-  └──< AiSummaries  (M6; one per period + compare + language)
+  ├──< AiSummaries  (M6; one per period + compare + language)
+  └──< Goals ──< TrainingSuggestions   (M9; Runs.GoalId / Goals.RaceRunId link goals and runs)
 
 AiGenerations  (M6; system usage ledger: UserId without FK, no Owner filter)
 GeocodeUsage   (M7; system counter per UTC day: no user id, no Owner filter)
@@ -220,7 +221,7 @@ Migration `20261104070212_AiSummaries`; [ADR 0028](adr/0028-summary-cache-quotas
 
 - **Indexes:**
   - `CX_AiGenerations_User_Created (UserId, CreatedAt)` **clustered**: the per-user quota (rows in the last 24 h, or all rows for a guest);
-  - `IX_AiGenerations_Created (CreatedAt) INCLUDE (IsGuest)`: the global and guest-global sums, and the purge.
+  - `IX_AiGenerations_Created (CreatedAt) INCLUDE (IsGuest)`: the global and guest-global sums, and the purge. **M9:** rebuilt as `INCLUDE (IsGuest, Feature, Attempts)` (see [Added in M9](#added-in-m9-adaptive-training-plan)).
 - **Retention:** 30 days (`AiUsageLedger.Retention`). The guest cleanup run purges older rows with one set-based delete.
 - Account deletion (post-MVP) must purge this table explicitly, because there is no FK.
 
@@ -367,6 +368,111 @@ Verified (ADR 0036 amendment §2): SQL Server accepts the `SET NULL` FK next to 
 - Every new per-user row hangs off `Users` with `ON DELETE CASCADE`: `RaceInterestProfiles`, `RaceProposalStates`, and runs as before. The existing guest cleanup (`ExecuteDelete` on `Users`) therefore **removes them with no code change** (proved by `Races/RaceGuestLifecycleTests`).
 - Guests never write catalogue rows; the catalogue is untouched by guest cleanup.
 - Signed-up guest runs are ordinary runs (blob prefix rule unchanged).
+
+<a id="planned-in-m9-adaptive-training-plan"></a>
+
+## Added in M9 (adaptive training plan)
+
+**Implemented 2026-11-16 on `m9-adaptive-training-plan`; reviewed (no schema change from the review); awaiting approval; not deployed (gate G-P1 applies the migrations).** Tables below as built; deviations: plan §11.
+- [M9 plan](plans/M9-adaptive-training-plan.md); ADRs [0039](adr/0039-training-goals-and-realistic-target-estimate.md) (goals, links, estimate), [0040](adr/0040-training-plan-generation.md) (generation, ledger feature) and [0041](adr/0041-training-suggestions-storage-and-calendar.md) (suggestions), all amended 2026-11-16.
+- Two migrations, both compatible with the previous release (ADR 0032 expand rule):
+  - **`20261116122838_TrainingGoals`** (additive): two new tables, one nullable column on `Runs`, one defaulted column on `AiGenerations`;
+  - **`20261116130010_AiGenerationsFeatureIndex`**: drops and re-creates the non-unique `IX_AiGenerations_Created` with a wider `INCLUDE` (below).
+- **Per-user goal lock (not schema):** goal delete, suggestion accept and plan commit take the SQL Server application lock `user-goals:<userId:N>` (`sp_getapplock`, exclusive, transaction-owned, 15 s timeout; `GoalWriteLock`), so they serialise per user. FK error 547 on those writes is a safety net mapped to 404/409.
+
+```
+Users 1 ──< Goals 1 ──< TrainingSuggestions        (composite FK (GoalId, UserId); cascade from Goals only)
+              │  └── 0..1 (RaceRunId, UserId) → Runs  (NO ACTION; cleared by run delete)
+Runs >── 0..1 (GoalId, UserId) → Goals                (NO ACTION; cleared by goal delete)
+```
+
+**Cascade paths.** `Users → Runs` and `Users → Goals` both cascade, so neither link between `Goals` and `Runs` may cascade or `SET NULL` (SQL Server rejects multiple cascade paths). Both are composite NO ACTION FKs that also enforce "same owner", and the application clears them (ADR 0039 §3). **Verified** on SQL Server 2022 (Testcontainers): deleting a guest whose goal links a run and whose run links the goal succeeds in one statement; no fallback needed. The database refuses a goal or run delete while a link exists, so `GoalService.DeleteAsync` and `TrackDeletionService.DeleteRunAsync` clear first.
+
+### Goals
+
+User-owned: `IUserOwned`, **`Owner` filter**, owner of a new row = the current user.
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Id` | `uniqueidentifier` | no | PK **non-clustered**, v7. |
+| `UserId` | `uniqueidentifier` | no | FK → `Users.Id` **ON DELETE CASCADE**. |
+| `Type` | `tinyint` | no | `Race = 0`, `Performance = 1`, `Distance = 2`. |
+| `Title` | `nvarchar(120)` | no | Never sent to the model. |
+| `TargetDate` | `date` | no | Local date (ADR 0008). |
+| `DistanceMeters` | `float` | no | 1,000 … 250,000. |
+| `TargetDurationSeconds` | `int` | yes | Required for `Performance`, NULL for `Distance`; implied pace 150–900 s/km. |
+| `ElevationGainMeters` | `float` | yes | 0 … 10,000. |
+| `Surface` | `tinyint` | yes | Existing `Surface` enum. |
+| `EventName` | `nvarchar(150)` | yes | Required for `Race`. Never sent to the model. |
+| `Location_Point` | `geography` | yes | Complex `Location?` (the `RunLocation` mapping of `Runs`). |
+| `Location_Name` | `nvarchar(200)` | yes | |
+| `RaceRunId` | `uniqueidentifier` | yes | With `UserId`: FK → `Runs(Id, UserId)` (`AK_Runs_Id_UserId`) **NO ACTION**. |
+| `Notes` | `nvarchar(1000)` | yes | Never sent to the model. |
+| `Status` | `tinyint` | no | `Active = 0`, `Achieved = 1`, `Archived = 2`. |
+| `PlanGeneratedAt` | `datetime2(0)` | yes | UTC; NULL = no plan. |
+| `PlanGenerationId` | `uniqueidentifier` | yes | The current generation (matches `TrainingSuggestions.GenerationId`). |
+| `PlanNotes` | `nvarchar(600)` | yes | Model text (validated, plain text). |
+| `PlanPromptVersion` | `smallint` | yes | NULL for the demo plan. |
+| `PlanModelDeployment` | `varchar(64)` | yes | `demo` for the seeded plan. |
+| `PlanModelId` | `varchar(100)` | yes | Provider-reported, truncated. |
+| `PlanHorizonEnd` | `date` | yes | Last plannable day of the generation. |
+| `PlanHorizonCapped` | `bit` | no | No SQL default (EF always writes it; the previous release never writes `Goals`). |
+| `PlanOutdated` | `bit` | no | No SQL default. Set when a plan-relevant field of a goal **with a plan** changes (ADR 0039 §1) and on goals whose suggestions were replaced by `replaceOtherGoals`; cleared by a new plan. |
+| `CreatedAt` / `UpdatedAt` | `datetime2(0)` | no | UTC. |
+| `RowVersion` | `rowversion` | no | API `version`. |
+
+- **Keys/indexes:** `CX_Goals_User_TargetDate (UserId, TargetDate)` **clustered**, non-unique · `PK_Goals (Id)` non-clustered · **`AK_Goals_Id_UserId (Id, UserId)`** (principal of the two composite FKs) · `IX_Goals_RaceRunId_UserId (RaceRunId, UserId) WHERE RaceRunId IS NOT NULL` (FK index, the run-delete clear).
+- **Checks:** `CK_Goals_Type` (`Type IN (0,1,2)`), `CK_Goals_Status` (`IN (0,1,2)`), `CK_Goals_Distance` (1,000–250,000), `CK_Goals_Elevation` (NULL or 0–10,000), `CK_Goals_Target` (`Type <> 2 OR TargetDurationSeconds IS NULL`; `Type <> 1 OR TargetDurationSeconds IS NOT NULL`).
+- **FKs:** `FK_Goals_Users_UserId` CASCADE; `FK_Goals_Runs_RaceRunId_UserId` → `Runs(Id, UserId)` NO ACTION.
+- **Cap (application-enforced, count-then-insert like the run caps; may overshoot by one under concurrent creates, accepted):** users 50, guests 10 (`Goals:MaxGoalsPerUser` / `MaxGoalsPerGuest`) → 409 `goal-limit`.
+- **Not stored:** short/long term (derived: ≤ 84 days), predictions, envelope.
+
+### TrainingSuggestions
+
+User-owned: **`Owner` filter**. No FK to `Users` (the single cascade path is `Users → Goals → TrainingSuggestions`, like `GpxTracks`).
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Id` | `uniqueidentifier` | no | PK **non-clustered**, v7. |
+| `UserId` | `uniqueidentifier` | no | Denormalised owner; part of the composite FK. |
+| `GoalId` | `uniqueidentifier` | no | With `UserId`: FK → `Goals(Id, UserId)` **ON DELETE CASCADE**. |
+| `GenerationId` | `uniqueidentifier` | no | |
+| `Date` | `date` | no | Local date. |
+| `RunTypeId` | `smallint` | no | FK → `RunTypes.Id` (NO ACTION); training ids 20–31 or rest 41 (Domain). |
+| `DistanceMeters` | `float` | yes | 1,000 … 60,000; NULL only for rest. |
+| `DurationSeconds` | `int` | yes | 600 … 21,600. |
+| `Intensity` | `tinyint` | no | `Recovery 0, Easy 1, Steady 2, Tempo 3, Threshold 4, Interval 5, RacePace 6, Rest 7`. |
+| `TargetPaceMinSecondsPerKm` | `smallint` | yes | Faster bound, 150–900; both or neither. |
+| `TargetPaceMaxSecondsPerKm` | `smallint` | yes | Slower bound, ≥ min, ≤ min + 90. |
+| `Description` | `nvarchar(300)` | no | Model text (validated), plain text. |
+| `Phase` | `tinyint` | no | `Base 0, Build 1, Peak 2, Taper 3`. |
+| `Status` | `tinyint` | no | `Pending = 0`, `Dismissed = 1`. Accepted rows are deleted (they become runs). |
+| `CreatedAt` | `datetime2(0)` | no | UTC. |
+
+- **Keys/indexes:** **`CX_TrainingSuggestions_User_Date (UserId, Date)` clustered** (calendar range seek) · `PK_TrainingSuggestions (Id)` non-clustered · **`UX_TrainingSuggestions_Goal_Date (GoalId, Date)` unique** (one session per day per goal; also serves "pending of goal X" lookups) · `IX_TrainingSuggestions_GoalId_UserId (GoalId, UserId)` (FK index, created by EF; serves the cascade) · `IX_TrainingSuggestions_RunTypeId` (FK index).
+- **FKs:** `FK_TrainingSuggestions_Goals_GoalId_UserId` CASCADE; `FK_TrainingSuggestions_RunTypes_RunTypeId` NO ACTION.
+- **Checks:** `CK_TrainingSuggestions_Pace` (both or neither; min ≤ max), `CK_TrainingSuggestions_Status` (`IN (0,1)`).
+- **Volume:** ≤ 120 rows per goal (validator), and one goal holds suggestions at a time (ADR 0040 §1), so ≲ 120 rows per user.
+
+### Runs (change)
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `GoalId` | `uniqueidentifier` | yes | With `UserId`: FK → `Goals(Id, UserId)` **NO ACTION**. Set only by `acceptTrainingSuggestion`; preserved by `PUT /api/runs/{id}`; cleared when the goal is deleted. |
+
+New index: `IX_Runs_GoalId_UserId (GoalId, UserId) WHERE GoalId IS NOT NULL` (FK index; `acceptedCount`; the goal-delete clear).
+
+### AiGenerations (change)
+
+| Column | SQL type | Null | Notes |
+|---|---|---|---|
+| `Feature` | `tinyint` | no | **DEFAULT 0**. `Summary = 0`, `Plan = 1`. Per-user quotas count rows of one feature; the global budgets sum `Attempts × weight` (plan weight `Ai:Plan:GlobalAttemptWeight`, 3). The previous release writes rows without it, which default to `Summary` (correct). |
+
+Index change (migration `AiGenerationsFeatureIndex`): **`IX_AiGenerations_Created (CreatedAt) INCLUDE (IsGuest, Feature, Attempts)`** (was `INCLUDE (IsGuest)`), so the weighted global, guest-global and guest-plan sums are one covered range scan of the last 24 h (one grouped query per feature and guest flag; the weights are applied in C#). Per-user reads seek `CX_AiGenerations_User_Created` and filter `Feature`. Dropping and re-creating a non-unique index is safe for the previous release.
+
+### Guest deletion (M9)
+
+`Goals` cascade from `Users`, `TrainingSuggestions` from `Goals`; guest cleanup needed **no code change** (the mutual NO ACTION links are verified, above). Demo seeding adds 1 goal and 20 suggestions per guest (weeks +6…+10), regardless of `Goals:Enabled`; if the demo plan does not validate at seed time the guest is seeded without them.
 
 ## Deferred (by milestone)
 

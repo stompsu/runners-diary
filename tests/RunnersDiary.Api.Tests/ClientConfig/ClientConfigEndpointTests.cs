@@ -65,6 +65,20 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Goals_are_off_by_default_and_follow_the_Goals_Enabled_setting()
+    {
+        var off = await factory.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken);
+        using var on = factory.WithWebHostBuilder(b => b.UseSetting("Goals:Enabled", "true"));
+        var enabled = await on.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken);
+
+        Assert.False(off?.Goals.Enabled);
+        Assert.True(enabled?.Goals.Enabled);
+        // Plan generation also needs a model (none is configured here).
+        Assert.False(off?.Ai.PlanGeneration);
+        Assert.False(enabled?.Ai.PlanGeneration);
+    }
+
+    [Fact]
     public async Task Entra_enabled_with_spa_client_id_returns_derived_values()
     {
         using var entra = WithEntra(factory, "spa-client-id");
@@ -227,6 +241,31 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Ai_plan_generation_needs_goals_a_model_and_both_switches()
+    {
+        static void Foundry(Microsoft.AspNetCore.Hosting.IWebHostBuilder b, string goals, string ai, string plan)
+        {
+            b.UseSetting("Ai:Provider", "Foundry");
+            b.UseSetting("Ai:Foundry:Endpoint", "https://example.invalid/");
+            b.UseSetting("Ai:Foundry:Deployment", "gpt-test");
+            b.UseSetting("Goals:Enabled", goals);
+            b.UseSetting("Ai:Enabled", ai);
+            b.UseSetting("Ai:Plan:Enabled", plan);
+        }
+
+        async Task<AiClientConfig?> Read(string goals, string ai, string plan)
+        {
+            using var host = factory.WithWebHostBuilder(b => Foundry(b, goals, ai, plan));
+            return (await host.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken))?.Ai;
+        }
+
+        Assert.Equal(new AiClientConfig(true, true), await Read("true", "true", "true"));
+        Assert.Equal(new AiClientConfig(true, false), await Read("true", "true", "false"));
+        Assert.Equal(new AiClientConfig(true, false), await Read("false", "true", "true"));
+        Assert.Equal(new AiClientConfig(false, false), await Read("true", "false", "true"));
+    }
+
+    [Fact]
     public async Task Ai_summary_generation_is_off_by_default_and_on_only_with_a_provider_and_the_kill_switch_on()
     {
         static void Foundry(Microsoft.AspNetCore.Hosting.IWebHostBuilder b)
@@ -247,9 +286,9 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
         var on = await foundry.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
         var off = await switchedOff.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
 
-        Assert.Contains("\"ai\":{\"summaryGeneration\":false}", none, StringComparison.Ordinal);
-        Assert.Contains("\"ai\":{\"summaryGeneration\":true}", on, StringComparison.Ordinal);
-        Assert.Contains("\"ai\":{\"summaryGeneration\":false}", off, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":false,\"planGeneration\":false}", none, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":true,\"planGeneration\":false}", on, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":false,\"planGeneration\":false}", off, StringComparison.Ordinal);
         Assert.DoesNotContain("example.invalid", on, StringComparison.Ordinal); // no endpoint or deployment ever reaches the browser
         Assert.DoesNotContain("gpt-test", on, StringComparison.Ordinal);
     }

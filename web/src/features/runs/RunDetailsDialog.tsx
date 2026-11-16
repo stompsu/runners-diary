@@ -2,6 +2,8 @@ import { ExternalLink, Flag, Star } from 'lucide-react'
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { useGoal } from '@/features/goals/goalQueries'
+import { Sparkles } from 'lucide-react'
 import { TrackSection } from '@/features/tracks/TrackSection'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
@@ -163,6 +165,20 @@ function RunDetailsView({ run: query, close }: { run: ReturnType<typeof useRun>;
   )
 }
 
+/** "From your plan for <goal>" with a link to the goal (plan §5); the goal title is read from the cached goal. */
+function FromPlanLink({ goalId }: { goalId: string }) {
+  const { t } = useTranslation('runs')
+  const goal = useGoal(goalId)
+  return (
+    <p>
+      <Link className="inline-flex items-center gap-1 text-sm underline" to={`/goals/${goalId}`}>
+        <Sparkles className="size-3.5" aria-hidden="true" />
+        {goal.data ? t('details.fromPlan', { goal: goal.data.title }) : t('details.fromPlanUnnamed')}
+      </Link>
+    </p>
+  )
+}
+
 function RunDetailsBody({
   run,
   code,
@@ -219,6 +235,8 @@ function RunDetailsBody({
           </Link>
         </p>
       ) : null}
+
+      {run.goalId ? <FromPlanLink goalId={run.goalId} /> : null}
 
       {run.location ? <LocationSummary location={run.location} /> : null}
 

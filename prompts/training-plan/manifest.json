@@ -1,0 +1,12 @@
+{
+  "current": 1,
+  "planFactSheetVersion": 1,
+  "versions": {
+    "1": {
+      "file": "v1.md",
+      "sha256": "5bc8f0c6a975bee75c68508a0eace42f20c274a0085a6ef634384ee529d07509",
+      "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
+    }
+  },
+  "languages": ["en"]
+}

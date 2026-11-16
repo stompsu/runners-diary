@@ -9,7 +9,7 @@ import runTypes from './en/runTypes.json'
 
 export const defaultNS = 'common'
 
-// Eager namespaces. `maps`, `tracks`, `insights` and `races` load with the lazy map/track/insights UI (./lazyBundles.ts).
+// Eager namespaces. `maps`, `tracks`, `insights`, `races` and `goals` load with the lazy map/track/insights UI (./lazyBundles.ts).
 export const resources = {
   en: { common, auth, calendar, runs, runTypes, errors },
 } as const
@@ -21,6 +21,7 @@ export type AllResources = {
     tracks: typeof import('./en/tracks.json')
     insights: typeof import('./en/insights.json')
     races: typeof import('./en/races.json')
+    goals: typeof import('./en/goals.json')
   }
 }
 
