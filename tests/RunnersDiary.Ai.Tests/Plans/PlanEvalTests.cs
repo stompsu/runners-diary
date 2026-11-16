@@ -119,6 +119,73 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         c.AssertPlan(result.Plan, c.Sheet);
     }
 
+    /// <summary>
+    /// The repair step end to end (ADR 0040 amendment "repair"): one answer with every local issue (wrong phase, a too-wide pace range, a hard session in
+    /// the quiet window, a too-fast target, a long run and a week a little above their caps) succeeds in a single attempt, counts the item-level drops,
+    /// and the repairs show up in the attempt's diagnostics with codes and locations only.
+    /// </summary>
+    [Fact]
+    public async Task A_plan_with_every_local_issue_succeeds_in_one_attempt_and_records_the_repairs()
+    {
+        var c = PlanEvalCases.Get(PlanEvalCases.HalfMarathon10Weeks);
+        var sheet = c.Sheet;
+        var e = sheet.Envelope;
+        var sessions = FakeDraft(sheet).Sessions.ToList();
+
+        // Phase: the first session claims another phase.
+        sessions[0] = sessions[0] with { Phase = sessions[0].Phase == "peak" ? "base" : "peak" };
+
+        // Spread: a 120 s range on an easy run (limit 90).
+        var easy = sessions.FindIndex(1, s => s.RunType == "easy");
+        sessions[easy] = sessions[easy] with { PaceMinSecondsPerKm = 330, PaceMaxSecondsPerKm = 450 };
+
+        // taperIntensity: a short tempo run the day before the goal replaces what the plan had on that day.
+        var eve = sheet.Goal.TargetDate.AddDays(-1);
+        sessions.RemoveAll(s => s.Date == PlanEvalCases.D(eve));
+        sessions.Add(new DraftSession(PlanEvalCases.D(eve), "tempo", "tempo", "taper", 4_000, null, null, null, "Short tempo run."));
+
+        // pace: an easy run faster than the reference pace (313 s/km).
+        var fast = sessions.FindIndex(easy + 1, s => s.RunType == "easy");
+        sessions[fast] = sessions[fast] with { PaceMinSecondsPerKm = 250, PaceMaxSecondsPerKm = 300 };
+
+        // longRun: the long run of week 2 is 10 % above its cap (tolerance is 5 %).
+        var week2 = e.Weeks[1];
+        var longIndex = sessions.FindIndex(s => PlanEvalCases.InWeek(s, week2) && s.RunType == "long");
+        var longCap = week2.MaxLongRunMeters;
+        sessions[longIndex] = sessions[longIndex] with { DistanceMeters = Math.Ceiling(longCap * 1.1), DurationSeconds = null };
+
+        // weeklyVolume: week 4's other sessions are stretched so the week is about 15 % above its tolerant cap, the long run staying under its cap.
+        var week4 = e.Weeks[3];
+        var tolerant = week4.MaxDistanceMeters * TrainingPlanValidator.Tolerance;
+        var weekIndexes = Enumerable.Range(0, sessions.Count).Where(i => PlanEvalCases.InWeek(sessions[i], week4)).ToList();
+        var longs = weekIndexes.Where(i => sessions[i].RunType == "long").ToList();
+        var others = weekIndexes.Except(longs).ToList();
+        var longSum = longs.Sum(i => sessions[i].DistanceMeters!.Value);
+        var factor = (tolerant * 1.15 - longSum) / others.Sum(i => sessions[i].DistanceMeters!.Value);
+        foreach (var i in others)
+        {
+            sessions[i] = sessions[i] with { DistanceMeters = Math.Floor(sessions[i].DistanceMeters!.Value * factor / 100) * 100, DurationSeconds = null };
+        }
+
+        Assert.True(sessions.Where(s => PlanEvalCases.InWeek(s, week4)).Sum(s => s.DistanceMeters!.Value) > tolerant);
+        var draft = new TrainingPlanDraft("A gradual plan.", [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
+        var harness = new PlanHarness(new ScriptedChatClient().Reply(TrainingPlanDraftJson.ToJson(draft), 9_000, 4_000));
+
+        var result = await harness.Generate(sheet);
+
+        Assert.True(result.Status == GenerationStatus.Succeeded, $"{result.Status} {result.Failure}: {string.Join(", ", result.AttemptDetails?.SelectMany(a => a.Violations) ?? [])}");
+        Assert.Equal(1, result.Attempts);
+        Assert.Equal(2, result.Plan!.DroppedCount); // the tempo eve and the too-fast easy run
+        Assert.Equal(sessions.Count - 2, result.Plan.Kept.Count);
+        var repairs = Assert.Single(result.AttemptDetails!).Repairs;
+        Assert.Equivalent(
+            new[] { PlanRuleCode.Schema, PlanRuleCode.Phase, PlanRuleCode.TaperIntensity, PlanRuleCode.Pace, PlanRuleCode.LongRun, PlanRuleCode.WeeklyVolume },
+            repairs.Select(r => r.Rule).Distinct().ToArray());
+        Assert.All(repairs, r => Assert.True(TrainingPlanAgent.IsSafeLocation(r.Location), r.Location));
+        Assert.All(result.Plan.Kept, s => Assert.Equal(PlanEvalCases.WeekOf(sheet, s.Date).Phase, s.Phase));
+        Assert.Empty(TrainingPlanValidator.Validate(TrainingPlanDraftJson.ToJson(draft), sheet, PlanValidationPolicy.Default).Violations);
+    }
+
     [Fact]
     public async Task Plan_switch_off_or_no_model_is_unavailable_without_a_call()
     {

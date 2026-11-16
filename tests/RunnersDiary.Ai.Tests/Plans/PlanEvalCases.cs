@@ -75,9 +75,11 @@ internal static class PlanEvalCases
             },
             (draft, sheet) =>
             {
-                // Double one week's distance: weekly volume.
+                // Triple one week's cap across its sessions: weekly volume, far beyond what the repair step scales down (25 %).
                 var week = sheet.Envelope.Weeks[4];
-                return (draft with { Sessions = [.. draft.Sessions.Select(s => InWeek(s, week) ? s with { DistanceMeters = Math.Min(s.DistanceMeters!.Value * 3, week.MaxLongRunMeters) } : s)] }, PlanRuleCode.WeeklyVolume);
+                var inWeek = draft.Sessions.Count(s => InWeek(s, week));
+                var each = Math.Min(59_000, Math.Floor(week.MaxDistanceMeters * 3 / inWeek));
+                return (draft with { Sessions = [.. draft.Sessions.Select(s => InWeek(s, week) ? s with { DistanceMeters = each, DurationSeconds = null } : s)] }, PlanRuleCode.WeeklyVolume);
             },
             (plan, sheet) => AssertEveryFullTrainingWeekHasRunning(plan, sheet));
 
@@ -95,11 +97,12 @@ internal static class PlanEvalCases
             },
             (draft, sheet) =>
             {
-                // An "easy" run at 3:50 /km: faster than the reference pace.
-                var i = draft.Sessions.ToList().FindIndex(s => s.Intensity == "easy");
+                // A long run 60 % above its week's long-run cap (the repair step only clamps up to 25 % above the tolerant cap).
                 var sessions = draft.Sessions.ToList();
-                sessions[i] = sessions[i] with { PaceMinSecondsPerKm = 230, PaceMaxSecondsPerKm = 250 };
-                return (draft with { Sessions = sessions }, PlanRuleCode.Pace);
+                var i = sessions.FindLastIndex(s => s.RunType == "long");
+                var week = WeekOf(sheet, Date(sessions[i].Date));
+                sessions[i] = sessions[i] with { DistanceMeters = Math.Min(59_000, Math.Ceiling(week.MaxLongRunMeters * 1.6)), DurationSeconds = null };
+                return (draft with { Sessions = sessions }, PlanRuleCode.LongRun);
             },
             (plan, sheet) => Assert.All(
                 plan.Kept.Where(s => s.TargetPaceMinSecondsPerKm is not null),
@@ -121,7 +124,7 @@ internal static class PlanEvalCases
                 var sessions = draft.Sessions.ToList();
                 var i = sessions.FindLastIndex(s => s.RunType == "long");
                 var week = WeekOf(sheet, Date(sessions[i].Date));
-                sessions[i] = sessions[i] with { DistanceMeters = Math.Ceiling(week.MaxLongRunMeters * 1.05) + 1_000 };
+                sessions[i] = sessions[i] with { DistanceMeters = Math.Ceiling(week.MaxLongRunMeters * 1.05 * 1.5), DurationSeconds = null };
                 return (draft with { Sessions = sessions }, PlanRuleCode.LongRun);
             },
             (plan, sheet) => Assert.All(plan.Kept, s => Assert.True((s.DistanceMeters ?? 0) <= 26_400 * TrainingPlanValidator.Tolerance)));
@@ -134,10 +137,12 @@ internal static class PlanEvalCases
             sheet => Assert.All(sheet.Envelope.Weeks, w => Assert.Equal(TrainingPhase.Taper, w.Phase)),
             (draft, sheet) =>
             {
-                var friday = new DateOnly(2026, 12, 4);
-                var sessions = draft.Sessions.Where(s => Math.Abs(Date(s.Date).DayNumber - friday.DayNumber) > 1).ToList();
-                sessions.Add(new DraftSession(D(friday), "tempo", "tempo", "taper", 5_000, null, null, null, "Short tempo run."));
-                return (draft with { Sessions = [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)] }, PlanRuleCode.TaperIntensity);
+                // Two hard sessions on consecutive days (a hard session in the quiet window is dropped by the repair step, so it cannot be the corruption).
+                var first = sheet.Envelope.PlanStart;
+                var sessions = draft.Sessions.Where(s => Date(s.Date) != first && Date(s.Date) != first.AddDays(1)).ToList();
+                sessions.Add(new DraftSession(D(first), "tempo", "tempo", "taper", 5_000, null, null, null, "Short tempo run."));
+                sessions.Add(new DraftSession(D(first.AddDays(1)), "tempo", "tempo", "taper", 5_000, null, null, null, "Short tempo run."));
+                return (draft with { Sessions = [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)] }, PlanRuleCode.HardSessions);
             },
             (plan, sheet) => Assert.DoesNotContain(plan.Kept, s => s.Intensity.IsHard() && s.Date >= sheet.Goal.TargetDate.AddDays(-3)));
 

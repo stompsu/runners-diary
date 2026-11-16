@@ -192,10 +192,9 @@ public sealed class TrainingPlanAgentTests
         var week = Sheet.Envelope.Weeks[1];
         var inWeek = good.Sessions.Select((s, i) => (s, i)).Where(x => PlanEvalCases.InWeek(x.s, week) && x.s.DistanceMeters is not null).ToList();
         var sessions = good.Sessions.ToList();
-        // Spread one kilometre over the available distance (+5 % tolerance) across the week's running sessions, each within the long-run cap.
-        var target = Math.Ceiling(week.AvailableDistanceMeters * TrainingPlanValidator.Tolerance) + 1_000;
+        // Spread 40 % over the tolerant cap (the repair step scales up to 25 %) across the week's running sessions (the long runs are rejected too, which keeps the weekly sum from being rescued by clamping).
+        var target = Math.Ceiling(week.AvailableDistanceMeters * TrainingPlanValidator.Tolerance * 1.4);
         var each = Math.Ceiling(target / inWeek.Count);
-        Assert.True(each <= week.MaxLongRunMeters);
         foreach (var (s, i) in inWeek)
         {
             sessions[i] = s with { DistanceMeters = each, DurationSeconds = null };
@@ -206,13 +205,17 @@ public sealed class TrainingPlanAgentTests
             .Reply(TrainingPlanDraftJson.ToJson(good));
         var harness = new PlanHarness(scripted);
 
+        // The number in the note is the validator's: the suggested sum after any long-run clamp of the repair step.
+        var volume = Assert.Single(
+            TrainingPlanValidator.Validate(good with { Sessions = sessions }, Sheet, PlanValidationPolicy.Default).Violations, v => v.Rule == PlanRuleCode.WeeklyVolume);
+        Assert.Equal((int)week.AvailableDistanceMeters, volume.Limit);
         var result = await harness.Generate(Sheet);
 
         Assert.Equal((GenerationStatus.Succeeded, 2), (result.Status, result.Attempts));
         var retry = scripted.Requests[1].Messages[^1].Text;
         var start = week.Start.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         Assert.Contains(
-            FormattableString.Invariant($"week {start}: your running sessions add up to {each * inWeek.Count:0} m, its availableDistanceMeters is {week.AvailableDistanceMeters:0} m"),
+            FormattableString.Invariant($"week {start}: your running sessions add up to {volume.Value} m, its availableDistanceMeters is {week.AvailableDistanceMeters:0} m"),
             retry,
             StringComparison.Ordinal);
     }

@@ -155,7 +155,6 @@ public sealed class TrainingPlanValidatorTests
         { "paceMinSecondsPerKm", "null/300" },
         { "paceMaxSecondsPerKm", "400/901" },
         { "paceMaxSecondsPerKm", "360/320" },
-        { "paceMaxSecondsPerKm", "300/391" },
         { "paceMaxSecondsPerKm", "300/null" },
         { "description", "" },
         { "description", "   " },
@@ -192,7 +191,7 @@ public sealed class TrainingPlanValidatorTests
 
     /// <summary>
     /// The pace range width (ADR 0040 amendment "plan reliability"): 90 s in general; 135 s for long and trail runs, and for easy/recovery runs when
-    /// the goal is on trail. A wider range is reported at the slower bound with the width and the run type's limit.
+    /// the goal is on trail. A wider range is clamped at the slower bound (repair) and recorded.
     /// </summary>
     [Theory]
     [InlineData("easy", "easy", false, 375, 450, null)]
@@ -217,14 +216,18 @@ public sealed class TrainingPlanValidatorTests
 
         var result = Validate(sheet, sessions);
 
-        var paceSchema = result.Violations.Where(v => v.Rule == PlanRuleCode.Schema && v.Location.StartsWith("sessions[2].pace", StringComparison.Ordinal)).ToList();
+        // A too-wide range is repaired, not rejected: the slower bound is clamped to min + the allowed spread.
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        var kept = result.Kept.Single(k => k.Date == DateOnly.ParseExact(sessions[2].Date, "yyyy-MM-dd", CultureInfo.InvariantCulture));
         if (limit is null)
         {
-            Assert.Empty(paceSchema);
+            Assert.Empty(result.Repairs);
+            Assert.Equal(max, kept.TargetPaceMaxSecondsPerKm);
         }
         else
         {
-            Assert.Equal(new PlanViolation(PlanRuleCode.Schema, "sessions[2].paceMaxSecondsPerKm", max - min, limit), Assert.Single(paceSchema));
+            Assert.Equal(min + limit, kept.TargetPaceMaxSecondsPerKm);
+            Assert.Equal(new PlanRepair(PlanRuleCode.Schema, "sessions[2].paceMaxSecondsPerKm", PlanRepairAction.Clamp, max, min + limit), Assert.Single(result.Repairs));
         }
     }
 
@@ -346,54 +349,150 @@ public sealed class TrainingPlanValidatorTests
     }
 
     [Fact]
-    public void A_session_with_another_phase_than_its_week_is_phase()
+    public void A_session_with_another_phase_than_its_week_gets_the_weeks_phase_and_never_fails_the_plan()
     {
         var sheet = Sheet();
         var sessions = Good(sheet);
         sessions[0] = sessions[0] with { Phase = "build" };
 
-        AssertOnly(Validate(sheet, sessions), PlanRuleCode.Phase, "2026-11-17");
+        var result = Validate(sheet, sessions);
+
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal(TrainingPhase.Base, result.Kept[0].Phase);
+        Assert.Equal(new PlanRepair(PlanRuleCode.Phase, "2026-11-17", PlanRepairAction.Set, (int)TrainingPhase.Build, (int)TrainingPhase.Base), Assert.Single(result.Repairs));
+        Assert.Equal(0, result.DroppedCount);
     }
 
-    [Fact]
-    public void A_week_above_its_cap_by_more_than_five_percent_is_weekly_volume_and_at_five_percent_it_is_not()
+    private static (PlanFactSheet Sheet, PlanWeek Week, List<DraftSession> Others, double Cap) VolumeSetup()
     {
-        var sheet = Sheet();
+        var sheet = Sheet(sessionsPerWeek: 6.0);
         var week = sheet.Envelope.Weeks[3];
-        var cap = week.MaxDistanceMeters * TrainingPlanValidator.Tolerance;
-        var sessions = Good(sheet).Where(s => DateOnly.ParseExact(s.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture) is var d && (d < week.Start || d > week.Start.AddDays(6))).ToList();
-        // Five sessions in the week (Mon, Wed, Fri easy; Sat and Sun long), each under the long-run cap; frequency is raised by the history.
-        var each = Math.Floor(cap / 5) + 1;
-        var phase = week.Phase.ToWire();
-        var over = VolumeDays.Select(i => new DraftSession(D(week.Start.AddDays(i)), "easy", "easy", phase, each, null, null, null, "Easy run.")).ToList();
-        var sheetWithFrequency = Sheet(sessionsPerWeek: 6.0);
-        Assert.True(each <= week.MaxLongRunMeters);
+        var others = Good(sheet).Where(s => DateOnly.ParseExact(s.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture) is var d && (d < week.Start || d > week.Start.AddDays(6))).ToList();
+        return (sheet, week, others, week.MaxDistanceMeters * TrainingPlanValidator.Tolerance);
+    }
 
-        var rejected = Validate(sheetWithFrequency, sessions.Concat(over));
+    /// <summary>Five easy sessions on <see cref="VolumeDays"/> in the week, each <paramref name="each"/> m with a duration at 6:00/km.</summary>
+    private static List<DraftSession> FiveSessions(PlanWeek week, double each) =>
+        [.. VolumeDays.Select(i => new DraftSession(D(week.Start.AddDays(i)), "easy", "easy", week.Phase.ToWire(), each, (int)(each * 0.36), null, null, "Easy run."))];
+
+    [Fact]
+    public void A_week_above_the_tolerant_cap_by_more_than_25_percent_is_weekly_volume_and_up_to_5_percent_it_is_valid()
+    {
+        var (sheet, week, others, cap) = VolumeSetup();
+        Assert.True(Math.Floor(cap * 1.3 / 5) <= week.MaxLongRunMeters * 1.05);
+
+        // 30 % above the tolerant cap: rejected, with the validator's numbers (suggested sum, availableDistanceMeters).
+        var each = Math.Floor(cap * 1.3 / 5);
+        var rejected = Validate(sheet, others.Concat(FiveSessions(week, each)));
         AssertOnly(rejected, PlanRuleCode.WeeklyVolume, D(week.Start));
-        // The validator's own numbers for the retry note: the suggested sum and the week's availableDistanceMeters.
-        Assert.Equal(
-            new PlanViolation(PlanRuleCode.WeeklyVolume, D(week.Start), (int)(each * 5), (int)week.AvailableDistanceMeters),
-            Assert.Single(rejected.Violations));
+        Assert.Equal(new PlanViolation(PlanRuleCode.WeeklyVolume, D(week.Start), (int)(each * 5), (int)week.AvailableDistanceMeters), Assert.Single(rejected.Violations));
+        Assert.Empty(rejected.Repairs);
 
-        var at = over.Select(s => s with { DistanceMeters = Math.Floor(cap / 5) }).ToList();
-        Assert.True(Validate(sheetWithFrequency, sessions.Concat(at)).IsValid);
+        var at = FiveSessions(week, Math.Floor(cap / 5));
+        var valid = Validate(sheet, others.Concat(at));
+        Assert.True(valid.IsValid);
+        Assert.Empty(valid.Repairs);
     }
 
     [Fact]
-    public void A_session_longer_than_the_long_run_cap_by_more_than_five_percent_is_long_run()
+    public void A_week_up_to_25_percent_above_the_tolerant_cap_is_scaled_down_to_the_cap_with_proportional_durations()
+    {
+        var (sheet, week, others, cap) = VolumeSetup();
+        var each = Math.Floor(cap * 1.2 / 5 / 100) * 100;
+        var sum = each * 5;
+        Assert.True(sum > cap);
+
+        var result = Validate(sheet, others.Concat(FiveSessions(week, each)));
+
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        var scaled = result.Kept.Where(k => k.Date >= week.Start && k.Date <= week.Start.AddDays(6)).ToList();
+        Assert.Equal(5, scaled.Count);
+        var factor = week.AvailableDistanceMeters / sum;
+        var expectedEach = Math.Floor(each * factor / 100) * 100;
+        Assert.All(scaled, s =>
+        {
+            Assert.Equal(expectedEach, s.DistanceMeters);
+            Assert.Equal(0, s.DistanceMeters!.Value % 100);
+            Assert.Equal((int)Math.Round(each * 0.36 * expectedEach / each, MidpointRounding.AwayFromZero), s.DurationSeconds);
+        });
+        Assert.True(scaled.Sum(s => s.DistanceMeters!.Value) <= week.AvailableDistanceMeters);
+        Assert.Equal(
+            new PlanRepair(PlanRuleCode.WeeklyVolume, D(week.Start), PlanRepairAction.Scale, (int)sum, (int)(expectedEach * 5)),
+            Assert.Single(result.Repairs));
+        Assert.Equal(0, result.DroppedCount);
+    }
+
+    [Fact]
+    public void The_25_percent_volume_boundary_is_inclusive()
+    {
+        var (sheet, week, others, cap) = VolumeSetup();
+
+        // Five sessions adding up to exactly `total` metres (the last one takes the remainder).
+        List<DraftSession> Week(double total)
+        {
+            var each = Math.Floor(total / 5);
+            return [.. VolumeDays.Select((day, n) => new DraftSession(
+                D(week.Start.AddDays(day)), "easy", "easy", week.Phase.ToWire(), n == 4 ? total - (4 * each) : each, null, null, null, "Easy run."))];
+        }
+
+        var limit = Math.Floor(cap * (1 + TrainingPlanRepair.MaxRepairedOvershoot));
+        var atBoundary = Validate(sheet, others.Concat(Week(limit)));
+        var over = Validate(sheet, others.Concat(Week(limit + 1)));
+
+        Assert.True(atBoundary.IsValid, string.Join(", ", atBoundary.Violations));
+        Assert.Contains(atBoundary.Repairs, r => r.Rule == PlanRuleCode.WeeklyVolume);
+        AssertOnly(over, PlanRuleCode.WeeklyVolume, D(week.Start));
+        Assert.DoesNotContain(over.Repairs, r => r.Rule == PlanRuleCode.WeeklyVolume);
+    }
+
+    [Fact]
+    public void A_volume_repair_that_would_push_a_session_below_1000_m_is_skipped_and_the_violation_stands()
+    {
+        var (sheet, week, others, cap) = VolumeSetup();
+        // 1,000 m + 1,000 m + a big one: scaling down by the factor would take the small ones under 1,000 m.
+        var total = Math.Floor(cap * 1.2);
+        var sessions = new List<DraftSession>
+        {
+            new(D(week.Start), "easy", "easy", week.Phase.ToWire(), 1_000, null, null, null, "Easy run."),
+            new(D(week.Start.AddDays(2)), "easy", "easy", week.Phase.ToWire(), total - 1_000, null, null, null, "Easy run."),
+        };
+
+        var result = Validate(sheet, others.Concat(sessions));
+
+        Assert.Contains(PlanRuleCode.WeeklyVolume, result.Codes);
+        Assert.DoesNotContain(result.Repairs, r => r.Rule == PlanRuleCode.WeeklyVolume);
+    }
+
+    [Fact]
+    public void A_session_longer_than_the_long_run_cap_is_clamped_up_to_25_percent_above_the_tolerant_cap_and_rejected_beyond()
     {
         var sheet = Sheet();
         var sessions = Good(sheet);
         var week = sheet.Envelope.Weeks[0];
-        sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(week.MaxLongRunMeters * 1.05) + 1 };
-        var result = Validate(sheet, sessions);
-        Assert.Contains(PlanRuleCode.LongRun, result.Codes);
-        var distance = (int)sessions[1].DistanceMeters!.Value;
-        Assert.Contains(new PlanViolation(PlanRuleCode.LongRun, sessions[1].Date, distance, (int)week.MaxLongRunMeters), result.Violations);
+        var tolerant = week.MaxLongRunMeters * 1.05;
 
-        sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(week.MaxLongRunMeters * 1.05) };
+        // Just above the tolerant cap: the distance is clamped to the cap, the duration in proportion.
+        sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(tolerant) + 1, DurationSeconds = 4_000 };
+        var old = sessions[1].DistanceMeters!.Value;
+        var result = Validate(sheet, sessions);
+        Assert.DoesNotContain(PlanRuleCode.LongRun, result.Codes);
+        var clamped = result.Kept.Single(k => k.Date == DateOnly.ParseExact(sessions[1].Date, "yyyy-MM-dd", CultureInfo.InvariantCulture));
+        Assert.Equal(Math.Floor(week.MaxLongRunMeters / 100) * 100, clamped.DistanceMeters);
+        Assert.Equal((int)Math.Round(4_000 * clamped.DistanceMeters!.Value / old, MidpointRounding.AwayFromZero), clamped.DurationSeconds);
+        Assert.Contains(new PlanRepair(PlanRuleCode.LongRun, sessions[1].Date, PlanRepairAction.Clamp, (int)old, (int)clamped.DistanceMeters!.Value), result.Repairs);
+
+        // Exactly at the tolerant cap: valid, untouched.
+        sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(tolerant), DurationSeconds = null };
+        var atCap = Validate(sheet, sessions);
+        Assert.DoesNotContain(PlanRuleCode.LongRun, atCap.Codes);
+        Assert.DoesNotContain(atCap.Repairs, r => r.Rule == PlanRuleCode.LongRun);
+
+        // 25 % above the tolerant cap is the last repaired value, one metre more is rejected with the validator's numbers.
+        sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(tolerant * 1.25) };
         Assert.DoesNotContain(PlanRuleCode.LongRun, Validate(sheet, sessions).Codes);
+        sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(tolerant * 1.25) + 1 };
+        var rejected = Validate(sheet, sessions);
+        Assert.Contains(new PlanViolation(PlanRuleCode.LongRun, sessions[1].Date, (int)sessions[1].DistanceMeters!.Value, (int)week.MaxLongRunMeters), rejected.Violations);
     }
 
     [Fact]
@@ -471,8 +570,11 @@ public sealed class TrainingPlanValidatorTests
 
         var result = Validate(sheet, sessions);
 
-        Assert.Equal(violation, result.Codes.Contains(PlanRuleCode.TaperIntensity));
-        Assert.Equal(violation ? [PlanRuleCode.TaperIntensity] : [], result.Codes);
+        // Item level: the hard session is dropped and counted, the plan stays valid.
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal(violation ? 1 : 0, result.DroppedCount);
+        Assert.Equal(violation, result.Repairs.Any(r => r.Rule == PlanRuleCode.TaperIntensity && r.Action == PlanRepairAction.Drop && r.Location == D(date)));
+        Assert.Equal(!violation, result.Kept.Any(k => k.Date == date));
     }
 
     [Fact]
@@ -499,7 +601,11 @@ public sealed class TrainingPlanValidatorTests
 
         var result = Validate(sheet, sessions);
 
-        Assert.Equal(violation ? [PlanRuleCode.Pace] : [], result.Codes);
+        // Item level: a too-fast target drops that session, the plan stays valid.
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal(violation ? 1 : 0, result.DroppedCount);
+        Assert.Equal(violation, result.Repairs.Any(r => r.Rule == PlanRuleCode.Pace && r.Action == PlanRepairAction.Drop && r.Location == "2026-11-17"));
+        Assert.Equal(!violation, result.Kept.Any(k => k.Date == new DateOnly(2026, 11, 17)));
     }
 
     [Fact]

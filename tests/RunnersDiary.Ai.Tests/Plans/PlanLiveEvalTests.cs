@@ -88,7 +88,7 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
             var retried = result.Status == GenerationStatus.Succeeded && result.Attempts > 1;
             output.WriteLine(string.Create(CultureInfo.InvariantCulture,
                 $"{name} #{run + 1}: {result.Status} {result.Failure} attempts {result.Attempts}{(retried ? " (rescued by the retry)" : "")}, {result.InputTokens} in / {result.OutputTokens} out tokens (cap {options.Plan.MaxOutputTokens}), {seconds:0} s, ${cost:0.0000}"));
-            if (result.Status != GenerationStatus.Succeeded || result.Attempts > 1)
+            if (result.Status != GenerationStatus.Succeeded || result.Attempts > 1 || (result.AttemptDetails ?? []).Any(a => a.Repairs.Count > 0))
             {
                 WriteAttempts(result, options.Plan.MaxOutputTokens);
             }
@@ -123,6 +123,14 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
             }
 
             output.WriteLine(line.ToString());
+            foreach (var group in a.Repairs.GroupBy(r => (r.Rule, r.Action)).OrderBy(g => g.Key.Rule).ThenBy(g => g.Key.Action))
+            {
+                var locations = group.Select(RepairWhere).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+                var shown = string.Join(", ", locations.Take(MaxPrintedLocations));
+                var more = locations.Count > MaxPrintedLocations ? $", +{locations.Count - MaxPrintedLocations} more" : "";
+                output.WriteLine(string.Create(CultureInfo.InvariantCulture, $"    repaired {group.Key.Rule.ToCode()} ({group.Key.Action}) x{group.Count()}: {shown}{more}"));
+            }
+
             foreach (var group in a.Violations.GroupBy(v => v.Rule).OrderBy(g => g.Key))
             {
                 var locations = group.Select(Where).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
@@ -137,6 +145,10 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
             output.WriteLine($"  attempt {n}: no answer ({result.Failure}); usage unknown, not in the cost");
         }
     }
+
+    /// <summary>A repaired location with its before/after numbers when it has them (e.g. <c>2026-11-16 (33000>28000)</c>).</summary>
+    private static string RepairWhere(PlanRepair r) =>
+        r.From is { } from && r.To is { } to ? string.Create(CultureInfo.InvariantCulture, $"{r.Location} ({from}>{to})") : r.Location;
 
     /// <summary>A location, with the validator's value and limit when it computed them (e.g. <c>2026-11-16 (33000/28000)</c>).</summary>
     private static string Where(PlanViolation v) =>

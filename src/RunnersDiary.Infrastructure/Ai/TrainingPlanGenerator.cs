@@ -37,7 +37,8 @@ public sealed record PlanGenerationResult(
 /// <param name="FinishReason">The provider's finish reason (<c>stop</c>, <c>length</c>, …) when it gave one.</param>
 /// <param name="Violations">The plan-level violations; empty for a valid attempt. Locations are dates or fixed paths (anything else becomes <c>?</c>).</param>
 /// <param name="KeptSessions">Sessions that passed the per-session checks and the collision drop.</param>
-/// <param name="DroppedCount">Sessions dropped by the item-level <c>collision</c> rule.</param>
+/// <param name="DroppedCount">Sessions dropped by the item-level rules (<c>collision</c> and the <c>taperIntensity</c>/<c>pace</c> repairs).</param>
+/// <param name="Repairs">What the deterministic repair step changed in this attempt's answer (rule code, location, counts; never model text).</param>
 public sealed record PlanAttemptDetails(
     int Number,
     int InputTokens,
@@ -45,7 +46,8 @@ public sealed record PlanAttemptDetails(
     string? FinishReason,
     IReadOnlyList<PlanViolation> Violations,
     int KeptSessions,
-    int DroppedCount)
+    int DroppedCount,
+    IReadOnlyList<PlanRepair> Repairs)
 {
     /// <summary>The provider stopped at the output token cap (Chat Completions <c>length</c>): the JSON is most likely cut off.</summary>
     public bool Truncated => string.Equals(FinishReason, "length", StringComparison.OrdinalIgnoreCase);
@@ -118,7 +120,8 @@ public sealed partial class TrainingPlanGenerator(
         attempt.FinishReason,
         [.. validation.Violations.Select(v => TrainingPlanAgent.IsSafeLocation(v.Location) ? v : v with { Location = "?" })],
         validation.Kept.Count,
-        validation.DroppedCount);
+        validation.DroppedCount,
+        [.. validation.Repairs.Select(r => TrainingPlanAgent.IsSafeLocation(r.Location) ? r : r with { Location = "?" })]);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The plan fact sheet has {Length} characters, above the cap of {Cap}; not sent to the model.")]
     private partial void LogFactSheetTooLarge(int length, int cap);

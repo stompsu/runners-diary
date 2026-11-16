@@ -52,6 +52,7 @@ public sealed class DemoTrainingPlanFixtureTests
 
         Assert.True(result.IsValid, $"{today:yyyy-MM-dd}: {string.Join(", ", result.Violations)}");
         Assert.Equal(0, result.DroppedCount);
+        Assert.Empty(result.Repairs); // the fixture must not rely on the repair step
         Assert.Equal(Template.Sessions.Count, result.Kept.Count);
         Assert.All(result.Kept, s => Assert.InRange(s.Date, IsoWeek.MondayOf(today).AddDays(42), target.AddDays(-1)));
         foreach (var session in result.Kept)
@@ -71,6 +72,7 @@ public sealed class DemoTrainingPlanFixtureTests
 
         Assert.True(result.IsValid, $"{today:yyyy-MM-dd}: {string.Join(", ", result.Violations)}");
         Assert.Equal(0, result.DroppedCount);
+        Assert.Empty(result.Repairs); // the fake writer must not rely on the repair step
     }
 
     [Fact]
