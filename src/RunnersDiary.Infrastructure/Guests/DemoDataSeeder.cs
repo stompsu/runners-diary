@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RunnersDiary.Domain.Common;
 using RunnersDiary.Domain.Demo;
 using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.Runs;
@@ -87,7 +88,16 @@ public sealed partial class DemoDataSeeder(
         }
 
         // The demo goal and its example suggestions (M9, ADR 0041 §5): plain rows, no model call and no quota ledger row.
-        var demoPlan = plan.Build(guest.Id, demoRuns, today, now);
+        // A broken example plan must never block guest sign-in (the only production entry point): seed the diary without it. The startup check fails the host instead.
+        DemoPlanRows? demoPlan = null;
+        try
+        {
+            demoPlan = plan.Build(guest.Id, demoRuns, today, now);
+        }
+        catch (Exception ex) when (ex is DomainRuleException or IOException)
+        {
+            LogDemoPlanSkipped(ex.GetType().Name, (ex as DomainRuleException)?.Message.Length ?? 0);
+        }
 
         try
         {
@@ -100,8 +110,12 @@ public sealed partial class DemoDataSeeder(
             db.Runs.AddRange(runs);
             db.GpxTracks.AddRange(tracks);
             db.RaceInterestProfiles.Add(RaceInterestProfile.Create(guest.Id, DemoInterests, now));
-            db.Goals.Add(demoPlan.Goal);
-            db.TrainingSuggestions.AddRange(demoPlan.Suggestions);
+            if (demoPlan is not null)
+            {
+                db.Goals.Add(demoPlan.Goal);
+                db.TrainingSuggestions.AddRange(demoPlan.Suggestions);
+            }
+
             await db.SaveChangesAsync(cancellationToken);
         }
         catch
@@ -115,6 +129,9 @@ public sealed partial class DemoDataSeeder(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Seeded guest {UserId} with {RunCount} runs and {TrackCount} tracks.")]
     private partial void LogSeeded(Guid userId, int runCount, int trackCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The demo training plan is not usable ({ExceptionType}, message length {MessageLength}); seeding the guest without the demo goal and suggestions.")]
+    private partial void LogDemoPlanSkipped(string exceptionType, int messageLength);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not remove the blobs of guest {UserId} after a failed seeding; guest cleanup will not find a user row for them.")]
     private partial void LogRollbackFailed(Exception exception, Guid userId);

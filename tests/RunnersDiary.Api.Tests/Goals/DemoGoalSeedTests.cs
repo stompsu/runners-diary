@@ -8,6 +8,11 @@ using Microsoft.Extensions.Time.Testing;
 using RunnersDiary.Api.Tests.Guests;
 using RunnersDiary.Api.Tests.Infrastructure;
 using RunnersDiary.Domain.Calendar;
+using RunnersDiary.Domain.Common;
+using RunnersDiary.Domain.Demo;
+using RunnersDiary.Domain.Time;
+using RunnersDiary.Domain.Users;
+using RunnersDiary.Infrastructure.Goals;
 using RunnersDiary.Infrastructure.Guests;
 using RunnersDiary.Infrastructure.Storage;
 using static RunnersDiary.Api.Tests.Goals.GoalTestSupport;
@@ -100,6 +105,39 @@ public sealed class DemoGoalSeedTests(ContainersApiFactory factory)
         Assert.Equal(0, await factory.SuggestionRowsAsync(expiredId));
         Assert.Equal(1, await factory.GoalRowsAsync(aliveId));
         Assert.Equal(20, await factory.SuggestionRowsAsync(aliveId));
+    }
+
+    [Fact]
+    public async Task An_invalid_demo_plan_does_not_block_guest_creation_and_seeds_no_goal()
+    {
+        factory.SkipIfDockerUnavailable();
+        var directory = Directory.CreateTempSubdirectory("rd-bad-plan").FullName;
+        try
+        {
+            var json = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "seed", "demo", "training-plan.json"), Ct);
+            await File.WriteAllTextAsync(Path.Combine(directory, "training-plan.json"), json.Replace("\"phase\": \"build\"", "\"phase\": \"bogus\"", StringComparison.Ordinal), Ct);
+            var badPlan = new DemoTrainingPlan(Options.Create(new GuestOptions { DemoDataPath = directory }));
+            var loader = factory.Services.GetRequiredService<DemoDatasetLoader>();
+            var seeder = new DemoDataSeeder(
+                loader, badPlan, factory.Services.GetRequiredService<IBlobStore>(), factory.Services.GetRequiredService<IServiceScopeFactory>(),
+                TimeProvider.System, NullLogger<DemoDataSeeder>.Instance);
+
+            var dataset = loader.Get();
+            var today = UserToday.Get(TimeProvider.System, dataset.Template.TimeZoneId);
+            Assert.Throws<DomainRuleException>(() => badPlan.Build(Guid.NewGuid(), DemoScheduleExpander.Expand(dataset.Template, today), today, DateTimeOffset.UtcNow));
+
+            var guest = User.CreateGuest(DateTimeOffset.UtcNow);
+            await seeder.SeedAsync(guest, Ct);
+
+            Assert.True(await factory.UserExistsAsync(guest.Id));
+            Assert.True(await factory.RunCountAsync(guest.Id) > 100);
+            Assert.Equal(0, await factory.GoalRowsAsync(guest.Id));
+            Assert.Equal(0, await factory.SuggestionRowsAsync(guest.Id));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]
