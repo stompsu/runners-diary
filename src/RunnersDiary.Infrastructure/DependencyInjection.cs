@@ -93,8 +93,10 @@ public static class DependencyInjection
         if (!jobMode)
         {
             builder.Services.AddHostedService<DemoDatasetStartupCheck>();
+            builder.Services.AddHostedService<DemoTrainingPlanStartupCheck>();
         }
 
+        builder.Services.AddSingleton<DemoTrainingPlan>();
         builder.Services.AddSingleton<DemoDataSeeder>();
 
         // Race catalogue (M8): options, the synthetic demo catalogue and, in Development/Testing only, its idempotent seeding after the migrator.

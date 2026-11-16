@@ -8,6 +8,7 @@ using RunnersDiary.Domain.Time;
 using RunnersDiary.Domain.Tracks;
 using RunnersDiary.Domain.Users;
 using RunnersDiary.Infrastructure.Gpx;
+using RunnersDiary.Infrastructure.Goals;
 using RunnersDiary.Infrastructure.Identity;
 using RunnersDiary.Infrastructure.Persistence;
 using RunnersDiary.Infrastructure.Storage;
@@ -23,6 +24,7 @@ namespace RunnersDiary.Infrastructure.Guests;
 /// </summary>
 public sealed partial class DemoDataSeeder(
     DemoDatasetLoader loader,
+    DemoTrainingPlan plan,
     IBlobStore blobs,
     IServiceScopeFactory scopes,
     TimeProvider clock,
@@ -64,7 +66,8 @@ public sealed partial class DemoDataSeeder(
         var tracks = new List<GpxTrack>();
         var uploads = new List<(string BlobName, ReadOnlyMemory<byte> Content, string ContentType)>();
 
-        foreach (var demo in DemoScheduleExpander.Expand(dataset.Template, today))
+        var demoRuns = DemoScheduleExpander.Expand(dataset.Template, today);
+        foreach (var demo in demoRuns)
         {
             var run = Run.Create(guest.Id, demo.Values, now);
             runs.Add(run);
@@ -83,6 +86,9 @@ public sealed partial class DemoDataSeeder(
             }
         }
 
+        // The demo goal and its example suggestions (M9, ADR 0041 §5): plain rows, no model call and no quota ledger row.
+        var demoPlan = plan.Build(guest.Id, demoRuns, today, now);
+
         try
         {
             await Task.WhenAll(uploads.Select(u => blobs.UploadAsync(u.BlobName, u.Content, u.ContentType, cancellationToken)));
@@ -94,6 +100,8 @@ public sealed partial class DemoDataSeeder(
             db.Runs.AddRange(runs);
             db.GpxTracks.AddRange(tracks);
             db.RaceInterestProfiles.Add(RaceInterestProfile.Create(guest.Id, DemoInterests, now));
+            db.Goals.Add(demoPlan.Goal);
+            db.TrainingSuggestions.AddRange(demoPlan.Suggestions);
             await db.SaveChangesAsync(cancellationToken);
         }
         catch
