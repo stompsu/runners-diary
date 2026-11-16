@@ -38,6 +38,7 @@ const emptyRun: RunDto = {
   startTime: null,
   timeZoneId: 'Europe/Warsaw',
   startUtc: null,
+  goalId: null,
   catalogRaceId: null,
   status: 'Completed',
   runTypeId: 20,

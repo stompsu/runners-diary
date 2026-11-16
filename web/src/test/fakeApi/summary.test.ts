@@ -153,7 +153,7 @@ describe('fake insights summary', () => {
     const read = async (api: ReturnType<typeof createFakeApi>) =>
       ((await (await api.handle(new Request(`${BASE}/api/client-config`))).json()) as { ai: unknown }).ai
 
-    expect(await read(enabled)).toEqual({ summaryGeneration: true })
-    expect(await read(disabled)).toEqual({ summaryGeneration: false })
+    expect(await read(enabled)).toEqual({ summaryGeneration: true, planGeneration: false })
+    expect(await read(disabled)).toEqual({ summaryGeneration: false, planGeneration: false })
   })
 })

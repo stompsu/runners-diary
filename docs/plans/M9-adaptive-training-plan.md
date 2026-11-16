@@ -461,6 +461,32 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 
 (Filled in during and after part A.)
 
+### 11.1 Part A steps 1-3 (backend-dotnet; commits "M9 step 1/2/3")
+
+**Verified (ADR 0039 §3 ⚠).** On Testcontainers SQL Server 2022, deleting a user whose goal links a run (`Goals.RaceRunId`) **and** whose run links the goal (`Runs.GoalId`) succeeds in one `ExecuteDelete` on `Users`; the two composite NO ACTION FKs are satisfied at the end of the statement. **No fallback was needed** (`GoalSchemaTests.Deleting_a_guest_with_mutual_goal_and_run_links_...`, plus `GoalGuestLifecycleTests` through the real `GuestCleanup`). The same tests show the database refuses a goal/run delete while a link exists, so the application clears (`GoalService.DeleteAsync`, `TrackDeletionService.DeleteRunAsync`).
+
+**Domain (step 1)**
+1. `GoalTerm` is an enum and the derivation is `GoalTerms.Of(targetDate, today)` (an enum cannot carry `GoalTerm.Of`).
+2. The sketches' undefined types: `TrainingHistory` (record in `Domain/Goals`: ten complete ISO weeks oldest first as `HistoryWeek`, `MeanWeeklyDistanceMeters`/`LongestRunMeters` of the last 4 weeks, `SessionsPerWeek` over 10, `MeanPaceSecondsPerKm`, `RunningSessionsLast84Days` for the 422 check, `UsualWeekdays`), `EffortFact`, `TimePrediction`, `CommitmentFact`, `DismissedHint`, `PlanWeek`, `GoalSpec` (planning fields only), `GoalPlanRecord` (what `Goal.RecordPlan` stores). Added helpers: `PlanEnvelopeBuilder.Phases(weeks, taper)` (testable phase table) and `PlanEnvelopeBuilder.ReferencePace(goal, prediction, history)` (target pace, else predicted, else 0.90 x mean pace).
+3. `Goal.Create/Update` take `today` and the resolved `LinkedRaceRun?` (the rules need them). `Update` sets `PlanOutdated` only when the goal **has a plan** (a flag on a plan-less goal would be invisible and meaningless); `RecordPlan` clears it.
+4. Estimator interpretations of ADR 0039 §4: runs read are `[today-111, today]` (the last 112 days); races `[today-364, today]` (last 365 days, so an old result is not a basis); a race's elevation comes from the matching `RunFact` (`RaceFact` has none); "last 84 days" for `insufficient-history` is `[today-83, today]`. A 10K race predicts a half marathon at ratio 2.11, hence confidence **Low** (the rule is `E_goal/E_basis` in [0.5, 2]).
+5. Envelope details left open by ADR 0040 §2: a taper-only span (W <= T+1) has no growth (pre-taper cap = base volume `V0`), and taper factors are aligned to the goal week (the last week gets the last factor; extra leading weeks repeat the first); the partial-first-week scaling applies to the weekly cap only (not the long-run cap, and not a partial goal week); `HasPlannableDays` is false when `planEnd < planStart`; caps are rounded to whole metres.
+6. Fact sheet: the JSON omits members without information (null values, `fromThisGoal: false`, the default `planned` kind) so that 200 commitments + 60 hints + 16 weeks stay <= 24,000 characters (tested); `usualWeekdays` are lowercase English day names; `history.races` and per-week load/ACWR come from the `InsightsReport` the caller passes, which must therefore be built over `[today-364, today]`; commitments (nearest first) and hints are capped at 200/60 by the builder.
+7. `TrainingSuggestion.Create` validates its input (run type 20-31 or 41, intensity/rest consistency, distance 1,000-60,000 required for non-rest, duration 600-21,600, pace pair 150-900 within 90 s, description 1-300); it is a safety net behind the validator of step 5, not a replacement.
+
+**Persistence (step 2)**
+8. Migration `20261116122838_TrainingGoals` as planned. `Goals.PlanHorizonCapped` and `PlanOutdated` have no SQL default (EF always writes them; the previous release never writes `Goals`). `AiGenerations.Feature` has `DEFAULT 0` as specified (tested: an old-release insert and the upgrade of existing rows both give `Summary`). The `INCLUDE Feature` on `IX_AiGenerations_Created` belongs with the ledger changes of step 4.
+9. `AiGeneration.Create(..., AiFeature feature = AiFeature.Summary)`: optional last parameter, so existing call sites are unchanged; the ledger does not write `Plan` yet (step 4).
+
+**Endpoints (step 3)**
+10. Request validation of goals runs in the handler through `GoalRules` (it needs the caller's today and linked run): 400 with camelCase paths, the same shape as the DataAnnotations errors; `[StringLength]` on title/eventName/notes still document the limits. Order on create: 400, then 409 `goal-limit`.
+11. `estimateGoal` validates with the new `GoalRules.ValidateEstimate`: targetDate from **today** to today+730 (no 7-day minimum, so the hint works for a close or existing goal), no type-specific requirements (a Performance form without a target time still gets a hint); distance, elevation and implied pace as for goals.
+12. Estimate `warnings[].code` is a plain string (the lowerCamel code), not an enum schema, so the TS client types it as `string`; `confidence`, `basis.kind`, `term`, `plan.source` are PascalCase enums.
+13. `ClientConfigResponse` gains `goals` and `AiClientConfig` gains `planGeneration`, which is **always false** until step 5 adds `Ai:Plan:Enabled` and the generation endpoint (`planGeneration = goals on && model available && plan switch on`). The five new problem-type constants (`plan-*`, `insufficient-history`, `goal-limit`) exist; only `goal-limit` is used so far. The generate endpoint is not stubbed.
+14. `acceptTrainingSuggestion` with `{ run }` reports errors keyed `run.*`; the order is 404, 400, 409 `run-limit`. A concurrent double accept creates exactly one run (the loser answers 404).
+15. Goal reads add no `userId`; `GoalDto.plan.model` is `PlanModelId ?? PlanModelDeployment` (null for the demo plan).
+16. Frontend (minimal, caused by the regenerated types): `web/src/api/generated/schema.d.ts`; `goalId: null` in two `RunDto` test fixtures and `goalId: previous?.goalId ?? null` in the fake API run builder; `goals: { enabled: false }` and `planGeneration: false` in the fake client-config; `test/requests.ts` and `runFormMapping.test.ts` treat `goalId` as read-only; `summary.test.ts` expects the new `ai` shape.
+
 ## Assumptions
 
 1. Suggestions are advice, not a coaching or medical service; the UI shows the existing "not medical advice" line on the plan section.

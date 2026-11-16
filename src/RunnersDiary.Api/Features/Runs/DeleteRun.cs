@@ -9,7 +9,7 @@ public static class DeleteRun
     internal static void Map(IEndpointRouteBuilder runs) =>
         runs.MapDelete("/{id:guid}", HandleAsync)
             .WithName("deleteRun")
-            .WithSummary("Deletes one of the caller's runs and its tracks, files first. If the files cannot be deleted nothing is removed (503).")
+            .WithSummary("Deletes one of the caller's runs and its tracks, files first. If the files cannot be deleted nothing is removed (503). A goal that pointed at the run as its race run loses that link.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);

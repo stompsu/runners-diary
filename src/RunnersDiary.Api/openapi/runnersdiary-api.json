@@ -1019,7 +1019,7 @@
         "tags": [
           "Runs"
         ],
-        "summary": "Deletes one of the caller's runs and its tracks, files first. If the files cannot be deleted nothing is removed (503).",
+        "summary": "Deletes one of the caller's runs and its tracks, files first. If the files cannot be deleted nothing is removed (503). A goal that pointed at the run as its race run loses that link.",
         "operationId": "deleteRun",
         "parameters": [
           {
@@ -2412,10 +2412,871 @@
           }
         ]
       }
+    },
+    "/api/goals": {
+      "get": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "All of the caller's goals (at most 50): Active first, then by target date.",
+        "description": "Each goal carries its derived term, the current date of its linked race run and the state of its plan. The response is never cached.",
+        "operationId": "listGoals",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "Creates a goal for the caller.",
+        "description": "distanceMeters 1,000-250,000; elevationGainMeters 0-10,000; targetDate today+7 to today+730 (the caller's zone); Race needs eventName, Performance needs targetDurationSeconds, Distance must not have it; the implied pace must be 150-900 s/km; raceRunId = the caller's own planned race run dated on targetDate (else 400). status defaults to Active. 409 goal-limit past 50 goals per user (10 per guest).",
+        "operationId": "createGoal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/goals/estimate": {
+      "post": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "A realistic-target hint for a goal's planning fields from the caller's recent runs. Nothing is stored; warnings never block saving.",
+        "description": "Riegel prediction over km-effort from the caller's best-matching recent race, else a hard (RPE >= 8) training run; prediction is null without one. Same distance, elevation and implied-pace limits as createGoal; targetDate from today to today+730 (no 7-day minimum, and no type-specific requirements, so the hint works while a form is incomplete). Warning codes (lowerCamel): noRecentEffort, targetMuchFasterThanPredicted, tooLittleTime, lowWeeklyVolume, beyondPlanHorizon. The response is never cached.",
+        "operationId": "estimateGoal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstimateGoalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalEstimateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/goals/{goalId}": {
+      "get": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "One of the caller's goals. 404 for an unknown goal and for another user's.",
+        "operationId": "getGoal",
+        "parameters": [
+          {
+            "name": "goalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "Replaces one of the caller's goals. 'version' must match the current one, otherwise 409.",
+        "description": "Full replace; status and version are required. The rules of createGoal apply, except that an unchanged targetDate is not re-checked against the 7-day minimum. Leaving Active deletes the goal's suggestions; changing type, targetDate, distanceMeters, elevationGainMeters, targetDurationSeconds or surface marks an existing plan outdated.",
+        "operationId": "updateGoal",
+        "parameters": [
+          {
+            "name": "goalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "Deletes one of the caller's goals and its suggestions. Runs accepted from it stay, with goalId cleared.",
+        "operationId": "deleteGoal",
+        "parameters": [
+          {
+            "name": "goalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/training-suggestions": {
+      "get": {
+        "tags": [
+          "TrainingSuggestions"
+        ],
+        "summary": "The caller's training suggestions in an inclusive date range (at most 92 days).",
+        "description": "from and to are required (1950-2100, to >= from, at most 92 days inclusive). Pending suggestions only unless includeDismissed is true. Ordered by date, then goal. The response is never cached.",
+        "operationId": "listTrainingSuggestions",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "includeDismissed",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSuggestionListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/training-suggestions/{suggestionId}/accept": {
+      "post": {
+        "tags": [
+          "TrainingSuggestions"
+        ],
+        "summary": "Turns a suggestion into a planned run linked to its goal, and removes the suggestion.",
+        "description": "The body is optional. Without run: a planned run on the suggestion's date with its run type, distance and duration, the description as notes, no start time and the caller's profile zone. With run: exactly that run (validated like createRun; errors are keyed run.*). Works on dismissed suggestions too (the undo path). 404 for an unknown or foreign suggestion; 409 run-limit.",
+        "operationId": "acceptTrainingSuggestion",
+        "parameters": [
+          {
+            "name": "suggestionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AcceptTrainingSuggestionRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/training-suggestions/{suggestionId}/dismiss": {
+      "post": {
+        "tags": [
+          "TrainingSuggestions"
+        ],
+        "summary": "Marks a suggestion as dismissed (idempotent). It stays listed with includeDismissed and can still be accepted.",
+        "operationId": "dismissTrainingSuggestion",
+        "parameters": [
+          {
+            "name": "suggestionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSuggestionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AcceptTrainingSuggestionRequest": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RunWriteRequest"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "AcwrPointDto": {
         "required": [
           "date",
@@ -2481,11 +3342,15 @@
       },
       "AiClientConfig": {
         "required": [
-          "summaryGeneration"
+          "summaryGeneration",
+          "planGeneration"
         ],
         "type": "object",
         "properties": {
           "summaryGeneration": {
+            "type": "boolean"
+          },
+          "planGeneration": {
             "type": "boolean"
           }
         },
@@ -2634,7 +3499,8 @@
           "maps",
           "gpx",
           "ai",
-          "races"
+          "races",
+          "goals"
         ],
         "type": "object",
         "properties": {
@@ -2659,6 +3525,9 @@
           },
           "races": {
             "$ref": "#/components/schemas/RacesClientConfig"
+          },
+          "goals": {
+            "$ref": "#/components/schemas/GoalsClientConfig"
           }
         },
         "additionalProperties": false
@@ -2805,6 +3674,12 @@
         },
         "additionalProperties": false
       },
+      "EffortKind": {
+        "enum": [
+          "Race",
+          "Training"
+        ]
+      },
       "EntraClientConfig": {
         "required": [
           "clientId",
@@ -2821,6 +3696,138 @@
           },
           "apiScope": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EstimateBasisDto": {
+        "required": [
+          "runId",
+          "date",
+          "kind",
+          "distanceMeters",
+          "durationSeconds",
+          "elevationGainMeters"
+        ],
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EffortKind"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "elevationGainMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EstimateGoalRequest": {
+        "required": [
+          "type",
+          "distanceMeters",
+          "targetDate"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/GoalType"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "elevationGainMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "surface": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Surface"
+              }
+            ]
+          },
+          "targetDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "targetDurationSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EstimatePredictionDto": {
+        "required": [
+          "durationSeconds",
+          "paceSecondsPerKm",
+          "confidence",
+          "basis"
+        ],
+        "type": "object",
+        "properties": {
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paceSecondsPerKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/PredictionConfidence"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/EstimateBasisDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EstimateWarningDto": {
+        "required": [
+          "code",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -2867,6 +3874,419 @@
           "quotaExhausted",
           "notNeeded"
         ]
+      },
+      "GoalDto": {
+        "required": [
+          "id",
+          "type",
+          "title",
+          "targetDate",
+          "distanceMeters",
+          "elevationGainMeters",
+          "targetDurationSeconds",
+          "surface",
+          "eventName",
+          "location",
+          "raceRunId",
+          "notes",
+          "status",
+          "term",
+          "raceRunDate",
+          "plan",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/GoalType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "targetDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "elevationGainMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "targetDurationSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "surface": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Surface"
+              }
+            ]
+          },
+          "eventName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          },
+          "raceRunId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoalStatus"
+          },
+          "term": {
+            "$ref": "#/components/schemas/GoalTerm"
+          },
+          "raceRunDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GoalPlanDto"
+              }
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoalEstimateResponse": {
+        "required": [
+          "today",
+          "daysToGoal",
+          "weeksToGoal",
+          "term",
+          "minimumWeeks",
+          "recentWeeklyDistanceMeters",
+          "prediction",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysToGoal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weeksToGoal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "term": {
+            "$ref": "#/components/schemas/GoalTerm"
+          },
+          "minimumWeeks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recentWeeklyDistanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "prediction": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EstimatePredictionDto"
+              }
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EstimateWarningDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoalListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoalPlanDto": {
+        "required": [
+          "source",
+          "generatedAt",
+          "generationId",
+          "notes",
+          "promptVersion",
+          "model",
+          "horizonEnd",
+          "horizonCapped",
+          "outdated",
+          "pendingCount",
+          "dismissedCount",
+          "acceptedCount"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/GoalPlanSource"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "generationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "promptVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "horizonEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "horizonCapped": {
+            "type": "boolean"
+          },
+          "outdated": {
+            "type": "boolean"
+          },
+          "pendingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dismissedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoalPlanSource": {
+        "enum": [
+          "Model",
+          "Demo"
+        ]
+      },
+      "GoalsClientConfig": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoalStatus": {
+        "enum": [
+          "Active",
+          "Achieved",
+          "Archived"
+        ]
+      },
+      "GoalTerm": {
+        "enum": [
+          "ShortTerm",
+          "LongTerm"
+        ]
+      },
+      "GoalType": {
+        "enum": [
+          "Race",
+          "Performance",
+          "Distance"
+        ]
+      },
+      "GoalWriteRequest": {
+        "required": [
+          "type",
+          "title",
+          "targetDate",
+          "distanceMeters"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/GoalType"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 0,
+            "type": "string"
+          },
+          "targetDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "elevationGainMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "targetDurationSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "surface": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Surface"
+              }
+            ]
+          },
+          "eventName": {
+            "maxLength": 150,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          },
+          "raceRunId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GoalStatus"
+              }
+            ]
+          },
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "GpxClientConfig": {
         "required": [
@@ -3776,6 +5196,12 @@
         },
         "additionalProperties": false
       },
+      "PredictionConfidence": {
+        "enum": [
+          "High",
+          "Low"
+        ]
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -4623,6 +6049,7 @@
           "race",
           "rating",
           "catalogRaceId",
+          "goalId",
           "version",
           "tracks",
           "createdAt",
@@ -4777,6 +6204,13 @@
             ]
           },
           "catalogRaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "goalId": {
             "type": [
               "null",
               "string"
@@ -5120,6 +6554,12 @@
           }
         },
         "additionalProperties": false
+      },
+      "SuggestionStatus": {
+        "enum": [
+          "Pending",
+          "Dismissed"
+        ]
       },
       "SummaryGenerationDto": {
         "required": [
@@ -5660,6 +7100,132 @@
           "routeConverted"
         ]
       },
+      "TrainingIntensity": {
+        "enum": [
+          "Recovery",
+          "Easy",
+          "Steady",
+          "Tempo",
+          "Threshold",
+          "Interval",
+          "RacePace",
+          "Rest"
+        ]
+      },
+      "TrainingPhase": {
+        "enum": [
+          "Base",
+          "Build",
+          "Peak",
+          "Taper"
+        ]
+      },
+      "TrainingSuggestionDto": {
+        "required": [
+          "id",
+          "goalId",
+          "generationId",
+          "date",
+          "runTypeId",
+          "distanceMeters",
+          "durationSeconds",
+          "intensity",
+          "targetPaceMinSecondsPerKm",
+          "targetPaceMaxSecondsPerKm",
+          "description",
+          "phase",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "goalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "runTypeId": {
+            "type": "integer",
+            "format": "int16"
+          },
+          "distanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "durationSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "intensity": {
+            "$ref": "#/components/schemas/TrainingIntensity"
+          },
+          "targetPaceMinSecondsPerKm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "targetPaceMaxSecondsPerKm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "description": {
+            "type": "string"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/TrainingPhase"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SuggestionStatus"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrainingSuggestionListResponse": {
+        "required": [
+          "from",
+          "to",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrainingSuggestionDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "TypeShareDto": {
         "required": [
           "runTypeId",
@@ -5873,6 +7439,12 @@
     },
     {
       "name": "Races"
+    },
+    {
+      "name": "Goals"
+    },
+    {
+      "name": "TrainingSuggestions"
     }
   ]
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using RunnersDiary.Infrastructure.Ai;
+using RunnersDiary.Infrastructure.Goals;
 using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Maps;
 using RunnersDiary.Infrastructure.Races;
@@ -20,8 +21,11 @@ public sealed record MapsClientConfig(MapProvider Provider, string? MapLibreStyl
 public sealed record GpxClientConfig(long MaxFileBytesUser, long MaxFileBytesGuest);
 
 /// <summary><c>Entra</c> is null when sign-in is not available (Entra disabled or no SPA client id); guests still work.</summary>
-/// <summary>AI summary settings (anonymous endpoint, so no quota or provider details): whether a model is configured and switched on.</summary>
-public sealed record AiClientConfig(bool SummaryGeneration);
+/// <summary>
+/// AI settings (anonymous endpoint, so no quota or provider details): whether a model is configured and switched on for summaries, and for
+/// plan generation (M9: goals on, a model available and the plan switch on).
+/// </summary>
+public sealed record AiClientConfig(bool SummaryGeneration, bool PlanGeneration);
 
 /// <summary>One catalogue source for the attribution list (ADR 0035): the id matches <c>RaceProposalDto.source</c>.</summary>
 public sealed record RaceSourceClientConfig(string Id, string Name, string Url);
@@ -29,7 +33,11 @@ public sealed record RaceSourceClientConfig(string Id, string Name, string Url);
 /// <summary>Race proposals (M8): the feature switch and the sources to credit. Anonymous endpoint, so no per-user data.</summary>
 public sealed record RacesClientConfig(bool Enabled, IReadOnlyList<RaceSourceClientConfig> Sources);
 
-public sealed record ClientConfigResponse(EntraClientConfig? Entra, MapsClientConfig Maps, GpxClientConfig Gpx, AiClientConfig Ai, RacesClientConfig Races);
+/// <summary>Training goals and suggestions (M9): the feature switch. Anonymous endpoint, so no per-user data.</summary>
+public sealed record GoalsClientConfig(bool Enabled);
+
+public sealed record ClientConfigResponse(
+    EntraClientConfig? Entra, MapsClientConfig Maps, GpxClientConfig Gpx, AiClientConfig Ai, RacesClientConfig Races, GoalsClientConfig Goals);
 
 public static class GetClientConfig
 {
@@ -48,16 +56,18 @@ public static class GetClientConfig
     // Computed once at startup (plus whether a geocoder and an AI model are wired): no database access, no per-caller state.
     private static Microsoft.AspNetCore.Http.HttpResults.Ok<ClientConfigResponse> Handle(
         [FromServices] ClientConfigResponse config, [FromServices] IGeocoder geocoder, [FromServices] IOptionsMonitor<AiOptions> ai,
-        [FromServices] IOptionsMonitor<RacesOptions> races, HttpContext context)
+        [FromServices] IOptionsMonitor<RacesOptions> races, [FromServices] IOptionsMonitor<GoalsOptions> goals, HttpContext context)
     {
         context.Response.Headers.CacheControl = "public, max-age=300";
         return TypedResults.Ok(config with
         {
             Maps = config.Maps with { GeocodingEnabled = geocoder.IsAvailable },
             // Read per request so the Ai:Enabled kill switch shows up without a restart (within the 5-minute client cache).
-            Ai = new AiClientConfig(ai.CurrentValue.GenerationAvailable),
+            // PlanGeneration stays false until the plan endpoint exists (M9 step 5 adds the Ai:Plan:Enabled switch: goals on && model available && plan switch on).
+            Ai = new AiClientConfig(ai.CurrentValue.GenerationAvailable, PlanGeneration: false),
             // Read per request, like the AI switch; the sources are a static registry (real sources only, never the synthetic demo).
             Races = new RacesClientConfig(races.CurrentValue.Enabled, config.Races.Sources),
+            Goals = new GoalsClientConfig(goals.CurrentValue.Enabled),
         });
     }
 
@@ -83,7 +93,7 @@ public static class GetClientConfig
         var gpxConfig = new GpxClientConfig(gpxLimits.MaxFileBytes, gpxLimits.GuestMaxFileBytes);
         if (!entraEnabled || string.IsNullOrWhiteSpace(entra.SpaClientId))
         {
-            return new ClientConfigResponse(null, mapsConfig, gpxConfig, new AiClientConfig(false), DefaultRaces);
+            return new ClientConfigResponse(null, mapsConfig, gpxConfig, new AiClientConfig(false, false), DefaultRaces, new GoalsClientConfig(false));
         }
 
         var scope = string.IsNullOrWhiteSpace(entra.ApiScope)
@@ -92,6 +102,6 @@ public static class GetClientConfig
         return new ClientConfigResponse(new EntraClientConfig(
             entra.SpaClientId.Trim(),
             $"https://{entra.TenantSubdomain}.ciamlogin.com/",
-            scope), mapsConfig, gpxConfig, new AiClientConfig(false), DefaultRaces);
+            scope), mapsConfig, gpxConfig, new AiClientConfig(false, false), DefaultRaces, new GoalsClientConfig(false));
     }
 }

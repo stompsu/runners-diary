@@ -65,6 +65,20 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Goals_are_off_by_default_and_follow_the_Goals_Enabled_setting()
+    {
+        var off = await factory.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken);
+        using var on = factory.WithWebHostBuilder(b => b.UseSetting("Goals:Enabled", "true"));
+        var enabled = await on.CreateClient().GetFromJsonAsync<ClientConfigResponse>(Url, Json, TestContext.Current.CancellationToken);
+
+        Assert.False(off?.Goals.Enabled);
+        Assert.True(enabled?.Goals.Enabled);
+        // Plan generation is not available until the generation endpoint exists (M9 step 5 wires Ai:Plan:Enabled).
+        Assert.False(off?.Ai.PlanGeneration);
+        Assert.False(enabled?.Ai.PlanGeneration);
+    }
+
+    [Fact]
     public async Task Entra_enabled_with_spa_client_id_returns_derived_values()
     {
         using var entra = WithEntra(factory, "spa-client-id");
@@ -247,9 +261,9 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
         var on = await foundry.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
         var off = await switchedOff.CreateClient().GetStringAsync(Url, TestContext.Current.CancellationToken);
 
-        Assert.Contains("\"ai\":{\"summaryGeneration\":false}", none, StringComparison.Ordinal);
-        Assert.Contains("\"ai\":{\"summaryGeneration\":true}", on, StringComparison.Ordinal);
-        Assert.Contains("\"ai\":{\"summaryGeneration\":false}", off, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":false,\"planGeneration\":false}", none, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":true,\"planGeneration\":false}", on, StringComparison.Ordinal);
+        Assert.Contains("\"ai\":{\"summaryGeneration\":false,\"planGeneration\":false}", off, StringComparison.Ordinal);
         Assert.DoesNotContain("example.invalid", on, StringComparison.Ordinal); // no endpoint or deployment ever reaches the browser
         Assert.DoesNotContain("gpt-test", on, StringComparison.Ordinal);
     }

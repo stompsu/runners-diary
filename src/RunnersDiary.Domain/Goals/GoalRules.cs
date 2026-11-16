@@ -77,6 +77,58 @@ public static class GoalRules
         return errors;
     }
 
+    /// <summary>
+    /// The subset the realistic-target estimate needs (ADR 0039 §4): known enums, distance, elevation, a target date from today to today + 730 and,
+    /// when a target time is given, the implied pace. Unlike <see cref="Validate"/> it has no 7-day minimum and no type-specific requirements, so the
+    /// hint keeps working while a goal is edited or the target time is still empty.
+    /// </summary>
+    public static IReadOnlyList<DomainError> ValidateEstimate(GoalSpec spec, DateOnly today)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+        var errors = new List<DomainError>();
+        if (!Enum.IsDefined(spec.Type))
+        {
+            errors.Add(new("type", "Unknown goal type."));
+        }
+
+        if (spec.Surface is { } surface && !Enum.IsDefined(surface))
+        {
+            errors.Add(new("surface", "Unknown surface."));
+        }
+
+        var distanceValid = spec.DistanceMeters is >= MinDistanceMeters and <= MaxDistanceMeters;
+        if (!distanceValid)
+        {
+            errors.Add(new("distanceMeters", $"Must be between {MinDistanceMeters:0} and {MaxDistanceMeters:0}."));
+        }
+
+        if (spec.ElevationGainMeters is { } gain && !(gain >= 0 && gain <= MaxElevationMeters))
+        {
+            errors.Add(new("elevationGainMeters", $"Must be between 0 and {MaxElevationMeters:0}."));
+        }
+
+        var latest = today.AddDays(MaxTargetDays);
+        if (spec.TargetDate < today || spec.TargetDate > latest)
+        {
+            errors.Add(new("targetDate", $"Must be between {today:yyyy-MM-dd} and {latest:yyyy-MM-dd}."));
+        }
+
+        if (spec.TargetDurationSeconds is { } seconds)
+        {
+            if (seconds < 1)
+            {
+                errors.Add(new("targetDurationSeconds", "Must be at least 1."));
+            }
+            else if (distanceValid
+                && (seconds * 1000.0 < MinPaceSecondsPerKm * spec.DistanceMeters || seconds * 1000.0 > MaxPaceSecondsPerKm * spec.DistanceMeters))
+            {
+                errors.Add(new("targetDurationSeconds", $"The implied pace must be between {MinPaceSecondsPerKm} and {MaxPaceSecondsPerKm} seconds per km (2:30 to 15:00 min/km)."));
+            }
+        }
+
+        return errors;
+    }
+
     /// <summary>Throws <see cref="DomainRuleException"/> when <see cref="Validate"/> reports any error.</summary>
     public static void EnsureValid(GoalValues values, DateOnly today, DateOnly? previousTargetDate, LinkedRaceRun? raceRun)
     {

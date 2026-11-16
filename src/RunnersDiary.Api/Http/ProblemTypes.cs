@@ -18,5 +18,10 @@ public static class ProblemTypes
     public const string SummaryFailed = "urn:runnersdiary:problem:summary-failed";
     public const string RaceAlreadyLinked = "urn:runnersdiary:problem:race-already-linked";
     public const string ProposalStateLimit = "urn:runnersdiary:problem:proposal-state-limit";
+    public const string GoalLimit = "urn:runnersdiary:problem:goal-limit";
+    public const string PlanOtherGoalActive = "urn:runnersdiary:problem:plan-other-goal-active";
+    public const string PlanInProgress = "urn:runnersdiary:problem:plan-in-progress";
+    public const string InsufficientHistory = "urn:runnersdiary:problem:insufficient-history";
+    public const string PlanFailed = "urn:runnersdiary:problem:plan-failed";
     public const string StorageUnavailable = "urn:runnersdiary:problem:storage-unavailable";
 }

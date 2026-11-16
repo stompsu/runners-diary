@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using RunnersDiary.Infrastructure.Ai;
+using RunnersDiary.Infrastructure.Goals;
 using RunnersDiary.Infrastructure.Gpx;
 using RunnersDiary.Infrastructure.Guests;
 using RunnersDiary.Infrastructure.Identity;
@@ -106,6 +107,13 @@ public static class DependencyInjection
         {
             builder.Services.AddHostedService<DemoRaceCatalogueSeeder>();
         }
+
+        // Training goals and suggestions (M9): options plus the scoped services behind /api/goals and /api/training-suggestions.
+        builder.Services.Configure<GoalsOptions>(builder.Configuration.GetSection(GoalsOptions.SectionName));
+        builder.Services.AddScoped<TrainingHistoryReader>();
+        builder.Services.AddScoped<GoalService>();
+        builder.Services.AddScoped<GoalEstimateService>();
+        builder.Services.AddScoped<TrainingSuggestionService>();
 
         builder.Services.AddSingleton<GuestCleanup>();
         builder.Services.AddSingleton<IGuestCleanupPass>(services => services.GetRequiredService<GuestCleanup>());

@@ -162,6 +162,37 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
     }
 
     [Fact]
+    public void All_goal_and_training_suggestion_routes_exist_require_authorization_and_use_the_general_limiter()
+    {
+        var endpoints = Endpoints();
+        string[] expected =
+        [
+            "GET /api/goals",
+            "POST /api/goals",
+            "POST /api/goals/estimate",
+            "GET /api/goals/{goalId:guid}",
+            "PUT /api/goals/{goalId:guid}",
+            "DELETE /api/goals/{goalId:guid}",
+            "GET /api/training-suggestions",
+            "POST /api/training-suggestions/{suggestionId:guid}/accept",
+            "POST /api/training-suggestions/{suggestionId:guid}/dismiss",
+        ];
+
+        foreach (var key in expected)
+        {
+            var endpoint = Assert.Single(endpoints, e => Key(e) == key);
+            Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+            Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+            Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+        }
+
+        // Nothing else lives under these groups: a new route must be added to this list on purpose (the plan route joins it in a later step).
+        Assert.Equal(
+            expected.Length,
+            endpoints.Count(e => Route(e).StartsWith("/api/goals", StringComparison.Ordinal) || Route(e).StartsWith("/api/training-suggestions", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void The_insights_report_exists_requires_authorization_and_uses_the_general_limiter()
     {
         var endpoint = Assert.Single(Endpoints(), e => Key(e) == "GET /api/insights/report");

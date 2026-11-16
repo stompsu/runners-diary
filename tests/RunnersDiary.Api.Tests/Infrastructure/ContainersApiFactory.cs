@@ -65,6 +65,8 @@ public sealed class ContainersApiFactory : WebApplicationFactory<Program>, IAsyn
         // Race proposals (M8): the feature is on. This host runs as Production, whose configuration validator rejects the demo catalogue
         // seeding switch, so tests that need the synthetic catalogue seed it explicitly (RaceTestSupport.EnsureDemoCatalogueAsync).
         builder.UseSetting("Races:Enabled", "true");
+        // Training goals and suggestions (M9): the feature is on (the appsettings default is off); dedicated tests switch it off through WithWebHostBuilder.
+        builder.UseSetting("Goals:Enabled", "true");
         builder.UseSetting("RateLimiting:GuestCreate:PermitLimit", "100000");
         builder.UseSetting("RateLimiting:GuestCreate:GlobalPermitLimit", "100000");
     }
