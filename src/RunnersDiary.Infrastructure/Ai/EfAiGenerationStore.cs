@@ -59,7 +59,8 @@ internal sealed class EfAiGenerationStore(RunnersDiaryDbContext db) : IAiGenerat
         int Weighted(AiFeature feature, int attempts) => feature == AiFeature.Plan ? attempts * planAttemptWeight : attempts;
         var attempts = sums.Sum(s => Weighted(s.Feature, s.Attempts));
         var guestAttempts = sums.Where(s => s.IsGuest).Sum(s => Weighted(s.Feature, s.Attempts));
-        return new GlobalAiUsage(attempts, guestAttempts);
+        var guestPlanAttempts = sums.Where(s => s.IsGuest && s.Feature == AiFeature.Plan).Sum(s => Weighted(s.Feature, s.Attempts));
+        return new GlobalAiUsage(attempts, guestAttempts, guestPlanAttempts);
     }
 
     public Task<int> PurgeOlderThanAsync(DateTimeOffset cutoff, CancellationToken cancellationToken)

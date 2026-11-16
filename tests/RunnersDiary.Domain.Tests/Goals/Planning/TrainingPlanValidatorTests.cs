@@ -186,6 +186,46 @@ public sealed class TrainingPlanValidatorTests
         Assert.DoesNotContain(result.Kept, k => k.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) == s.Date);
     }
 
+    /// <summary>Distance and duration each in range but together an impossible pace (review L3): schema at the duration, the plan is retried.</summary>
+    [Theory]
+    [InlineData(149, false)]
+    [InlineData(150, true)]
+    [InlineData(900, true)]
+    [InlineData(901, false)]
+    public void Distance_and_duration_together_must_imply_a_pace_between_150_and_900_seconds_per_km(int secondsPerKm, bool valid)
+    {
+        var sheet = Sheet();
+        var sessions = Good(sheet);
+        var s = sessions[2];
+        var meters = s.DistanceMeters!.Value;
+        var exact = meters / 1000 * secondsPerKm;
+        var seconds = (int)(valid ? Math.Round(exact) : secondsPerKm < 150 ? Math.Floor(exact) : Math.Ceiling(exact));
+        Assert.InRange(seconds, TrainingSuggestion.MinDurationSeconds, TrainingSuggestion.MaxDurationSeconds);
+        sessions[2] = s with { DurationSeconds = seconds };
+
+        var result = Validate(sheet, sessions);
+
+        if (valid)
+        {
+            Assert.True(result.IsValid);
+        }
+        else
+        {
+            // Any violation rejects the plan (and triggers the one retry, ADR 0040 §5).
+            AssertOnly(result, PlanRuleCode.Schema, "sessions[2].durationSeconds");
+        }
+    }
+
+    [Fact]
+    public void Thirty_kilometres_in_ten_minutes_is_schema()
+    {
+        var sheet = Sheet();
+        var sessions = Good(sheet);
+        sessions[2] = sessions[2] with { DistanceMeters = 30_000, DurationSeconds = 600 };
+
+        Assert.Contains(new PlanViolation(PlanRuleCode.Schema, "sessions[2].durationSeconds"), Validate(sheet, sessions).Violations);
+    }
+
     [Theory]
     [InlineData(8000.0, null, null, null, "easy")]
     [InlineData(null, 1800, null, null, "rest")]

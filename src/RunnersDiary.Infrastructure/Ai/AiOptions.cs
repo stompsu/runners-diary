@@ -121,6 +121,18 @@ public sealed class AiOptions
 
         /// <summary>What one plan attempt counts in the shared global budgets (a plan attempt costs about three summary attempts).</summary>
         public int GlobalAttemptWeight { get; set; } = 3;
+
+        /// <summary>
+        /// Concurrent plan generations per replica, inside <see cref="AiOptions.MaxConcurrentGenerations"/>. At most
+        /// <c>MaxConcurrentGenerations − 1</c> when that is ≥ 2, so a summary always finds a slot while plans (up to ~3 minutes each) run.
+        /// </summary>
+        public int MaxConcurrentGenerations { get; set; } = 1;
+
+        /// <summary>
+        /// A guest-global sub-cap for plans, in weighted attempts per 24 h, inside <see cref="QuotaOptions.GuestGlobalPer24h"/>: guest plans
+        /// can use at most this much of the shared guest budget (default 20 of 60, about 6 plan attempts), so they cannot drain the summaries'.
+        /// </summary>
+        public int GuestGlobalPer24h { get; set; } = 20;
     }
 
     public sealed class PlanQuotaOptions
@@ -194,6 +206,13 @@ public sealed class AiOptionsValidator(IHostEnvironment environment) : IValidate
 
         ValidatePlan(options.Plan, failures);
 
+        // Plans hold a slot for up to ~3 minutes: with two or more slots per replica, one always stays free for summaries.
+        var planSlots = options.Plan.MaxConcurrentGenerations;
+        if (planSlots < 0 || (options.MaxConcurrentGenerations >= 2 && planSlots > options.MaxConcurrentGenerations - 1))
+        {
+            failures.Add("Ai:Plan:MaxConcurrentGenerations must be >= 0 and at most Ai:MaxConcurrentGenerations - 1 when that is 2 or more.");
+        }
+
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
@@ -245,6 +264,11 @@ public sealed class AiOptionsValidator(IHostEnvironment environment) : IValidate
         if (plan.GlobalAttemptWeight is < 1 or > 10)
         {
             failures.Add("Ai:Plan:GlobalAttemptWeight must be between 1 and 10.");
+        }
+
+        if (plan.GuestGlobalPer24h < 0)
+        {
+            failures.Add("Ai:Plan:GuestGlobalPer24h must not be negative.");
         }
     }
 }

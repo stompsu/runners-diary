@@ -9,17 +9,51 @@ using RunnersDiary.Domain.Ai;
 
 namespace RunnersDiary.Infrastructure.Ai;
 
-/// <summary>Bounds concurrent generations per replica, all features together (<see cref="AiOptions.MaxConcurrentGenerations"/>, ADR 0028 §3).</summary>
+/// <summary>
+/// Bounds concurrent generations per replica (ADR 0028 §3, ADR 0040 §6): all features together hold at most
+/// <see cref="AiOptions.MaxConcurrentGenerations"/> slots, and plans additionally at most <see cref="AiOptions.PlanOptions.MaxConcurrentGenerations"/>
+/// (validated ≤ <c>MaxConcurrentGenerations − 1</c> when that is ≥ 2), so a long plan run never takes the last slot and summaries keep answering.
+/// </summary>
 public sealed class GenerationSlots(IOptions<AiOptions> options) : IDisposable
 {
     private readonly SemaphoreSlim _slots = new(Math.Max(0, options.Value.MaxConcurrentGenerations));
+    private readonly SemaphoreSlim _planSlots = new(Math.Max(0, options.Value.Plan.MaxConcurrentGenerations));
 
-    /// <summary>A lease to dispose when done, or null when every slot is taken (no waiting: the caller answers 503 <c>ai-busy</c>).</summary>
+    /// <summary>A summary lease (M6); same as <see cref="TryAcquire(AiFeature)"/> with <see cref="AiFeature.Summary"/>.</summary>
     public IDisposable? TryAcquire() => _slots.Wait(0) ? new Lease(_slots) : null;
 
-    public void Dispose() => _slots.Dispose();
+    /// <summary>
+    /// A lease to dispose when done, or null when no slot is free (no waiting: the caller answers 503 <c>ai-busy</c>). A plan needs a plan
+    /// slot and a shared slot; a summary only a shared slot.
+    /// </summary>
+    public IDisposable? TryAcquire(AiFeature feature)
+    {
+        if (feature != AiFeature.Plan)
+        {
+            return TryAcquire();
+        }
 
-    private sealed class Lease(SemaphoreSlim slots) : IDisposable
+        if (!_planSlots.Wait(0))
+        {
+            return null;
+        }
+
+        if (!_slots.Wait(0))
+        {
+            _planSlots.Release();
+            return null;
+        }
+
+        return new Lease(_slots, _planSlots);
+    }
+
+    public void Dispose()
+    {
+        _slots.Dispose();
+        _planSlots.Dispose();
+    }
+
+    private sealed class Lease(SemaphoreSlim slots, SemaphoreSlim? planSlots = null) : IDisposable
     {
         private int _released;
 
@@ -28,6 +62,7 @@ public sealed class GenerationSlots(IOptions<AiOptions> options) : IDisposable
             if (Interlocked.Exchange(ref _released, 1) == 0)
             {
                 slots.Release();
+                planSlots?.Release();
             }
         }
     }
@@ -168,7 +203,7 @@ public sealed partial class AiGenerationRunner(
             return new AiRunResult<T>(GenerationStatus.QuotaExceeded, Quota: quota);
         }
 
-        using var slot = slots.TryAcquire();
+        using var slot = slots.TryAcquire(request.Feature);
         if (slot is null)
         {
             return new AiRunResult<T>(GenerationStatus.Busy);

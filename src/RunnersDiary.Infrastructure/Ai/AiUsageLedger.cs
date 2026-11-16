@@ -24,9 +24,10 @@ public sealed record AiGenerationRecord(
 
 /// <summary>
 /// Global usage in a window, in <b>weighted model attempts</b> of everybody and of guests (ADR 0028 §4 cost ceiling, ADR 0040 §6): a summary
-/// attempt counts 1, a plan attempt <c>Ai:Plan:GlobalAttemptWeight</c>.
+/// attempt counts 1, a plan attempt <c>Ai:Plan:GlobalAttemptWeight</c>. <see cref="GuestPlanAttempts"/> is the guests' plan share of
+/// <see cref="GuestAttempts"/> (for the <c>Ai:Plan:GuestGlobalPer24h</c> sub-cap).
 /// </summary>
-public sealed record GlobalAiUsage(int Attempts, int GuestAttempts);
+public sealed record GlobalAiUsage(int Attempts, int GuestAttempts, int GuestPlanAttempts = 0);
 
 /// <summary>
 /// Persistence of the usage ledger (ADR 0028 §4). A <b>system ledger</b>: not owner-filtered and without a foreign key to users, so
@@ -46,7 +47,8 @@ public interface IAiGenerationStore
 
     /// <summary>
     /// The weighted sum of <c>Attempts</c> of all rows and of guest rows with <c>CreatedAt &gt; since</c> (exclusive, so a row stops counting
-    /// exactly at <c>CreatedAt + 24 h</c>), every outcome and feature included: <c>SUM(Attempts × (Feature = Plan ? planAttemptWeight : 1))</c>.
+    /// exactly at <c>CreatedAt + 24 h</c>), every outcome and feature included: <c>SUM(Attempts × (Feature = Plan ? planAttemptWeight : 1))</c>;
+    /// plus the same weighted sum over guest plan rows only.
     /// </summary>
     Task<GlobalAiUsage> GetGlobalUsageAsync(DateTimeOffset since, int planAttemptWeight, CancellationToken cancellationToken);
 
@@ -86,7 +88,8 @@ public sealed record QuotaStatus(int Used, int Limit, QuotaWindow Window, DateTi
 /// 3 per account; plans users 5 per rolling 24 h, guests 2 per account. Every generation that reached the provider counts whatever its
 /// outcome, except <see cref="AiGenerationOutcome.Throttled"/> (the provider's capacity, not the caller's).</item>
 /// <item>Global and guest-global, shared by all features, in <b>weighted model attempts</b>: 200 and 60 per 24 h, a plan attempt counting
-/// <c>Ai:Plan:GlobalAttemptWeight</c> (3). One generation is up to <c>MaxAttempts</c> attempts, so counting attempts keeps the daily cost
+/// <c>Ai:Plan:GlobalAttemptWeight</c> (3). Guest plans also have a sub-cap inside the guest budget, <c>Ai:Plan:GuestGlobalPer24h</c> (20
+/// weighted attempts), checked for plans only. One generation is up to <c>MaxAttempts</c> attempts, so counting attempts keeps the daily cost
 /// ceiling a fixed number of model calls.</item>
 /// </list>
 /// The check-then-insert race can overshoot by at most <c>MaxConcurrentGenerations − 1</c> generations per replica (accepted); the
@@ -135,6 +138,12 @@ public sealed class AiUsageLedger(IAiGenerationStore store, IOptions<AiOptions> 
         if (isGuest && global.GuestAttempts >= quotas.GuestGlobalPer24h)
         {
             return new QuotaStatus(used, limit, window, null, QuotaBlock.Global, quotas.GuestGlobalPer24h);
+        }
+
+        // Guest plans have their own ceiling inside the guest budget, so they cannot use up the guest summaries' share.
+        if (isGuest && feature == AiFeature.Plan && global.GuestPlanAttempts >= settings.Plan.GuestGlobalPer24h)
+        {
+            return new QuotaStatus(used, limit, window, null, QuotaBlock.Global, settings.Plan.GuestGlobalPer24h);
         }
 
         return new QuotaStatus(used, limit, window, null, QuotaBlock.None, null);

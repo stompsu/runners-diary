@@ -290,6 +290,155 @@ public sealed class AiGenerationRunnerTests
         Assert.False(options.PlanGenerationAvailable);
     }
 
+    /// <summary>Review L2: plans get at most <c>MaxConcurrentGenerations − 1</c> slots, so a summary always finds one (defaults 2 and 1).</summary>
+    [Fact]
+    public void A_plan_never_takes_the_last_replica_slot()
+    {
+        var rig = new Rig();
+
+        var plan = rig.Slots.TryAcquire(AiFeature.Plan);
+        Assert.NotNull(plan);
+        Assert.Null(rig.Slots.TryAcquire(AiFeature.Plan));
+
+        // The summary keeps its slot while the plan runs, and then all slots are taken.
+        var summary = rig.Slots.TryAcquire(AiFeature.Summary);
+        Assert.NotNull(summary);
+        Assert.Null(rig.Slots.TryAcquire());
+
+        // A failed plan acquisition released its plan slot: once the summary is done, a plan still has to wait for the running plan.
+        summary.Dispose();
+        Assert.Null(rig.Slots.TryAcquire(AiFeature.Plan));
+        plan.Dispose();
+        plan.Dispose(); // idempotent
+        using var next = rig.Slots.TryAcquire(AiFeature.Plan);
+        Assert.NotNull(next);
+        using var other = rig.Slots.TryAcquire();
+        Assert.NotNull(other);
+        Assert.Null(rig.Slots.TryAcquire());
+    }
+
+    [Fact]
+    public void Two_summaries_hold_both_slots_and_a_plan_then_finds_none()
+    {
+        var rig = new Rig();
+        using var a = rig.Slots.TryAcquire();
+        using var b = rig.Slots.TryAcquire(AiFeature.Summary);
+
+        Assert.NotNull(a);
+        Assert.NotNull(b);
+        Assert.Null(rig.Slots.TryAcquire(AiFeature.Plan));
+        // The plan slot was given back: with the shared slots freed a plan runs.
+        b!.Dispose();
+        using var plan = rig.Slots.TryAcquire(AiFeature.Plan);
+        Assert.NotNull(plan);
+    }
+
+    [Fact]
+    public async Task While_a_plan_runs_a_second_plan_is_busy_and_a_summary_still_runs()
+    {
+        var rig = new Rig();
+        var release = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        var running = rig.Runner.RunAsync<string>(
+            new AiRunRequest(AiFeature.Plan, Guid.NewGuid(), true),
+            Rig.PlanSettings(),
+            async _ =>
+            {
+                started.SetResult();
+                await release.Task;
+                return new AiAttemptResult<string>(1, 1, "m", "ok", []);
+            },
+            TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        var second = await rig.Run(AiFeature.Plan, Rig.PlanSettings(), rig.Script((true, TimeSpan.Zero)));
+        var summary = await rig.Run(AiFeature.Summary, Rig.SummarySettings, rig.Script((true, TimeSpan.Zero)));
+
+        Assert.Equal(GenerationStatus.Busy, second.Status);
+        Assert.Equal(GenerationStatus.Succeeded, summary.Status);
+        release.SetResult();
+        Assert.Equal(GenerationStatus.Succeeded, (await running.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Status);
+        // The busy plan cost nothing: one plan row (the first) and one summary row.
+        Assert.Equal(2, rig.Store.Rows.Count);
+    }
+
+    [Theory]
+    [InlineData(2, 1, true)]
+    [InlineData(2, 2, false)]
+    [InlineData(3, 2, true)]
+    [InlineData(3, 3, false)]
+    [InlineData(2, -1, false)]
+    [InlineData(2, 0, true)] // plans off on this replica
+    [InlineData(1, 1, true)] // one slot (local/test): nothing to keep free, plans and summaries share it
+    [InlineData(0, 1, true)] // no slots: everything is busy anyway
+    public void The_plan_slot_count_leaves_a_slot_for_summaries(int slots, int planSlots, bool valid)
+    {
+        var options = new AiOptions { MaxConcurrentGenerations = slots };
+        options.Plan.MaxConcurrentGenerations = planSlots;
+
+        var result = new AiOptionsValidator(new TestEnvironment()).Validate(null, options);
+
+        Assert.Equal(valid, result.Succeeded);
+        if (!valid)
+        {
+            Assert.Contains(result.Failures!, f => f.Contains("Ai:Plan:MaxConcurrentGenerations", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public void The_new_plan_capacity_defaults_keep_room_for_summaries()
+    {
+        var options = new AiOptions();
+
+        Assert.Equal((2, 1, 60, 20), (options.MaxConcurrentGenerations, options.Plan.MaxConcurrentGenerations, options.Quotas.GuestGlobalPer24h, options.Plan.GuestGlobalPer24h));
+        options.Plan.GuestGlobalPer24h = -1;
+        var result = new AiOptionsValidator(new TestEnvironment()).Validate(null, options);
+        Assert.Contains(result.Failures!, f => f.Contains("Ai:Plan:GuestGlobalPer24h", StringComparison.Ordinal));
+    }
+
+    /// <summary>Review L2: guest plans have their own weighted sub-cap inside the guest budget; summaries and signed-in users are not affected.</summary>
+    [Fact]
+    public async Task Guest_plans_stop_at_their_sub_cap_and_leave_the_guest_summary_budget()
+    {
+        var rig = new Rig(o =>
+        {
+            o.Quotas.GuestGlobalPer24h = 60;
+            o.Plan.GuestGlobalPer24h = 20;
+            o.Plan.GlobalAttemptWeight = 3;
+        });
+        // Seven guest plan attempts by other guests: 21 weighted units, over the plan sub-cap of 20 but far below the guest budget of 60.
+        for (var i = 0; i < 3; i++)
+        {
+            await rig.Seed(AiFeature.Plan, attempts: 2, guest: true, user: Guid.NewGuid());
+        }
+
+        await rig.Seed(AiFeature.Plan, attempts: 1, guest: true, user: Guid.NewGuid());
+        // A signed-in user's plan attempts do not count in the guest plan sub-cap.
+        await rig.Seed(AiFeature.Plan, attempts: 2, guest: false, user: Guid.NewGuid());
+
+        var usage = await rig.Store.GetGlobalUsageAsync(rig.Clock.GetUtcNow().AddDays(-1), 3, TestContext.Current.CancellationToken);
+        Assert.Equal((27, 21, 21), (usage.Attempts, usage.GuestAttempts, usage.GuestPlanAttempts));
+
+        var guestPlan = await rig.Ledger.GetStatusAsync(AiFeature.Plan, User, true, TestContext.Current.CancellationToken);
+        Assert.Equal((QuotaBlock.Global, 20), (guestPlan.Block, guestPlan.BlockLimit));
+        Assert.Equal(GenerationStatus.QuotaExceeded, (await rig.Run(AiFeature.Plan, Rig.PlanSettings(), rig.Script((true, TimeSpan.Zero)), guest: true)).Status);
+
+        Assert.Equal(QuotaBlock.None, (await rig.Ledger.GetStatusAsync(AiFeature.Summary, User, true, TestContext.Current.CancellationToken)).Block);
+        Assert.Equal(QuotaBlock.None, (await rig.Ledger.GetStatusAsync(AiFeature.Plan, User, false, TestContext.Current.CancellationToken)).Block);
+        Assert.Equal(GenerationStatus.Succeeded, (await rig.Run(AiFeature.Summary, Rig.SummarySettings, rig.Script((true, TimeSpan.Zero)), guest: true)).Status);
+    }
+
+    [Theory]
+    [InlineData(19, QuotaBlock.None)]
+    [InlineData(20, QuotaBlock.Global)]
+    public async Task The_guest_plan_sub_cap_blocks_at_its_limit(int seededUnits, QuotaBlock expected)
+    {
+        var rig = new Rig(o => o.Plan.GlobalAttemptWeight = 1);
+        await rig.Seed(AiFeature.Plan, attempts: seededUnits, guest: true, user: Guid.NewGuid());
+
+        Assert.Equal(expected, (await rig.Ledger.GetStatusAsync(AiFeature.Plan, User, true, TestContext.Current.CancellationToken)).Block);
+    }
+
     private sealed class TestEnvironment : Microsoft.Extensions.Hosting.IHostEnvironment
     {
         public string EnvironmentName { get; set; } = "Testing";

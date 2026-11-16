@@ -60,6 +60,9 @@ public sealed class TrainingSuggestionTests
         { "long distance", Easy(s => s with { DistanceMeters = 60_001 }) },
         { "short duration", Easy(s => s with { DurationSeconds = 599 }) },
         { "long duration", Easy(s => s with { DurationSeconds = 21_601 }) },
+        { "implied pace too fast (30 km in 10 min)", Easy(s => s with { DistanceMeters = 30_000, DurationSeconds = 600 }) },
+        { "implied pace just under 2:30/km", Easy(s => s with { DistanceMeters = 10_000, DurationSeconds = 1_499 }) },
+        { "implied pace just over 15:00/km", Easy(s => s with { DistanceMeters = 1_000, DurationSeconds = 901 }) },
         { "one pace bound", Easy(s => s with { TargetPaceMaxSecondsPerKm = null }) },
         { "pace order", Easy(s => s with { TargetPaceMinSecondsPerKm = 361 }) },
         { "pace spread", Easy(s => s with { TargetPaceMaxSecondsPerKm = 421 }) },
@@ -88,6 +91,17 @@ public sealed class TrainingSuggestionTests
         Create(Easy(s => s with { DistanceMeters = 1_000, DurationSeconds = 600, TargetPaceMinSecondsPerKm = 150, TargetPaceMaxSecondsPerKm = 240, Description = new string('x', 300) }));
         Create(Easy(s => s with { DistanceMeters = 60_000, DurationSeconds = 21_600, TargetPaceMinSecondsPerKm = 810, TargetPaceMaxSecondsPerKm = 900 }));
         Create(Easy(s => s with { DurationSeconds = null, TargetPaceMinSecondsPerKm = null, TargetPaceMaxSecondsPerKm = null }));
+        // The implied pace bounds (GoalRules, 2:30 to 15:00 min/km) are inclusive.
+        Create(Easy(s => s with { DistanceMeters = 10_000, DurationSeconds = 1_500 }));
+        Create(Easy(s => s with { DistanceMeters = 1_000, DurationSeconds = 900 }));
+    }
+
+    [Fact]
+    public void An_implausible_implied_pace_is_reported_at_the_duration()
+    {
+        var ex = Assert.Throws<DomainRuleException>(() => Create(Easy(s => s with { DistanceMeters = 30_000, DurationSeconds = 600 })));
+
+        Assert.Equal("durationSeconds", Assert.Single(ex.Errors).Path);
     }
 
     [Fact]

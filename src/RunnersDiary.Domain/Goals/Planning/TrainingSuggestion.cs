@@ -17,6 +17,22 @@ public sealed class TrainingSuggestion : IUserOwned
     public const int MinDurationSeconds = 600;
     public const int MaxDurationSeconds = 21_600;
 
+    /// <summary>
+    /// True unless both distance and duration are set and their implied pace is outside <see cref="GoalRules.MinPaceSecondsPerKm"/>–<see
+    /// cref="GoalRules.MaxPaceSecondsPerKm"/> (2:30–15:00 min/km). A positive distance is required for the check; a missing or non-positive
+    /// one is reported by the distance rule.
+    /// </summary>
+    public static bool HasPlausibleImpliedPace(double? distanceMeters, int? durationSeconds)
+    {
+        if (distanceMeters is not { } distance || durationSeconds is not { } seconds || !(distance > 0))
+        {
+            return true;
+        }
+
+        var scaled = seconds * 1000.0;
+        return scaled >= GoalRules.MinPaceSecondsPerKm * distance && scaled <= GoalRules.MaxPaceSecondsPerKm * distance;
+    }
+
     private TrainingSuggestion()
     {
     }
@@ -157,6 +173,12 @@ public sealed class TrainingSuggestion : IUserOwned
         if (s.DurationSeconds is { } seconds && seconds is < MinDurationSeconds or > MaxDurationSeconds)
         {
             errors.Add(new("durationSeconds", $"Must be between {MinDurationSeconds} and {MaxDurationSeconds}."));
+        }
+        else if (!HasPlausibleImpliedPace(s.DistanceMeters, s.DurationSeconds))
+        {
+            errors.Add(new(
+                "durationSeconds",
+                $"With the distance, the implied pace must be between {GoalRules.MinPaceSecondsPerKm} and {GoalRules.MaxPaceSecondsPerKm} seconds per km."));
         }
 
         if ((s.TargetPaceMinSecondsPerKm is null) != (s.TargetPaceMaxSecondsPerKm is null))

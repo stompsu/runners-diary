@@ -192,6 +192,11 @@ public static class TrainingPlanValidator
             {
                 Fail("durationSeconds");
             }
+            else if (!TrainingSuggestion.HasPlausibleImpliedPace(s.DistanceMeters, s.DurationSeconds))
+            {
+                // Each value in range is not enough: 30 km in 10 min would become an impossible planned run on Accept.
+                Fail("durationSeconds");
+            }
 
             if ((s.PaceMinSecondsPerKm is null) != (s.PaceMaxSecondsPerKm is null))
             {

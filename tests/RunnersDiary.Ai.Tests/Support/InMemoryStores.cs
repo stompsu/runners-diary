@@ -55,7 +55,8 @@ public sealed class InMemoryAiGenerationStore : IAiGenerationStore
         {
             var window = _rows.Where(r => r.CreatedAt > since).ToList();
             int Weighted(AiGenerationRecord r) => r.Feature == AiFeature.Plan ? r.Attempts * planAttemptWeight : r.Attempts;
-            return Task.FromResult(new GlobalAiUsage(window.Sum(Weighted), window.Where(r => r.IsGuest).Sum(Weighted)));
+            return Task.FromResult(new GlobalAiUsage(
+                window.Sum(Weighted), window.Where(r => r.IsGuest).Sum(Weighted), window.Where(r => r.IsGuest && r.Feature == AiFeature.Plan).Sum(Weighted)));
         }
     }
 
