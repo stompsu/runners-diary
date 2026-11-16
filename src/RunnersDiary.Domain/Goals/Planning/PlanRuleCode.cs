@@ -47,8 +47,14 @@ public static class PlanRuleCodes
 /// <summary>
 /// One plan violation. <see cref="Location"/> is never model text: a fixed path (<c>notes</c>, <c>sessions</c>, <c>sessions[3].distanceMeters</c>,
 /// <c>draft</c>), a session date that parsed as <c>yyyy-MM-dd</c>, or an envelope week start. So it can be logged and sent back to the model safely.
+/// <para>
+/// <see cref="Value"/> and <see cref="Limit"/> are integers computed by the validator (ADR 0040 amendment "plan reliability"), set for
+/// <c>weeklyVolume</c> (the week's suggested running distance and its <c>availableDistanceMeters</c>), <c>longRun</c> (the session's distance and
+/// the week's <c>maxLongRunMeters</c>) and a too-wide pace range (<c>schema</c> at <c>paceMaxSecondsPerKm</c>: the spread and
+/// <see cref="TrainingPlanValidator.MaxPaceSpreadSeconds"/>), so the retry note can say by how much. Numbers only, never text.
+/// </para>
 /// </summary>
-public sealed record PlanViolation(PlanRuleCode Rule, string Location);
+public sealed record PlanViolation(PlanRuleCode Rule, string Location, int? Value = null, int? Limit = null);
 
 /// <summary>The outcome of <see cref="TrainingPlanValidator"/>.</summary>
 /// <param name="Kept">The sessions that passed the per-session checks and the collision drop, by date (what would be stored).</param>

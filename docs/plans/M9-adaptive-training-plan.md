@@ -548,6 +548,20 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 54. `web/e2e-fullstack/insights-summary.spec.ts` now follows `client-config.ai.summaryGeneration`: with `Ai__Provider=Fake` in the CI full-stack env (needed for plans) summary generation became available and the old "not configured" assertion failed.
 55. **Not run:** the manual checks (VoiceOver over a cell with suggestions, phone Safari, one real generation reviewed for plausibility) and the live eval; they belong to gates G-P2…G-P4.
 
+### 11.8 Follow-up "plan reliability" (ai-insights, 2026-11-16, branch `m9-plan-reliability`)
+
+56. **G-P3 live eval** (gpt-5.4-mini Global Standard, prompt v1, fact sheet v1): first run **12/18**. With the new failure diagnostics (commit "M9: plan generation failure diagnostics for the live eval": per-attempt rule codes, locations, tokens and finish reason; `RD_AI_LIVE_DUMP_DIR` for raw answers, test code only), a second run gave **14/18, 3 of them saved by the retry**. Nothing was truncated (at most ~4.5k output tokens per attempt, cap 8,000). Every failure was `invalidOutput` on both attempts.
+57. **Root causes** (from the dumped answers, re-validated offline):
+    - `weeklyVolume` on the partial first week (2026-11-16, cap 28,286 m, nothing fixed) in 7 of 12 failed attempts: the model wrote round sessions adding up to 30–38 km. The retry note gave only the date, so attempt 2 often overshot again.
+    - `schema` at `sessions[n].paceMinSecondsPerKm` (trail case, up to 12 per attempt). These were **long trail runs with pace ranges 95–135 s wide** (e.g. 390–485, 390–525), above the existing 90 s limit. The limit was already 90 s, not 60 s as first assumed. The location named the faster bound although the slower bound or the width was the problem.
+    - Occasional genuine `pace`, `phase`, `taperIntensity` and `longRun` violations: the retry handles them, and the rules stay.
+58. **Changes** (one commit "M9: plan reliability — weekly caps the model can hit, precise retry notes, pace spread"):
+    - The envelope rounds `maxDistanceMeters`, `availableDistanceMeters` and `maxLongRunMeters` **down to 500 m** (`PlanEnvelopeRules.CapStepMeters`, `FloorToStep`). The fact sheet sends these values and the validator checks the same ones. The +5 % tolerance is unchanged. Envelope v2, **plan fact sheet v2** (same shape).
+    - **Plan prompt v2** (`prompts/training-plan/v2.md`, `current: 2`; v1 stays listed and loadable). It tells the model to add up each week's `distanceMeters` and stay at or below `availableDistanceMeters`, that the first week is partial, that caps are multiples of 500 m, the 90 s pace width with an example (390 and 480, never 390 and 500, also for long and trail runs), and to fix the numbers a rejection note lists.
+    - **Retry note with numbers**: `PlanViolation` gains optional validator-computed integers `Value`/`Limit`. These are set for `weeklyVolume` (the suggested sum vs `availableDistanceMeters`), `longRun` (distance vs `maxLongRunMeters`) and a too-wide pace range (width vs 90). The note adds "Numbers to fix: week 2026-11-16: your running sessions add up to 33000 m, its availableDistanceMeters is 28000 m; …". It still contains only codes, safe locations and integers, never model text.
+    - **Pace range**: the 90 s limit lives in one place (`TrainingSuggestion.MaxPaceSpreadSeconds`, used by the validator and `TrainingSuggestion.Create`). A missing or too-slow faster bound is reported at `paceMinSecondsPerKm`. A missing slower bound, a slower bound above 900, faster > slower, or a range wider than 90 s is reported at **`paceMaxSecondsPerKm`**, which is now an allowed retry-note location.
+59. Not changed: the API contract (no OpenAPI change), the ledger, quotas and the data-residency position. Only app-computed numbers are added to what the model sees. The live eval was not re-run; expect fewer first-week `weeklyVolume` failures and more precise retries. The trail case's wide ranges are now named precisely, but whether 90 s is the right limit for long trail runs is a product choice (see §13.7).
+
 ## 12. Review (reviewer, 2026-11-16)
 
 **Verdict: approve with follow-ups; no blocker, no high finding.** Fixes landed in three commits.
@@ -571,7 +585,8 @@ Notes (no change): the suggestions toggle is per browser (approved default §10.
 3. A **delayed second refresh after cancel** (a plan committed later than the first refresh still appears only on the next navigation or the 1-minute stale time).
 4. **Deterministic tests for `GoalWriteLock`** (today the concurrency is covered by racing requests, not by a held lock).
 5. Optional **hard goal cap** (lock or filtered count in the insert) if L5 ever matters.
-6. **G-P3 live eval** to confirm the 8,000-token output cap (record tokens, pass rate and cost in §11).
+6. **G-P3 live eval** to confirm the 8,000-token output cap (record tokens, pass rate and cost in §11). Run twice (12/18, then 14/18; no truncation, §11.8); re-run after the plan reliability changes.
+7. **Pace range width for long trail runs**: the model writes 95–135 s ranges on long trail runs (§11.8). Keep 90 s (the prompt and retry note now say so precisely), or widen it for `long`/`trailTraining` sessions or trail goals. It is one constant (`TrainingSuggestion.MaxPaceSpreadSeconds`) plus a prompt version.
 
 ## Assumptions
 

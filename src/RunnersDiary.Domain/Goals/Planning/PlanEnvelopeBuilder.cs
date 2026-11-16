@@ -115,9 +115,12 @@ public static class PlanEnvelopeBuilder
                 fixedSessions++;
             }
 
-            var maxDistance = Round(cap);
+            // Caps the model can hit: rounded down to the 500 m step (v2); the validator checks these same values.
+            var maxDistance = PlanEnvelopeRules.FloorToStep(cap);
             var fixedRounded = Round(fixedDistance);
-            weeks.Add(new PlanWeek(monday, phase, maxDistance, fixedRounded, Math.Max(0, maxDistance - fixedRounded), Round(longRun), fixedSessions));
+            weeks.Add(new PlanWeek(
+                monday, phase, maxDistance, fixedRounded, PlanEnvelopeRules.FloorToStep(maxDistance - fixedRounded), PlanEnvelopeRules.FloorToStep(longRun),
+                fixedSessions));
         }
 
         return new PlanEnvelope(

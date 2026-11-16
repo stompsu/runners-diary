@@ -17,6 +17,9 @@ public sealed class TrainingSuggestion : IUserOwned
     public const int MinDurationSeconds = 600;
     public const int MaxDurationSeconds = 21_600;
 
+    /// <summary>The widest target pace range (slower minus faster bound), s/km; the validator, the prompt and the retry note use the same 90.</summary>
+    public const int MaxPaceSpreadSeconds = 90;
+
     /// <summary>
     /// True unless both distance and duration are set and their implied pace is outside <see cref="GoalRules.MinPaceSecondsPerKm"/>–<see
     /// cref="GoalRules.MaxPaceSecondsPerKm"/> (2:30–15:00 min/km). A positive distance is required for the check; a missing or non-positive
@@ -186,7 +189,7 @@ public sealed class TrainingSuggestion : IUserOwned
             errors.Add(new("targetPaceMinSecondsPerKm", "Both pace bounds or neither."));
         }
         else if (s.TargetPaceMinSecondsPerKm is { } min && s.TargetPaceMaxSecondsPerKm is { } max
-            && (min < GoalRules.MinPaceSecondsPerKm || max > GoalRules.MaxPaceSecondsPerKm || min > max || max > min + 90))
+            && (min < GoalRules.MinPaceSecondsPerKm || max > GoalRules.MaxPaceSecondsPerKm || min > max || max > min + MaxPaceSpreadSeconds))
         {
             errors.Add(new("targetPaceMinSecondsPerKm", "Paces must be 150 to 900 seconds per km, minimum at most maximum, at most 90 seconds apart."));
         }

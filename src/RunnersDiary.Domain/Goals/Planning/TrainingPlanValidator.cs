@@ -20,7 +20,8 @@ public static class TrainingPlanValidator
     public const int DescriptionMaxLength = TrainingSuggestion.DescriptionMaxLength;
     public const double Tolerance = 1.05;
     public const double MinPaceShareOfReference = 0.85;
-    public const int MaxPaceSpreadSeconds = 90;
+    /// <summary>See <see cref="TrainingSuggestion.MaxPaceSpreadSeconds"/>.</summary>
+    public const int MaxPaceSpreadSeconds = TrainingSuggestion.MaxPaceSpreadSeconds;
     public const int TaperQuietDays = 3;
 
     /// <summary>Training types that count as hard when they are commitments (the history's hard types, ADR 0040 §3).</summary>
@@ -137,7 +138,8 @@ public static class TrainingPlanValidator
     private static PlannedSession? Convert(DraftSession s, string location, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
     {
         var before = violations.Count;
-        void Fail(string member) => violations.Add(new PlanViolation(PlanRuleCode.Schema, location + "." + member));
+        void Fail(string member, int? value = null, int? limit = null) =>
+            violations.Add(new PlanViolation(PlanRuleCode.Schema, location + "." + member, value, limit));
 
         var dateOk = DateOnly.TryParseExact(s.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date);
         if (!dateOk)
@@ -200,12 +202,23 @@ public static class TrainingPlanValidator
 
             if ((s.PaceMinSecondsPerKm is null) != (s.PaceMaxSecondsPerKm is null))
             {
-                Fail("paceMinSecondsPerKm");
+                Fail(s.PaceMinSecondsPerKm is null ? "paceMinSecondsPerKm" : "paceMaxSecondsPerKm");
             }
-            else if (s.PaceMinSecondsPerKm is { } min && s.PaceMaxSecondsPerKm is { } max
-                && (min < GoalRules.MinPaceSecondsPerKm || max > GoalRules.MaxPaceSecondsPerKm || min > max || max > min + MaxPaceSpreadSeconds))
+            else if (s.PaceMinSecondsPerKm is { } min && s.PaceMaxSecondsPerKm is { } max)
             {
-                Fail("paceMinSecondsPerKm");
+                if (min < GoalRules.MinPaceSecondsPerKm || min > GoalRules.MaxPaceSecondsPerKm)
+                {
+                    Fail("paceMinSecondsPerKm");
+                }
+                else if (max > GoalRules.MaxPaceSecondsPerKm || min > max)
+                {
+                    Fail("paceMaxSecondsPerKm");
+                }
+                else if (max > min + MaxPaceSpreadSeconds)
+                {
+                    // The range is too wide: reported at the slower bound with the spread and the limit, for a precise retry note.
+                    Fail("paceMaxSecondsPerKm", max - min, MaxPaceSpreadSeconds);
+                }
             }
         }
 
@@ -271,7 +284,7 @@ public static class TrainingPlanValidator
 
             if (s.DistanceMeters is { } distance && distance > week.MaxLongRunMeters * Tolerance)
             {
-                violations.Add(new PlanViolation(PlanRuleCode.LongRun, where));
+                violations.Add(new PlanViolation(PlanRuleCode.LongRun, where, Meters(distance), Meters(week.MaxLongRunMeters)));
             }
 
             if (goalInHorizon && s.Intensity.IsHard() && s.Date >= quietFrom && s.Date < sheet.Goal.TargetDate)
@@ -301,7 +314,7 @@ public static class TrainingPlanValidator
             var suggested = running.Sum(s => s.DistanceMeters ?? 0);
             if (suggested > 0 && week.FixedDistanceMeters + suggested > week.MaxDistanceMeters * Tolerance)
             {
-                violations.Add(new PlanViolation(PlanRuleCode.WeeklyVolume, where));
+                violations.Add(new PlanViolation(PlanRuleCode.WeeklyVolume, where, Meters(suggested), Meters(week.AvailableDistanceMeters)));
             }
 
             if (running.Count > 0 && week.FixedRunningSessions + running.Count > envelope.MaxSessionsPerWeek)
@@ -347,4 +360,6 @@ public static class TrainingPlanValidator
     private static List<PlanViolation> Distinct(List<PlanViolation> violations) => [.. violations.Distinct()];
 
     private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static int Meters(double meters) => (int)Math.Clamp(Math.Round(meters, MidpointRounding.AwayFromZero), 0, int.MaxValue);
 }

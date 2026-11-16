@@ -125,7 +125,7 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
             output.WriteLine(line.ToString());
             foreach (var group in a.Violations.GroupBy(v => v.Rule).OrderBy(g => g.Key))
             {
-                var locations = group.Select(v => v.Location).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+                var locations = group.Select(Where).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
                 var shown = string.Join(", ", locations.Take(MaxPrintedLocations));
                 var more = locations.Count > MaxPrintedLocations ? $", +{locations.Count - MaxPrintedLocations} more" : "";
                 output.WriteLine(string.Create(CultureInfo.InvariantCulture, $"    {group.Key.ToCode()} x{group.Count()}: {shown}{more}"));
@@ -137,6 +137,10 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
             output.WriteLine($"  attempt {n}: no answer ({result.Failure}); usage unknown, not in the cost");
         }
     }
+
+    /// <summary>A location, with the validator's value and limit when it computed them (e.g. <c>2026-11-16 (33000/28000)</c>).</summary>
+    private static string Where(PlanViolation v) =>
+        v.Value is { } value && v.Limit is { } limit ? string.Create(CultureInfo.InvariantCulture, $"{v.Location} ({value}/{limit})") : v.Location;
 
     /// <summary>
     /// Writes the raw answer of each call (<c>&lt;prefix&gt;-attempt&lt;n&gt;.json</c>) and, for a retry, the note the validator sent

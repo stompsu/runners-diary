@@ -139,7 +139,11 @@ public sealed class TrainingPlanAgent
         return messages;
     }
 
-    /// <summary>The retry note (ADR 0040 §5): rule codes and the affected week starts, dates or fixed paths only, never the model's text.</summary>
+    /// <summary>
+    /// The retry note (ADR 0040 §5): rule codes and the affected week starts, dates or fixed paths only, never the model's text. Since the
+    /// "plan reliability" amendment, violations that carry validator-computed numbers (<see cref="PlanViolation.Value"/> and
+    /// <see cref="PlanViolation.Limit"/>) are also listed with them, so the next attempt can correct by the right amount.
+    /// </summary>
     public static string RetryMessage(IReadOnlyList<PlanViolation> violations)
     {
         ArgumentNullException.ThrowIfNull(violations);
@@ -151,15 +155,43 @@ public sealed class TrainingPlanAgent
             text.Append(". Where (week starts, dates or fields): ").AppendJoin(", ", locations.Take(MaxRetryLocations));
         }
 
+        var details = violations
+            .Where(v => v.Value is not null && v.Limit is not null && IsSafeLocation(v.Location))
+            .Select(Detail)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .Take(MaxRetryLocations)
+            .ToList();
+        if (details.Count > 0)
+        {
+            text.Append(". Numbers to fix: ").AppendJoin("; ", details);
+        }
+
         text.Append(". Write a new JSON object that follows every rule in the instructions and stays inside the envelope.");
         return text.ToString();
+    }
+
+    /// <summary>One numeric detail of the retry note, built from the safe location and two validator-computed integers only.</summary>
+    private static string? Detail(PlanViolation v)
+    {
+        var value = v.Value!.Value.ToString(CultureInfo.InvariantCulture);
+        var limit = v.Limit!.Value.ToString(CultureInfo.InvariantCulture);
+        return v.Rule switch
+        {
+            PlanRuleCode.WeeklyVolume =>
+                $"week {v.Location}: your running sessions add up to {value} m, its availableDistanceMeters is {limit} m",
+            PlanRuleCode.LongRun => $"{v.Location}: a {value} m session, that week's maxLongRunMeters is {limit} m",
+            PlanRuleCode.Schema when v.Location.EndsWith(".paceMaxSecondsPerKm", StringComparison.Ordinal) =>
+                $"{v.Location}: the pace range is {value} s/km wide, at most {limit} is allowed",
+            _ => null,
+        };
     }
 
     /// <summary>A location is a parsed date, a fixed path (<c>notes</c>, <c>sessions</c>, <c>draft</c>, <c>sessions[n].member</c>), never model text.</summary>
     internal static bool IsSafeLocation(string location) =>
         DateOnly.TryParseExact(location, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
         || location is "notes" or "sessions" or "draft"
-        || System.Text.RegularExpressions.Regex.IsMatch(location, @"^sessions\[\d{1,4}\](\.(date|runType|intensity|phase|distanceMeters|durationSeconds|paceMinSecondsPerKm|description))?$");
+        || System.Text.RegularExpressions.Regex.IsMatch(location, @"^sessions\[\d{1,4}\](\.(date|runType|intensity|phase|distanceMeters|durationSeconds|paceMinSecondsPerKm|paceMaxSecondsPerKm|description))?$");
 
     private static int ToInt(long? value) => value is { } v ? (int)Math.Clamp(v, 0, int.MaxValue) : 0;
 }

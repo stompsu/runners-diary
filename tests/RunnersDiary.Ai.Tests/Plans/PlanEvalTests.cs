@@ -36,12 +36,12 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         var result = await harness.Generate(c.Sheet);
 
         Assert.True(result.Status == GenerationStatus.Succeeded, $"{name}: {result.Status} {result.Failure} {string.Join(", ", TrainingPlanValidator.Validate(FakeJson(c.Sheet), c.Sheet, PlanValidationPolicy.Default).Violations)}");
-        Assert.Equal((1, RuleBasedFakeChatClient.ModelId, 1, "fake"), (result.Attempts, result.ModelId, result.PromptVersion, result.ModelDeployment));
+        Assert.Equal((1, RuleBasedFakeChatClient.ModelId, harness.Prompts.Current.Version, "fake"), (result.Attempts, result.ModelId, result.PromptVersion, result.ModelDeployment));
         Assert.Equal(0, result.Plan!.DroppedCount);
         Assert.NotEmpty(result.Plan.Kept);
         c.AssertPlan(result.Plan, c.Sheet);
         var row = Assert.Single(harness.Generations.Rows);
-        Assert.Equal((AiFeature.Plan, AiGenerationOutcome.Succeeded, 1), (row.Feature, row.Outcome, row.PromptVersion));
+        Assert.Equal((AiFeature.Plan, AiGenerationOutcome.Succeeded, harness.Prompts.Current.Version), (row.Feature, row.Outcome, row.PromptVersion));
 
         // Every kept session is a valid suggestion and its accept mapping passes the run rules (ADR 0041 §2).
         foreach (var session in result.Plan.Kept)

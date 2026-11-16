@@ -113,7 +113,7 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
         var body = await GenerateOkAsync(user, Id(goal));
 
         var plan = body.GetProperty("goal").GetProperty("plan");
-        Assert.Equal(("Model", 1, "scripted-model", false, false), (plan.GetProperty("source").GetString(), plan.GetProperty("promptVersion").GetInt32(),
+        Assert.Equal(("Model", 2, "scripted-model", false, false), (plan.GetProperty("source").GetString(), plan.GetProperty("promptVersion").GetInt32(),
             plan.GetProperty("model").GetString(), plan.GetProperty("outdated").GetBoolean(), plan.GetProperty("horizonCapped").GetBoolean()));
         Assert.Equal(Ahead(59), plan.GetProperty("horizonEnd").GetString());
         Assert.Equal(RuleBasedNotes, plan.GetProperty("notes").GetString());
@@ -137,7 +137,7 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
         Assert.Equal(suggestions.Count, (await user.GetGoalJsonAsync(Id(goal))).GetProperty("plan").GetProperty("pendingCount").GetInt32());
 
         var row = Assert.Single(await LedgerAsync(user));
-        Assert.Equal((AiFeature.Plan, AiGenerationOutcome.Succeeded, (byte)1, 9_000, 3_500, (short)1), (row.Feature, row.Outcome, row.Attempts, row.InputTokens, row.OutputTokens, row.PromptVersion));
+        Assert.Equal((AiFeature.Plan, AiGenerationOutcome.Succeeded, (byte)1, 9_000, 3_500, (short)2), (row.Feature, row.Outcome, row.Attempts, row.InputTokens, row.OutputTokens, row.PromptVersion));
 
         // Metrics only reach the model: no goal title or note, no run title.
         var sent = ScriptedChatClient.AllText(Assert.Single(client.Requests));

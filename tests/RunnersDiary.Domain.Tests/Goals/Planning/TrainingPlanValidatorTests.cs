@@ -149,10 +149,12 @@ public sealed class TrainingPlanValidatorTests
         { "durationSeconds", "599" },
         { "durationSeconds", "21601" },
         { "paceMinSecondsPerKm", "149/200" },
-        { "paceMinSecondsPerKm", "400/901" },
-        { "paceMinSecondsPerKm", "360/320" },
-        { "paceMinSecondsPerKm", "300/391" },
-        { "paceMinSecondsPerKm", "300/null" },
+        { "paceMinSecondsPerKm", "901/950" },
+        { "paceMinSecondsPerKm", "null/300" },
+        { "paceMaxSecondsPerKm", "400/901" },
+        { "paceMaxSecondsPerKm", "360/320" },
+        { "paceMaxSecondsPerKm", "300/391" },
+        { "paceMaxSecondsPerKm", "300/null" },
         { "description", "" },
         { "description", "   " },
         { "description", "x301" },
@@ -176,14 +178,40 @@ public sealed class TrainingPlanValidatorTests
             "phase" => s with { Phase = value },
             "distanceMeters" => s with { DistanceMeters = value == "null" ? null : double.Parse(value, CultureInfo.InvariantCulture) },
             "durationSeconds" => s with { DurationSeconds = Int(value) },
-            "paceMinSecondsPerKm" => s with { PaceMinSecondsPerKm = Int(value.Split('/')[0]), PaceMaxSecondsPerKm = Int(value.Split('/')[1]) },
+            "paceMinSecondsPerKm" or "paceMaxSecondsPerKm" => s with { PaceMinSecondsPerKm = Int(value.Split('/')[0]), PaceMaxSecondsPerKm = Int(value.Split('/')[1]) },
             _ => s with { Description = value == "x301" ? new string('x', 301) : value },
         };
 
         var result = Validate(sheet, sessions);
 
-        Assert.Contains(new PlanViolation(PlanRuleCode.Schema, $"sessions[2].{member}"), result.Violations);
+        Assert.Contains(result.Violations, v => v.Rule == PlanRuleCode.Schema && v.Location == $"sessions[2].{member}");
         Assert.DoesNotContain(result.Kept, k => k.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) == s.Date);
+    }
+
+    /// <summary>A pace range up to 90 s wide is fine (also for long and trail runs); a wider one is reported at the slower bound with the spread and the limit.</summary>
+    [Theory]
+    [InlineData(375, 450, null)]
+    [InlineData(400, 475, null)]
+    [InlineData(390, 480, null)]
+    [InlineData(390, 485, 95)]
+    [InlineData(390, 525, 135)]
+    public void The_pace_spread_is_at_most_ninety_seconds(int min, int max, int? spread)
+    {
+        var sheet = Sheet();
+        var sessions = Good(sheet);
+        sessions[2] = sessions[2] with { PaceMinSecondsPerKm = min, PaceMaxSecondsPerKm = max };
+
+        var result = Validate(sheet, sessions);
+
+        var paceSchema = result.Violations.Where(v => v.Rule == PlanRuleCode.Schema && v.Location.StartsWith("sessions[2].pace", StringComparison.Ordinal)).ToList();
+        if (spread is null)
+        {
+            Assert.Empty(paceSchema);
+        }
+        else
+        {
+            Assert.Equal(new PlanViolation(PlanRuleCode.Schema, "sessions[2].paceMaxSecondsPerKm", spread, TrainingPlanValidator.MaxPaceSpreadSeconds), Assert.Single(paceSchema));
+        }
     }
 
     /// <summary>Distance and duration each in range but together an impossible pace (review L3): schema at the duration, the plan is retried.</summary>
@@ -315,7 +343,12 @@ public sealed class TrainingPlanValidatorTests
         var sheetWithFrequency = Sheet(sessionsPerWeek: 6.0);
         Assert.True(each <= week.MaxLongRunMeters);
 
-        AssertOnly(Validate(sheetWithFrequency, sessions.Concat(over)), PlanRuleCode.WeeklyVolume, D(week.Start));
+        var rejected = Validate(sheetWithFrequency, sessions.Concat(over));
+        AssertOnly(rejected, PlanRuleCode.WeeklyVolume, D(week.Start));
+        // The validator's own numbers for the retry note: the suggested sum and the week's availableDistanceMeters.
+        Assert.Equal(
+            new PlanViolation(PlanRuleCode.WeeklyVolume, D(week.Start), (int)(each * 5), (int)week.AvailableDistanceMeters),
+            Assert.Single(rejected.Violations));
 
         var at = over.Select(s => s with { DistanceMeters = Math.Floor(cap / 5) }).ToList();
         Assert.True(Validate(sheetWithFrequency, sessions.Concat(at)).IsValid);
@@ -330,7 +363,8 @@ public sealed class TrainingPlanValidatorTests
         sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(week.MaxLongRunMeters * 1.05) + 1 };
         var result = Validate(sheet, sessions);
         Assert.Contains(PlanRuleCode.LongRun, result.Codes);
-        Assert.Contains(new PlanViolation(PlanRuleCode.LongRun, sessions[1].Date), result.Violations);
+        var distance = (int)sessions[1].DistanceMeters!.Value;
+        Assert.Contains(new PlanViolation(PlanRuleCode.LongRun, sessions[1].Date, distance, (int)week.MaxLongRunMeters), result.Violations);
 
         sessions[1] = sessions[1] with { DistanceMeters = Math.Floor(week.MaxLongRunMeters * 1.05) };
         Assert.DoesNotContain(PlanRuleCode.LongRun, Validate(sheet, sessions).Codes);

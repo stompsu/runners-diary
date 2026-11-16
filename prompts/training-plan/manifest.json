@@ -1,10 +1,15 @@
 {
-  "current": 1,
-  "planFactSheetVersion": 1,
+  "current": 2,
+  "planFactSheetVersion": 2,
   "versions": {
     "1": {
       "file": "v1.md",
       "sha256": "5bc8f0c6a975bee75c68508a0eace42f20c274a0085a6ef634384ee529d07509",
+      "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
+    },
+    "2": {
+      "file": "v2.md",
+      "sha256": "c22bd9a810afd7b88049fbd3e72cb547cc1a32fadeb106f7a8fb476d1bb20810",
       "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
     }
   },

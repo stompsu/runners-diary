@@ -1,6 +1,6 @@
 # 0040 – Training plan generation: deterministic envelope and fact sheet, plan agent, validation, quotas, failure handling
 
-**Status:** Accepted (M9 plan approved 2026-11-16; structured-output limits verified on Microsoft Learn 2026-11-16; amended 2026-11-16 after the implementation and the review, see the end; **§1 step 8 "slot shared with summaries", §6 "the global and guest-global budgets are shared" and the matching Consequence and Alternative are refined by the amendment**)
+**Status:** Accepted (M9 plan approved 2026-11-16; structured-output limits verified on Microsoft Learn 2026-11-16; amended 2026-11-16 after the implementation and the review, and again after the G-P3 live eval ("plan reliability"), see the end; **§1 step 8 "slot shared with summaries", §6 "the global and guest-global budgets are shared" and the matching Consequence and Alternative are refined by the amendment**)
 **Date:** 2026-11-16
 **Related:** [0024](0024-training-metrics-definitions-v1.md), [0025](0025-insights-report-computation-and-api.md), [0026](0026-training-insights-agent-and-grounding.md) (agent, data-residency rule), [0027](0027-ai-model-provider-foundry-and-local-dev.md) (provider), [0028](0028-summary-cache-quotas-and-demo-summaries.md) (quotas, ledger), [0029](0029-web-tier-nginx-container.md) (proxy timeouts), [0034](0034-cost-guardrails-and-observability.md) (cost), [0039](0039-training-goals-and-realistic-target-estimate.md), [0041](0041-training-suggestions-storage-and-calendar.md), [M9 plan](../plans/M9-adaptive-training-plan.md)
 
@@ -167,6 +167,15 @@ The decision stands, with these refinements. As built in `Infrastructure/Ai/` (`
 6. **Ledger index.** Migration `AiGenerationsFeatureIndex` rebuilds `IX_AiGenerations_Created (CreatedAt) INCLUDE (IsGuest, Feature, Attempts)` so the weighted global sums are covered. The weighting is applied in C# over one grouped query (EF Core 10 cannot translate a weighted `SUM` over the `tinyint` column).
 
 Consequence (replaces "with 2 slots per replica, two concurrent plans make summaries answer `ai-busy`"): with the defaults one plan per replica can run; summaries keep the other slot.
+
+## Amendment (2026-11-16, plan reliability after the G-P3 live eval)
+
+The live eval passed 12/18, then 14/18 with diagnostics. Nothing was truncated; every failure was invalid output twice: mostly `weeklyVolume` on the partial first week (odd caps like 28,286 m, overshot by round sessions) and too-wide pace ranges on long trail runs (M9 plan §11.8). Refinements:
+1. **Envelope v2 / plan fact sheet v2 (§2, §3).** `maxDistanceMeters`, `availableDistanceMeters` (= floor(cap − fixed)) and `maxLongRunMeters` are rounded **down to 500 m** (`PlanEnvelopeRules.CapStepMeters`). The fact sheet sends the rounded values and the validator checks the same ones (tolerance still 1.05). The shape is unchanged.
+2. **Prompt v2 (§4).** It states the per-week sum rule explicitly ("add up the `distanceMeters` … at most `availableDistanceMeters`"), the partial first week, the 500 m caps, the 90 s pace width with an example, and that a rejection note's numbers must be fixed. v1 stays in the manifest (immutable, loadable); `current` is 2.
+3. **Retry note numbers (§5).** A violation may carry two validator-computed integers (`Value`, `Limit`): `weeklyVolume` (the week's suggested running distance, `availableDistanceMeters`), `longRun` (session distance, `maxLongRunMeters`), and a pace range wider than 90 s (`schema` at `paceMaxSecondsPerKm`: width, 90). The retry note lists them under "Numbers to fix". It still carries only codes, safe locations and app-computed integers, never model text, so the injection and data-residency position is unchanged.
+4. **Pace range location (§5 `schema`).** The width limit stays **90 s** (one constant, `TrainingSuggestion.MaxPaceSpreadSeconds`). A missing slower bound, a slower bound above 900, faster > slower, or a range wider than 90 s is reported at `sessions[n].paceMaxSecondsPerKm` (a safe retry-note location now). Problems with the faster bound alone stay at `paceMinSecondsPerKm`.
+5. **Diagnostics.** A failed generation's in-process result carries attempts, usage, the finish reason and each attempt's violations, for the live eval only. API responses, logs and the ledger row are unchanged.
 
 ## References (checked 2026-11-16)
 
