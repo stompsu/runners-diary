@@ -32,6 +32,12 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<GenerationInFlightGuard>();
 
         services.AddScoped<AiUsageLedger>();
+        services.AddScoped(sp => new AiGenerationRunner(
+            sp.GetRequiredService<AiUsageLedger>(),
+            sp.GetRequiredService<GenerationSlots>(),
+            sp.GetRequiredService<GenerationInFlightGuard>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<AiGenerationRunner>>()));
         services.AddScoped<SummaryGenerator>();
         services.AddScoped<InsightsSummaryService>();
 

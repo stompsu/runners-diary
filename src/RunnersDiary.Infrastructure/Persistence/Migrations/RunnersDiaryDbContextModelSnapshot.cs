@@ -74,7 +74,7 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_AiGenerations_Created");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("CreatedAt"), new[] { "IsGuest" });
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("CreatedAt"), new[] { "IsGuest", "Feature", "Attempts" });
 
                     b.HasIndex("UserId", "CreatedAt")
                         .HasDatabaseName("CX_AiGenerations_User_Created");

@@ -25,15 +25,18 @@ internal sealed class EfAiGenerationStore(RunnersDiaryDbContext db) : IAiGenerat
             Math.Max(0, record.OutputTokens),
             Math.Max(0, record.DurationMs),
             checked((short)record.PromptVersion),
-            record.ModelDeployment);
+            record.ModelDeployment,
+            record.Feature);
         db.AiGenerations.Add(row);
         await db.SaveChangesAsync(cancellationToken);
         db.Entry(row).State = EntityState.Detached;
     }
 
-    public async Task<IReadOnlyList<DateTimeOffset>> GetUserGenerationTimesAsync(Guid userId, DateTimeOffset? since, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<DateTimeOffset>> GetUserGenerationTimesAsync(
+        Guid userId, AiFeature feature, DateTimeOffset? since, CancellationToken cancellationToken)
     {
-        var query = db.AiGenerations.AsNoTracking().Where(g => g.UserId == userId && g.Outcome != AiGenerationOutcome.Throttled);
+        var query = db.AiGenerations.AsNoTracking()
+            .Where(g => g.UserId == userId && g.Feature == feature && g.Outcome != AiGenerationOutcome.Throttled);
         if (since is { } from)
         {
             var sinceUtc = from.UtcDateTime;
@@ -44,12 +47,18 @@ internal sealed class EfAiGenerationStore(RunnersDiaryDbContext db) : IAiGenerat
         return [.. times.Select(t => new DateTimeOffset(DateTime.SpecifyKind(t, DateTimeKind.Utc)))];
     }
 
-    public async Task<GlobalAiUsage> GetGlobalUsageAsync(DateTimeOffset since, CancellationToken cancellationToken)
+    public async Task<GlobalAiUsage> GetGlobalUsageAsync(DateTimeOffset since, int planAttemptWeight, CancellationToken cancellationToken)
     {
         var sinceUtc = since.UtcDateTime;
-        var window = db.AiGenerations.AsNoTracking().Where(g => g.CreatedAt > sinceUtc);
-        var attempts = await window.SumAsync(g => (int)g.Attempts, cancellationToken);
-        var guestAttempts = await window.Where(g => g.IsGuest).SumAsync(g => (int)g.Attempts, cancellationToken);
+        // One scan of IX_AiGenerations_Created (it includes IsGuest, Feature and Attempts): sums per (feature, guest), weighted here.
+        var sums = await db.AiGenerations.AsNoTracking()
+            .Where(g => g.CreatedAt > sinceUtc)
+            .GroupBy(g => new { g.Feature, g.IsGuest })
+            .Select(group => new { group.Key.Feature, group.Key.IsGuest, Attempts = group.Sum(g => (int)g.Attempts) })
+            .ToListAsync(cancellationToken);
+        int Weighted(AiFeature feature, int attempts) => feature == AiFeature.Plan ? attempts * planAttemptWeight : attempts;
+        var attempts = sums.Sum(s => Weighted(s.Feature, s.Attempts));
+        var guestAttempts = sums.Where(s => s.IsGuest).Sum(s => Weighted(s.Feature, s.Attempts));
         return new GlobalAiUsage(attempts, guestAttempts);
     }
 
