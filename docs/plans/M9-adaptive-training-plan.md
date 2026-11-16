@@ -1,6 +1,6 @@
 # M9 – Adaptive training plan: plan
 
-**Status:** Approved 2026-11-16 (outline and all four §7 defaults approved by the user on 2026-11-16; this plan turns the outline into contracts). **Part A implemented 2026-11-16** on `m9-adaptive-training-plan` (steps 1–11, reviewed: §12); **awaiting user approval**. Deviations: §11; follow-ups: §13. **Part B (gates G-P1…G-P4, §6.2) not started**; each gate needs the user's explicit "yes".
+**Status:** Approved 2026-11-16 (outline and all four §7 defaults approved by the user on 2026-11-16; this plan turns the outline into contracts). **Part A implemented 2026-11-16** on `m9-adaptive-training-plan` (steps 1–11, reviewed: §12); **awaiting user approval**. Deviations: §11; follow-ups: §13. **Merged (stompsu/runners-diary#42); Part B: G-P1, G-P2 and G-P3 done 2026-11-16, G-P4 waits for the plan-reliability fixes (§11.8, gate log in §6.2)**; each gate needs the user's explicit "yes".
 **Builds on:**
 - M2/M3: `Runs`, run types, `Owner` filter, run form (ADR 0018), month grid and panel routes (ADR 0016), guest lifecycle and `DemoDataSeeder`.
 - M5: `InsightsReportBuilder` (weekly load, ACWR) and `RaceFact`; reused, unchanged (`metricsVersion` 1).
@@ -382,6 +382,19 @@ The diary issues `listTrainingSuggestions` only when `client-config.goals.enable
 | **G-P4** | `azd env set PLANS_AI_ENABLED true` → `azd provision --no-state` → live check: one generation as a guest (quota 2) and the ledger row (`Feature = 1`). | env |
 
 **Rollback / kill:** `PLANS_AI_ENABLED=false` (generation off, suggestions stay) and/or `PLANS_UI_ENABLED=false` (everything 503, UI hidden), then `azd provision --no-state`. `AI_ENABLED=false` still stops all AI.
+
+#### Gate log
+
+The user merged stompsu/runners-diary#42 and gave an explicit "yes" to G-P1…G-P4 on 2026-11-16.
+
+| When (UTC) | Gate | What happened |
+|---|---|---|
+| 2026-11-16 ~19:5x | — | CI on `main` (8eee943) green, all five jobs incl. e2e-fullstack with the M9 journey. |
+| 2026-11-16 19:58–20:05 | **G-P1** | `prod` approval given for deploy run 43944867985: images, migration job **Succeeded** (`TrainingGoals`, `AiGenerationsFeatureIndex`), smoke test 9/9 (guest creation seeds the demo plan). `client-config`: `goals.enabled=false`, `planGeneration=false`. |
+| 2026-11-16 19:50–19:59 | **G-P3** (run 1) | Live eval, prompt v1: **12/18** runs (2 cases 3/3; ambitious 10k 2/3, collisions 2/3, trail 44k 1/3, capped horizon 1/3); every failure `invalidOutput` on both attempts; no per-attempt diagnostics. No attempt hit the 8,000-token cap. **G-P4 held** by the main agent; the user agreed ("hold and fix first"). |
+| 2026-11-16 20:06–20:08 | **G-P2** | `PLANS_UI_ENABLED=true` (`PLANS_AI_ENABLED=false`), pre-provision hook → `azd provision` → post-provision hook. Live check as a guest (API + browser): Goals nav, "Demo Beskids Trail 25K" (Short-term, demo plan, 20 pending suggestions 2026-12-28…2027-01-30), hatched "Suggested" bubbles, toggle, goal marker; accept → planned run with `goalId`; generate → 503 `feature-unavailable`. |
+| 2026-11-16 20:19–21:48 | G-P3 (runs 2–4) | On `m9-plan-reliability` (§11.8): run 2 with diagnostics **14/18** (first-week `weeklyVolume`, trail pace widths 95–135 s); run 3 with prompt v2, rounded caps, numeric retry notes, 135 s for long/trail **14/18** (retries trading one local slip for another); run 4 with the deterministic repair step **18/18, every run on the first attempt** (≈ $0.35). Total live-eval spend ≈ $1.7. |
+| pending | **G-P4** | After the reliability fixes are merged and deployed: `PLANS_AI_ENABLED=true` → `azd provision --no-state` → one guest generation + ledger row (`Feature = 1`). |
 
 ## 7. Cost
 
