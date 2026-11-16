@@ -162,16 +162,25 @@ describe('Goal detail and plan section', () => {
     )
   })
 
-  it('shows a progress state while generating and cancel leaves nothing changed', async () => {
-    const { user, token } = await detail()
+  it('shows a progress state while generating and cancel shows the limit hint and refreshes', async () => {
+    const { user, token, goal } = await detail()
     getFakeApi().addFault(faults.delay({ method: 'POST', path: /\/plan$/ }, 200))
     await user.click(await generateButton())
     const progress = await screen.findByTestId('plan-progress')
     expect(progress).toHaveTextContent('This can take up to two minutes.')
     expect(within(progress).getByRole('progressbar', { name: 'Generating suggestions…' })).toBeInTheDocument()
+    expect(screen.getByTestId('plan-cancel-hint')).toHaveTextContent(/still counts toward your plan limit/)
+    const requests = recordRequests()
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByTestId('plan-progress')).toBeNull()
-    expect(screen.getAllByText('Cancelled. Nothing was changed.').length).toBeGreaterThan(0)
+    // Goal list/detail and suggestions are refetched, as after a success (a plan may have been committed anyway).
+    await waitFor(() => {
+      const gets = requests.filter((r) => r.method === 'GET').map((r) => r.path)
+      expect(gets).toContain(`/api/goals/${goal.id}`)
+      expect(gets).toContain('/api/goals')
+      expect(gets).toContain('/api/training-suggestions')
+    })
+    expect(screen.getAllByText(/Cancelled\. If the plan was already finished/).length).toBeGreaterThan(0)
     // The answer of the abandoned request is ignored.
     await new Promise((resolve) => setTimeout(resolve, 300))
     expect(screen.queryByRole('region', { name: /^Week \d+, from/ })).toBeNull()

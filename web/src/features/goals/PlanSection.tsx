@@ -40,7 +40,7 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
   const controller = useRef<AbortController | null>(null)
   const attempt = useRef(0)
 
-  // Leaving the page cancels a request that is still in flight (nothing is stored server side until it succeeds).
+  // Leaving the page cancels a request that is still in flight (the server may still finish and store the plan, and a cancelled attempt counts toward the generation limit).
   useEffect(() => () => controller.current?.abort(), [])
 
   const aiAvailable = config.data?.ai?.planGeneration === true
@@ -85,6 +85,8 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
     controller.current?.abort()
     setRunning(false)
     setCancelled(true)
+    // The abort can land after the model succeeded: the server then still commits the plan, so refresh what shows it.
+    void invalidate()
   }
 
   function onGenerate() {
@@ -141,6 +143,9 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
         <div data-testid="plan-progress">
           <progress aria-label={t('plan.running')} className="h-2 w-full accent-primary" />
           <p className="mt-2 text-sm text-muted-foreground">{t('plan.runningHint')}</p>
+          <p className="mt-1 text-xs text-muted-foreground" data-testid="plan-cancel-hint">
+            {t('plan.cancelCountsHint')}
+          </p>
         </div>
       ) : null}
       <output className="sr-only">{running ? t('plan.running') : cancelled ? t('plan.cancelled') : ''}</output>
