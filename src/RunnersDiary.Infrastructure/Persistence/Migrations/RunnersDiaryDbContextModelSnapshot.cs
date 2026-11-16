@@ -38,6 +38,11 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.Property<int>("DurationMs")
                         .HasColumnType("int");
 
+                    b.Property<byte>("Feature")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)0);
+
                     b.Property<int>("InputTokens")
                         .HasColumnType("int");
 
@@ -150,6 +155,210 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("UserId", "PeriodFrom", "PeriodTo", "Compare", "Language"));
 
                     b.ToTable("AiSummaries", (string)null);
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Goals.Goal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<double>("DistanceMeters")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("ElevationGainMeters")
+                        .HasColumnType("float");
+
+                    b.Property<string>("EventName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("PlanGeneratedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<Guid?>("PlanGenerationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("PlanHorizonCapped")
+                        .HasColumnType("bit");
+
+                    b.Property<DateOnly?>("PlanHorizonEnd")
+                        .HasColumnType("date");
+
+                    b.Property<string>("PlanModelDeployment")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("PlanModelId")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PlanNotes")
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<bool>("PlanOutdated")
+                        .HasColumnType("bit");
+
+                    b.Property<short?>("PlanPromptVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid?>("RaceRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte?>("Surface")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly>("TargetDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("TargetDurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Location", "RunnersDiary.Domain.Goals.Goal.Location#RunLocation", b1 =>
+                        {
+                            b1.Property<string>("Name")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)");
+
+                            b1.Property<Point>("Point")
+                                .IsRequired()
+                                .HasColumnType("geography");
+                        });
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("Id", "UserId")
+                        .HasName("AK_Goals_Id_UserId");
+
+                    b.HasIndex("RaceRunId", "UserId")
+                        .HasDatabaseName("IX_Goals_RaceRunId_UserId")
+                        .HasFilter("[RaceRunId] IS NOT NULL");
+
+                    b.HasIndex("UserId", "TargetDate")
+                        .HasDatabaseName("CX_Goals_User_TargetDate");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("UserId", "TargetDate"));
+
+                    b.ToTable("Goals", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Goals_Distance", "[DistanceMeters] BETWEEN 1000 AND 250000");
+
+                            t.HasCheckConstraint("CK_Goals_Elevation", "[ElevationGainMeters] IS NULL OR [ElevationGainMeters] BETWEEN 0 AND 10000");
+
+                            t.HasCheckConstraint("CK_Goals_Status", "[Status] IN (0, 1, 2)");
+
+                            t.HasCheckConstraint("CK_Goals_Target", "([Type] <> 2 OR [TargetDurationSeconds] IS NULL) AND ([Type] <> 1 OR [TargetDurationSeconds] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Goals_Type", "[Type] IN (0, 1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Goals.Planning.TrainingSuggestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<double?>("DistanceMeters")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("GenerationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GoalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Intensity")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte>("Phase")
+                        .HasColumnType("tinyint");
+
+                    b.Property<short>("RunTypeId")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<short?>("TargetPaceMaxSecondsPerKm")
+                        .HasColumnType("smallint");
+
+                    b.Property<short?>("TargetPaceMinSecondsPerKm")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("RunTypeId");
+
+                    b.HasIndex("GoalId", "Date")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TrainingSuggestions_Goal_Date");
+
+                    b.HasIndex("GoalId", "UserId");
+
+                    b.HasIndex("UserId", "Date")
+                        .HasDatabaseName("CX_TrainingSuggestions_User_Date");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("UserId", "Date"));
+
+                    b.ToTable("TrainingSuggestions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_TrainingSuggestions_Pace", "([TargetPaceMinSecondsPerKm] IS NULL AND [TargetPaceMaxSecondsPerKm] IS NULL) OR ([TargetPaceMinSecondsPerKm] IS NOT NULL AND [TargetPaceMaxSecondsPerKm] IS NOT NULL AND [TargetPaceMinSecondsPerKm] <= [TargetPaceMaxSecondsPerKm])");
+
+                            t.HasCheckConstraint("CK_TrainingSuggestions_Status", "[Status] IN (0, 1)");
+                        });
                 });
 
             modelBuilder.Entity("RunnersDiary.Domain.Races.Race", b =>
@@ -688,6 +897,9 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<Guid?>("GoalId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<short?>("MaxHeartRate")
                         .HasColumnType("smallint");
 
@@ -810,6 +1022,10 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RunTypeId")
                         .HasDatabaseName("IX_Runs_RunTypeId");
+
+                    b.HasIndex("GoalId", "UserId")
+                        .HasDatabaseName("IX_Runs_GoalId_UserId")
+                        .HasFilter("[GoalId] IS NOT NULL");
 
                     b.HasIndex("UserId", "CatalogRaceId")
                         .IsUnique()
@@ -1004,6 +1220,37 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RunnersDiary.Domain.Goals.Goal", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RunnersDiary.Domain.Runs.Run", null)
+                        .WithMany()
+                        .HasForeignKey("RaceRunId", "UserId")
+                        .HasPrincipalKey("Id", "UserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+
+            modelBuilder.Entity("RunnersDiary.Domain.Goals.Planning.TrainingSuggestion", b =>
+                {
+                    b.HasOne("RunnersDiary.Domain.RunTypes.RunType", null)
+                        .WithMany()
+                        .HasForeignKey("RunTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RunnersDiary.Domain.Goals.Goal", null)
+                        .WithMany()
+                        .HasForeignKey("GoalId", "UserId")
+                        .HasPrincipalKey("Id", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("RunnersDiary.Domain.Races.Race", b =>
                 {
                     b.HasOne("RunnersDiary.Domain.Races.Race", null)
@@ -1063,6 +1310,12 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("RunnersDiary.Domain.Goals.Goal", null)
+                        .WithMany()
+                        .HasForeignKey("GoalId", "UserId")
+                        .HasPrincipalKey("Id", "UserId")
+                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("RunnersDiary.Domain.Tracks.GpxTrack", b =>

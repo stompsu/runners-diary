@@ -34,6 +34,8 @@ var api = builder.AddProject<Projects.RunnersDiary_Api>("api")
     // Local dev only (M8): proposals on, with the synthetic demo catalogue seeded after the migrations. The Production validator rejects the seed flag.
     .WithEnvironment("Races__Enabled", "true")
     .WithEnvironment("Races__DemoCatalogue__SeedOnStartup", "true")
+    // Local dev only (M9): goals and training suggestions on. Production keeps the appsettings default (off) until the UI gate (PLANS_UI_ENABLED).
+    .WithEnvironment("Goals__Enabled", "true")
     .WithEnvironment("Auth__Guest__SigningKey", guestKey)
     // The peer address is the real client locally; Azure (M7) must set true with the trusted proxy networks and hop count.
     .WithEnvironment("ForwardedHeaders__Enabled", "false")

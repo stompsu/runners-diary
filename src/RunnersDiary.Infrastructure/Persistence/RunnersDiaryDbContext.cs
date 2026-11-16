@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RunnersDiary.Domain.Ai;
+using RunnersDiary.Domain.Goals;
+using RunnersDiary.Domain.Goals.Planning;
 using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.RunTypes;
 using RunnersDiary.Domain.Runs;
@@ -47,6 +49,12 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
 
     public DbSet<RaceProposalState> RaceProposalStates => Set<RaceProposalState>();
 
+    /// <summary>Training goals (M9, ADR 0039): per user, Owner-filtered.</summary>
+    public DbSet<Goal> Goals => Set<Goal>();
+
+    /// <summary>Suggested sessions of a goal's plan (M9, ADR 0041): per user, Owner-filtered; removed with their goal.</summary>
+    public DbSet<TrainingSuggestion> TrainingSuggestions => Set<TrainingSuggestion>();
+
     /// <summary>Read by the query filter on every query (EF parameterizes it per context instance) and by the ownership guard.</summary>
     internal Guid? CurrentUserId => currentUser.UserIdOrNull;
 
@@ -60,6 +68,8 @@ public sealed class RunnersDiaryDbContext(DbContextOptions<RunnersDiaryDbContext
         modelBuilder.Entity<AiSummary>().HasQueryFilter(OwnerFilter, s => s.UserId == CurrentUserId);
         modelBuilder.Entity<RaceInterestProfile>().HasQueryFilter(OwnerFilter, p => p.UserId == CurrentUserId);
         modelBuilder.Entity<RaceProposalState>().HasQueryFilter(OwnerFilter, s => s.UserId == CurrentUserId);
+        modelBuilder.Entity<Goal>().HasQueryFilter(OwnerFilter, g => g.UserId == CurrentUserId);
+        modelBuilder.Entity<TrainingSuggestion>().HasQueryFilter(OwnerFilter, s => s.UserId == CurrentUserId);
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

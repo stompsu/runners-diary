@@ -21,6 +21,8 @@ internal sealed class AiGenerationConfiguration : IEntityTypeConfiguration<AiGen
         b.Property(g => g.Outcome).HasColumnType("tinyint");
         b.Property(g => g.Attempts).HasColumnType("tinyint");
         b.Property(g => g.PromptVersion).HasColumnType("smallint");
+        // Default 0 (Summary): the previous release does not write the column, and its rows must stay valid (expand rule, ADR 0032).
+        b.Property(g => g.Feature).HasColumnType("tinyint").HasDefaultValue(AiFeature.Summary);
         b.Property(g => g.ModelDeployment).HasMaxLength(64).IsUnicode(false).IsRequired();
     }
 }

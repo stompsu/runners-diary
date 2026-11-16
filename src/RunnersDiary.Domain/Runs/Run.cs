@@ -67,6 +67,12 @@ public sealed class Run : IUserOwned
     /// </summary>
     public Guid? CatalogRaceId { get; private set; }
 
+    /// <summary>
+    /// The goal whose suggestion created this run (ADR 0041 §3): the "from plan" marker. Set only by <see cref="LinkToGoal"/> on creation, and
+    /// <see cref="Update"/> never touches it. The application clears it when the goal is deleted (composite NO ACTION FK, ADR 0039 §3).
+    /// </summary>
+    public Guid? GoalId { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
@@ -106,6 +112,22 @@ public sealed class Run : IUserOwned
         }
 
         CatalogRaceId = catalogRaceId;
+    }
+
+    /// <summary>Links a freshly created run to the goal whose suggestion it was accepted from. Call it once, right after <see cref="Create"/> and before the first save.</summary>
+    public void LinkToGoal(Guid goalId)
+    {
+        if (goalId == Guid.Empty)
+        {
+            throw new DomainRuleException("A goal id is required.");
+        }
+
+        if (GoalId is not null)
+        {
+            throw new DomainRuleException("The run is already linked to a goal.");
+        }
+
+        GoalId = goalId;
     }
 
     public void Update(RunValues values, DateTimeOffset now)

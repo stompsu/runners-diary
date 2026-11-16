@@ -34,9 +34,12 @@ public sealed class AiGeneration
 
     public string ModelDeployment { get; private set; } = string.Empty;
 
+    /// <summary>Which generation feature wrote the row (M9, ADR 0040 §6). The column defaults to <see cref="AiFeature.Summary"/>, so rows written by the previous release stay valid.</summary>
+    public AiFeature Feature { get; private set; }
+
     public static AiGeneration Create(
         Guid userId, bool isGuest, DateTime createdAtUtc, AiGenerationOutcome outcome, byte attempts, int inputTokens, int outputTokens,
-        int durationMs, short promptVersion, string modelDeployment) =>
+        int durationMs, short promptVersion, string modelDeployment, AiFeature feature = AiFeature.Summary) =>
         new()
         {
             Id = Guid.CreateVersion7(),
@@ -50,5 +53,6 @@ public sealed class AiGeneration
             DurationMs = durationMs,
             PromptVersion = promptVersion,
             ModelDeployment = modelDeployment,
+            Feature = feature,
         };
 }
