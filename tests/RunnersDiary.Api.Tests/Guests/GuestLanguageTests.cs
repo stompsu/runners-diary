@@ -113,10 +113,9 @@ public sealed class GuestLanguageTests(ContainersApiFactory factory)
     }
 
     [Fact]
-    public async Task The_guest_endpoint_seeds_a_polish_guest_without_failing_while_the_map_is_missing()
+    public async Task The_guest_endpoint_seeds_a_polish_guest_with_the_committed_polish_demo_texts()
     {
         factory.SkipIfDockerUnavailable();
-        // Until step B4 there is no pl.json: the diary is seeded in English (warning logged), never a 5xx.
         using var anonymous = factory.CreateClient();
         var response = await anonymous.PostAsync(Endpoint("?lang=pl"), content: null, Ct);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -127,5 +126,16 @@ public sealed class GuestLanguageTests(ContainersApiFactory factory)
         var today = UserToday.Get(TimeProvider.System, "Europe/Warsaw");
         var month = await (await client.GetAsync(new Uri($"/api/calendar/months/{today.Year}/{today.Month}", UriKind.Relative), Ct)).ReadAsync();
         Assert.NotEmpty(month.GetProperty("runs").EnumerateArray());
+
+        // End to end with the committed pl.json: no demo note is left in English.
+        var id = me.GetProperty("id").GetGuid();
+        var english = await factory.WithDbAsync(db => db.Runs.IgnoreQueryFilters([RunnersDiaryDbContext.OwnerFilter])
+            .Where(r => r.UserId == id && r.Notes != null).Select(r => r.Notes!).ToListAsync(Ct));
+        Assert.NotEmpty(english);
+        Assert.DoesNotContain(english, n => n is "Rest day." or "Travel day." or "Shake-out.");
+        Assert.Contains(english, n => n == "Dzień odpoczynku.");
+        var goal = await factory.WithDbAsync(db => db.Goals.IgnoreQueryFilters([RunnersDiaryDbContext.OwnerFilter]).SingleAsync(g => g.UserId == id, Ct));
+        Assert.Equal("pl", goal.PlanLanguage);
+        Assert.Equal("Demo: trail w Beskidach 25K", goal.Title);
     }
 }

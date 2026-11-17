@@ -34,6 +34,8 @@
     <Content Include="..\..\seed\demo\gpx\*.gpx" Link="seed\demo\gpx\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- The guest demo goal and example plan (M9, ADR 0041 §5), read by the demo seeding (step 6). -->
     <Content Include="..\..\seed\demo\training-plan.json" Link="seed\demo\training-plan.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Demo text translations (M10, ADR 0042 §7): seed/demo/i18n/<lang>.json. -->
+    <Content Include="..\..\seed\demo\i18n\*.json" Link="seed\demo\i18n\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- Synthetic demo race catalogue (M8, ADR 0036): copied as seed/races/demo-races.json; only read when Races:DemoCatalogue:SeedOnStartup=true (Development/Testing). README stays out. -->
     <Content Include="..\..\seed\races\demo-races.json" Link="seed\races\demo-races.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

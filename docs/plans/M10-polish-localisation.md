@@ -183,8 +183,8 @@ export const AI_LANGUAGES: readonly Language[]                     // ['en'] unt
 **Part B – translations (Claude drafts with the glossary; the user reviews each commit before the next one)**
 4. [x] **B1 frontend-react (user approved 2026-11-17):** `common`, `auth`, `errors`, `runTypes`, `calendar`, `runs` (eager; ~360 lines) + plural audit (every `count` string has a plural group; no number-in-sentence without one).
 5. [x] **B2 frontend-react (user approved 2026-11-17):** `maps`, `tracks`, `insights` (~540 lines).
-6. [ ] **B3 frontend-react:** `races`, `goals` (~520 lines).
-7. [ ] **B4 backend-dotnet:** `seed/demo/i18n/pl.json` (demo notes, goal, plan texts), map completeness test strict.
+6. [x] **B3 frontend-react (user approved 2026-11-17):** `races`, `goals` (~520 lines).
+7. [x] **B4 backend-dotnet:** `seed/demo/i18n/pl.json` (demo notes, goal, plan texts), map completeness test strict.
 8. [ ] **B5 frontend-react + qa-tester:** release `pl` (`RELEASED_LANGUAGES`), layout fixes found at 360 px, Playwright `desktop-pl`/`phone-pl`, full-stack Polish guest journey.
 
 **Part C – AI in Polish (ai-insights)**
@@ -279,6 +279,10 @@ Done: `SupportedLanguages`, migration `Localisation` (both nullable `varchar(8)`
 6. **Fallback and reporting:** a missing map file or text keeps English; seeding logs one warning per guest ("N demo texts have no translation") and never fails. `DemoTrainingPlanStartupCheck` validates the translated plan for every supported language, fails the host on a malformed `i18n/<lang>.json`, logs incomplete maps, and fails the host for incomplete maps only when the new option `Guests:RequireCompleteDemoTranslations` is true (default false). **Step B4 must turn it on** (set the default to true) in the commit that adds `seed/demo/i18n/pl.json`.
 7. **Packaging (B4):** `src/RunnersDiary.Api/RunnersDiary.Api.csproj` was not touched (it has a local `UserSecretsId` change). Step B4 must add `<Content Include="..\..\seed\demo\i18n\*.json" Link="seed\demo\i18n\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />` so the map is copied next to the binaries (and the API image).
 8. **Test fixture:** the Polish seeding test uses a generated map (`"PL " + text`) in a temp directory; no Polish translations are committed.
+
+### Step 7 / B4 (backend-dotnet), implemented 2026-11-17
+
+Done: `seed/demo/i18n/pl.json` (48 required texts: notes, gear, weather, rating comments, goal title, plan notes, session descriptions; plus the optional title "Labedy Half Marathon"; the other race titles are proper names and stay English). `Guests:RequireCompleteDemoTranslations` now defaults to true (`GuestOptions`), so an incomplete map fails the host at startup. The csproj gets the `seed\demo\i18n\*.json` Content line (the Dockerfile already copies all of `seed/demo`, no change). Tests: `Guests/DemoPolishMapTests` (committed map is complete, every text translated, numbers equal to the English source) and the guest endpoint test in `GuestLanguageTests` now checks the committed Polish texts end to end. Deviations: none; no test relied on the old default (false).
 
 ### Step 9 / C1 (ai-insights), implemented 2026-11-17
 
