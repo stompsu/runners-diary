@@ -57,6 +57,21 @@ public sealed class GuestLanguageTests(ContainersApiFactory factory)
     }
 
     [Fact]
+    public async Task An_unsupported_lang_is_never_echoed()
+    {
+        factory.SkipIfDockerUnavailable();
+        using var anonymous = factory.CreateClient();
+        const string marker = "zz<x>\"'echo";
+
+        var response = await anonymous.PostAsync(Endpoint("?lang=" + Uri.EscapeDataString(marker)), content: null, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync(Ct);
+        Assert.DoesNotContain("echo", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("zz", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_polish_guest_is_seeded_with_the_mapped_texts_and_unmapped_ones_stay_english()
     {
         factory.SkipIfDockerUnavailable();

@@ -28,7 +28,8 @@ public static class NarrativeLanguages
     /// The Polish <c>forbiddenTopic</c> entries (ADR 0043 §3, as implemented in M10 C1; mirrored by the v3 manifests' <c>denyList.pl</c>).
     /// ASCII because matching folds both sides ("ból", "bol" and "bolu" all match). Exact forms where a stem collides with an ordinary or
     /// running word: <c>bol*</c> would match "bolid" and "Bolesławiec", <c>zawal*</c> "zawalony tydzień", <c>zapaleni*</c>
-    /// "zapaleni biegacze", <c>zlaman*</c> "złamanie {x}" (breaking a time barrier); see the M10 plan §10.
+    /// "zapaleni biegacze", <c>zlaman*</c> "złamanie {x}" (breaking a time barrier); see the M10 plan §10. <c>zapaln*</c> (inflammatory) does not
+    /// reach "zapał"/"zapalony" (enthusiasm); it does block "zapalniczka", which running prose never needs.
     /// </summary>
     public static IReadOnlyList<string> DefaultPolishDenyList { get; } =
     [
@@ -41,8 +42,9 @@ public static class NarrativeLanguages
         "bolesn*", "obolal*",
         "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*",
         "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach",
-        "zlaman* zmeczeniow*", "zlaman* kosc*",
+        "zlaman* zmeczeniow*", "zlaman* kosc*", "zlaman* przeciazeniow*", "zlaman* nog*",
         "peknieci*", "pekniet*",
+        "naderw*", "zapaln*", "rehabilitac*", "ortoped*", "szpital*", "dolegliwos*",
         "ryzyko", "ryzyka", "ryzyku", "ryzykiem",
     ];
 

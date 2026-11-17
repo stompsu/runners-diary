@@ -16,7 +16,9 @@ namespace RunnersDiary.Ai.Tests.Plans;
 /// </code>
 /// Pass: valid within two attempts and the case's plan checks hold. Prints per run the attempts, input/output tokens (vs the 8,000 cap) and the
 /// cost at gpt-5.4-mini Global Standard prices ($0.75 / $4.50 per 1M; failed attempts included), and per answered attempt the finish reason
-/// (<c>length</c> = cut at the cap), kept/dropped sessions and the violated rules with counts and locations. <c>RD_AI_LIVE_CASES</c> and
+/// (<c>length</c> = cut at the cap), kept/dropped sessions and the violated rules with counts and locations; after each case, the largest
+/// single-attempt output per language so far vs <c>Ai:Plan:MaxOutputTokens</c> (<see cref="PlanOutputTokenStats"/>; also a test attachment
+/// and, with <c>RD_AI_LIVE_DUMP_DIR</c>, <c>max-output-tokens.txt</c>), to decide whether Polish needs a higher cap. <c>RD_AI_LIVE_CASES</c> and
 /// <c>RD_AI_LIVE_RUNS</c> work as for the summary evals. Every case runs in <c>en</c> and <c>pl</c> (M10 gate G-L1, ADR 0043 §5): the plan
 /// fact sheet's <c>language</c> is set, and a Polish plan whose notes and descriptions read as English fails the run
 /// (<see cref="LanguageCheck"/>); <c>RD_AI_LIVE_LANGUAGES=pl</c> runs only the listed languages.
@@ -36,6 +38,9 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
     private const int MaxPrintedLocations = 12;
 
     private static readonly string Stamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+
+    /// <summary>Max output tokens per language over every case run so far in this process (M10 review L5).</summary>
+    private static readonly PlanOutputTokenStats OutputTokens = new();
 
     private static bool Enabled => Environment.GetEnvironmentVariable("RD_AI_LIVE_EVAL") == "1";
 
@@ -108,6 +113,7 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
             var cost = Cost(result.InputTokens, result.OutputTokens);
             totalCost += cost;
             var retried = result.Status == GenerationStatus.Succeeded && result.Attempts > 1;
+            OutputTokens.Record(language, $"{name} #{run + 1}", result.AttemptDetails ?? []);
             output.WriteLine(string.Create(CultureInfo.InvariantCulture,
                 $"{name} ({language}) #{run + 1}: {result.Status} {result.Failure} attempts {result.Attempts}{(retried ? " (rescued by the retry)" : "")}, {result.InputTokens} in / {result.OutputTokens} out tokens (cap {options.Plan.MaxOutputTokens}), {seconds:0} s, ${cost:0.0000}"));
             if (result.Status != GenerationStatus.Succeeded || result.Attempts > 1 || (result.AttemptDetails ?? []).Any(a => a.Repairs.Count > 0))
@@ -137,7 +143,29 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
 
         output.WriteLine(string.Create(CultureInfo.InvariantCulture,
             $"{name} ({language}): {passed}/{Runs} passed, {rescued} rescued by the retry, total ${totalCost:0.0000} (failed attempts included)"));
+        await WriteOutputTokenReport(options.Plan.MaxOutputTokens);
         Assert.Equal(Runs, passed);
+    }
+
+    /// <summary>
+    /// Prints the running per-language max output tokens vs <c>Ai:Plan:MaxOutputTokens</c> (the last case's lines are the totals of the
+    /// run), attaches them to the test result and, with <c>RD_AI_LIVE_DUMP_DIR</c>, writes <c>&lt;dir&gt;/&lt;timestamp&gt;/max-output-tokens.txt</c>.
+    /// </summary>
+    private async Task WriteOutputTokenReport(int cap)
+    {
+        var report = OutputTokens.Report(cap);
+        foreach (var line in report.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            output.WriteLine("so far, " + line);
+        }
+
+        TestContext.Current.AddAttachment("max-output-tokens", report);
+        if (DumpRoot is { } root)
+        {
+            var dir = Path.Combine(root, Stamp);
+            Directory.CreateDirectory(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "max-output-tokens.txt"), report, CancellationToken.None);
+        }
     }
 
     private static double Cost(int inputTokens, int outputTokens) => (inputTokens * InputPerMillion + outputTokens * OutputPerMillion) / 1_000_000;

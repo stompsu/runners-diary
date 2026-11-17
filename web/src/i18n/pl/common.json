@@ -19,6 +19,7 @@
   },
   "close": "Zamknij",
   "language": {
+    "failed": "Nie udało się zmienić języka. Spróbuj ponownie.",
     "label": "Język",
     "names": {
       "en": "English",

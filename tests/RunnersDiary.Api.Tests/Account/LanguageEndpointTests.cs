@@ -57,6 +57,21 @@ public sealed class LanguageEndpointTests(ContainersApiFactory factory)
     }
 
     [Fact]
+    public async Task An_unsupported_language_is_never_echoed()
+    {
+        factory.SkipIfDockerUnavailable();
+        var user = factory.EntraUser("lang-echo");
+        var marker = "zz<x>\"'echo" + new string('q', 200);
+
+        var response = await user.Client.PutAsJsonAsync(Language, new { language = marker }, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync(Ct);
+        Assert.DoesNotContain("echo", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("qqqq", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_missing_or_null_language_is_a_400()
     {
         factory.SkipIfDockerUnavailable();

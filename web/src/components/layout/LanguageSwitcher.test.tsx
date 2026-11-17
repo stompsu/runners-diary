@@ -1,8 +1,10 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { describe, expect, it, vi } from 'vitest'
 import { startGuestSession } from '@/auth/session'
 import i18n from '@/i18n'
+import * as language from '@/i18n/language'
 import { LANGUAGE_STORAGE_KEY, setLanguage } from '@/i18n/language'
 import { getFakeApi } from '@/test/fake'
 import { renderRoute } from '@/test/render'
@@ -138,5 +140,58 @@ describe('language switcher and profile sync', () => {
 
     expect(await screen.findByRole('link', { name: 'Dziennik' })).toBeInTheDocument()
     expect(i18n.language).toBe('pl')
+  })
+
+  it('a switch made while the first /api/me is in flight is not undone by the older profile value', async () => {
+    const user = userEvent.setup()
+    const token = getFakeApi().issueToken('Guest', { language: 'pl' })
+    startGuestSession({ accessToken: token, expiresAt: Date.now() + 3_600_000, userId: 'slow-guest' })
+    const fallback = vi.mocked(fetch).getMockImplementation()!
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let held = false
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!held && request.method === 'GET' && new URL(request.url).pathname === '/api/me') {
+        held = true
+        const stale = await fallback(input, init) // the profile as it was before the switch (pl)
+        await gate
+        return stale
+      }
+      return fallback(input, init)
+    })
+    renderRoute('/diary/2026/11', { session: 'none' })
+
+    // The profile says pl; the user switches to en while the first /api/me is held back.
+    await language.setLanguage('pl')
+    await user.selectOptions(await switcher('Język'), 'en')
+    await waitFor(() => expect(i18n.language).toBe('en'))
+    release()
+
+    expect(await screen.findByRole('link', { name: 'Diary' })).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(i18n.language).toBe('en')
+    expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en')
+  })
+
+  it('shows a toast and keeps the language when the Polish bundle fails to load', async () => {
+    const user = userEvent.setup()
+    const error = vi.spyOn(toast, 'error').mockReturnValue('id')
+    const rejection = vi.fn<(reason: unknown) => void>()
+    window.addEventListener('unhandledrejection', rejection)
+    renderRoute('/diary/2026/11')
+    const select = await switcher()
+    vi.spyOn(i18n, 'hasResourceBundle').mockReturnValue(false)
+    vi.spyOn(i18n, 'changeLanguage').mockRejectedValueOnce(new Error('chunk failed'))
+
+    await user.selectOptions(select, 'pl')
+
+    await waitFor(() => expect(error).toHaveBeenCalledWith('Could not switch the language. Try again.'))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    window.removeEventListener('unhandledrejection', rejection)
+    expect(rejection).not.toHaveBeenCalled()
+    expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBeNull()
+    expect(language.hasExplicitLanguageChoice()).toBe(false)
+    vi.restoreAllMocks()
   })
 })

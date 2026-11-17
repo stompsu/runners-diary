@@ -46,7 +46,7 @@ public static class CreateGuestSession
         CancellationToken cancellationToken,
         [FromQuery] string? lang = null)
     {
-        // Allowlisted before any limiter budget or database work (ADR 0042 §3); the value is never echoed.
+        // Allowlisted after the per-IP guest-create policy but before the global limiter and any database work (ADR 0042 §3); the value is never echoed.
         if (lang is not null && !SupportedLanguages.IsSupported(lang))
         {
             return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["lang"] = [$"Must be one of: {string.Join(", ", SupportedLanguages.All)}."] });

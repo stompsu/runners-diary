@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { fetchClient } from '@/api/client'
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/sonner'
 import { sanitizeReturnTo } from '@/auth/returnTo'
 import { isSignOutReason, signInWithEntra, startGuestSession, useEntraReady, useSession } from '@/auth/session'
 import { useClientConfig } from '@/auth/useClientConfig'
@@ -127,6 +128,8 @@ export function SignInPage() {
           )}
         </div>
       )}
+      {/* For the language switcher's failure toast; the app shell has its own. */}
+      <Toaster position="bottom-center" />
     </main>
   )
 }

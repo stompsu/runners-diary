@@ -28,7 +28,7 @@ export function LanguageSwitcher() {
           value={toLanguage(i18n.language) ?? 'en'}
           onChange={(event) => {
             const language = toLanguage(event.target.value)
-            if (language) void changeLanguage(language)
+            if (language) changeLanguage(language).catch(() => undefined)
           }}
           className="min-h-9 w-auto max-sm:min-h-11 max-sm:w-[4.75rem] max-sm:text-transparent max-sm:forced-colors:w-auto max-sm:forced-colors:text-[CanvasText]"
         >

@@ -16,11 +16,11 @@
     },
     "3": {
       "file": "v3.md",
-      "sha256": "72d6f16d65354b0676eb2cb87e6dbcbc5c7c39ceff52a12880411bec563575a5",
+      "sha256": "b0821fd35e1229bf3ce7a0b6615ff6df606453193fc6220177e998b6dd79b63a",
       "estimatedLoadThreshold": 0.25,
       "denyList": {
         "en": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"],
-        "pl": ["kontuzj*", "uraz*", "przetrenow*", "diagnoz*", "medyczn*", "chorob*", "zachorow*", "chory", "chora", "chore", "chorego", "chorej", "chorzy", "sercow*", "zawal", "zawalu", "zawalem", "zawaly", "zawalow", "zawalom", "zawalami", "zawalach", "lekarz*", "lekark*", "lekarsk*", "fizjoterap*", "bol", "bolu", "bolem", "bole", "bolow", "bolom", "bolami", "bolach", "boli", "bola", "bolal", "bolala", "bolalo", "bolaly", "bolec", "bolesn*", "obolal*", "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*", "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach", "zlaman* zmeczeniow*", "zlaman* kosc*", "peknieci*", "pekniet*", "ryzyko", "ryzyka", "ryzyku", "ryzykiem"]
+        "pl": ["kontuzj*", "uraz*", "przetrenow*", "diagnoz*", "medyczn*", "chorob*", "zachorow*", "chory", "chora", "chore", "chorego", "chorej", "chorzy", "sercow*", "zawal", "zawalu", "zawalem", "zawaly", "zawalow", "zawalom", "zawalami", "zawalach", "lekarz*", "lekark*", "lekarsk*", "fizjoterap*", "bol", "bolu", "bolem", "bole", "bolow", "bolom", "bolami", "bolach", "boli", "bola", "bolal", "bolala", "bolalo", "bolaly", "bolec", "bolesn*", "obolal*", "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*", "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach", "zlaman* zmeczeniow*", "zlaman* kosc*", "zlaman* przeciazeniow*", "zlaman* nog*", "peknieci*", "pekniet*", "naderw*", "zapaln*", "rehabilitac*", "ortoped*", "szpital*", "dolegliwos*", "ryzyko", "ryzyka", "ryzyku", "ryzykiem"]
       }
     }
   },

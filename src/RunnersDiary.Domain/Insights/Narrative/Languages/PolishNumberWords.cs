@@ -10,22 +10,29 @@ namespace RunnersDiary.Domain.Insights.Narrative.Languages;
 /// <para>Covered: cardinals from two upward in all cases (incl. the <c>-naście</c>, <c>-dzieści</c>/<c>-dziesiąt</c> and hundreds
 /// families, "tysiąc", "milion", "miliard", "tuzin"); the vague counts that English expresses with banned words ("kilkanaście",
 /// "kilkadziesiąt", "kilkaset" ~ "dozens"/"hundreds"); "półtora"; collective numerals ("dwoje", "czworga"); number nouns ("dwójka",
-/// "setka", "dziesiątka", "dycha"); ordinals "pierwszy" to "dwudziesty", the tens ordinals, "setny", "tysięczny" in every gender and case;
-/// the multiplicative adverbs "podwójnie", "potrójnie", "poczwórnie"; and number compounds: a numeral combining form followed by a unit or
-/// "-krotny" stem ("dwukrotnie", "trzytygodniowy", "dziesięciokilometrowy"; <see cref="IsNumberCompound"/>).</para>
+/// "setka", "dziesiątka", "jedenastka", "dwudziestka", "dycha"); ordinals "pierwszy" to "dwudziesty", the tens ordinals, "setny",
+/// "dwusetny" and the other hundreds, "tysięczny", "milionowy" in every gender and case; the multiplicative adverbs "podwójnie",
+/// "potrójnie", "poczwórnie"; number compounds: a numeral combining form followed by a unit or "-krotny" stem ("dwukrotnie",
+/// "trzytygodniowy", "dziesięciokilometrowy"; <see cref="IsNumberCompound"/>); and every combining form on its own, because folding splits
+/// hyphenated compounds ("pięcio-kilometrowy" → "piecio kilometrowy").</para>
 /// <para>Allowed, like "one" and "half" in English: "jeden"/"jedna"/"jedno", "pół", "połowa", "półmaraton", "kilka", "oba", "raz".
 /// Deliberately not listed: "piątki", "piątek", "piątkom", "piątkami", "piątkach" (also the plural of "piątek", Friday) and "dysze".</para>
 /// <para>The list cannot be exhaustive (rare forms, typos); ADR 0043 Consequences.</para>
 /// </summary>
 internal static class PolishNumberWords
 {
-    /// <summary>Numeral combining forms of compounds ("dwu-", "pięcio-", "stu-"); "jedno-", "pół-" and "kilku-" are not numbers we ban.</summary>
+    /// <summary>
+    /// Numeral combining forms of compounds ("dwu-", "pięcio-", "stu-"); "jedno-", "pół-" and "kilku-" are not numbers we ban. Every form is
+    /// also a number word on its own (<see cref="Build"/>): folding turns the hyphen of "pięcio-kilometrowy" into a space, so the form stands
+    /// alone.
+    /// </summary>
     private static readonly string[] CombiningForms = Fold(
     [
         "dwu", "trzy", "cztero", "pięcio", "sześcio", "siedmio", "ośmio", "dziewięcio", "dziesięcio",
         "jedenasto", "dwunasto", "trzynasto", "czternasto", "piętnasto", "szesnasto", "siedemnasto", "osiemnasto", "dziewiętnasto",
         "dwudziesto", "trzydziesto", "czterdziesto", "pięćdziesięcio", "sześćdziesięcio", "siedemdziesięcio", "osiemdziesięcio",
-        "dziewięćdziesięcio", "stu", "dwustu", "trzystu", "czterystu", "pięćset", "pięciuset", "tysiąc", "półtora",
+        "dziewięćdziesięcio", "stu", "dwustu", "trzystu", "czterystu", "pięćset", "pięciuset", "tysiąc", "półtora", "kilkunasto",
+        "kilkudziesięcio",
     ]);
 
     /// <summary>
@@ -96,6 +103,10 @@ internal static class PolishNumberWords
             // 5 as a noun: only the forms that are not also the plural of "piątek" (Friday).
             "piątka", "piątkę", "piątką", "piątce",
 
+            // Combining forms written on their own or before a hyphen ("pięcio-kilometrowy", "dwu- lub trzytygodniowy"); none is a Polish
+            // word by itself. "jedno" (one) and "kilku" (of a few) are allowed words and stay out.
+            "trój", "czwór",
+
             // "dycha" (a 10K, ten); "dysze" (also "nozzles") left out.
             "dycha", "dychy", "dychę", "dychą", "dych", "dychom", "dychami", "dychach",
         };
@@ -128,6 +139,13 @@ internal static class PolishNumberWords
         {
             ("dwój", "dwójek"), ("trój", "trójek"), ("czwór", "czwórek"), ("szóst", "szóstek"), ("siódem", "siódemek"), ("ósem", "ósemek"),
             ("dziewiąt", "dziewiątek"), ("dziesiąt", "dziesiątek"), ("set", "setek"),
+
+            // 11-19 and the tens: "jedenastka", "osiemnastka", "dwudziestka", "pięćdziesiątka".
+            ("jedenast", "jedenastek"), ("dwunast", "dwunastek"), ("trzynast", "trzynastek"), ("czternast", "czternastek"),
+            ("piętnast", "piętnastek"), ("szesnast", "szesnastek"), ("siedemnast", "siedemnastek"), ("osiemnast", "osiemnastek"),
+            ("dziewiętnast", "dziewiętnastek"), ("dwudziest", "dwudziestek"), ("trzydziest", "trzydziestek"), ("czterdziest", "czterdziestek"),
+            ("pięćdziesiąt", "pięćdziesiątek"), ("sześćdziesiąt", "sześćdziesiątek"), ("siedemdziesiąt", "siedemdziesiątek"),
+            ("osiemdziesiąt", "osiemdziesiątek"), ("dziewięćdziesiąt", "dziewięćdziesiątek"),
         })
         {
             words.AddRange([stem + "ka", stem + "ki", stem + "ce", stem + "kę", stem + "ką", stem + "ko", stem + "kom", stem + "kami", stem + "kach", genitivePlural]);
@@ -152,6 +170,10 @@ internal static class PolishNumberWords
             "jedenast", "dwunast", "trzynast", "czternast", "piętnast", "szesnast", "siedemnast", "osiemnast", "dziewiętnast",
             "dwudziest", "trzydziest", "czterdziest", "pięćdziesiąt", "sześćdziesiąt", "siedemdziesiąt", "osiemdziesiąt", "dziewięćdziesiąt",
             "setn", "tysięczn",
+
+            // Hundreds and thousands ordinals: "dwusetny", "trzechsetny", "pięćsetny", "dwutysięczny", "milionowy".
+            "dwusetn", "trzechsetn", "czterechsetn", "pięćsetn", "sześćsetn", "siedemsetn", "osiemsetn", "dziewięćsetn",
+            "dwutysięczn", "trzytysięczn", "milionow",
         })
         {
             words.AddRange(
@@ -160,6 +182,8 @@ internal static class PolishNumberWords
                 MasculinePersonalPlural(stem),
             ]);
         }
+
+        words.AddRange(CombiningForms);
 
         return Fold(words).ToList();
     }

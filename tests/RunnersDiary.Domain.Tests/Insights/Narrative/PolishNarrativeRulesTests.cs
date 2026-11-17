@@ -70,6 +70,34 @@ public sealed class PolishNarrativeRulesTests
     [InlineData("Łącznie: {totals.distance}, objętość wzrosła podwójnie.")]
     [InlineData("Łącznie: {totals.distance} w trzytygodniowym bloku.")]
     [InlineData("Łącznie: {totals.distance}, dziesięciokilometrowy bieg.")]
+    [InlineData("Łącznie: {totals.distance}, pięcio-kilometrowy bieg.")] // hyphenated compounds (review L1): folding splits them
+    [InlineData("Łącznie: {totals.distance}, piecio-kilometrowy bieg.")]
+    [InlineData("Łącznie: {totals.distance}, dziesięcio-kilometrowy bieg.")]
+    [InlineData("Łącznie: {totals.distance}, cztero-tygodniowy blok.")]
+    [InlineData("Łącznie: {totals.distance}, sześcio-, siedmio- lub ośmiodniowy cykl.")]
+    [InlineData("Łącznie: {totals.distance}, dziewięcio-tygodniowy plan.")]
+    [InlineData("Łącznie: {totals.distance}, jedenasto-kilometrowa pętla.")]
+    [InlineData("Łącznie: {totals.distance}, dwunasto-tygodniowy plan.")]
+    [InlineData("Łącznie: {totals.distance}, dwudziesto-minutowe tempo.")]
+    [InlineData("Łącznie: {totals.distance}, trój-bój.")]
+    [InlineData("Łącznie: {totals.distance}, kilkunasto-minutowe rozbieganie.")]
+    [InlineData("Łącznie: {totals.distance}, kilkunastodniowy blok.")]
+    [InlineData("Łącznie: {totals.distance}, kilkudziesięcio-minutowe wybieganie.")]
+    [InlineData("Łącznie: {totals.distance}, kilkudziesieciominutowe wybieganie.")]
+    [InlineData("Łącznie: {totals.distance}, sto-metrowe przebieżki.")]
+    [InlineData("Łącznie: {totals.distance}, cel to jedenastka.")] // number nouns 11-19 and tens
+    [InlineData("Łącznie: {totals.distance}, cel to dwunastka.")]
+    [InlineData("Łącznie: {totals.distance}, po osiemnastce.")]
+    [InlineData("Łącznie: {totals.distance}, po trzydziestce tempo spada.")]
+    [InlineData("Łącznie: {totals.distance}, pięćdziesiątka w górach.")]
+    [InlineData("Łącznie: {totals.distance}, piecdziesiatka w gorach.")]
+    [InlineData("Łącznie: {totals.distance}, dwusetny trening.")] // hundreds, thousands, millions ordinals
+    [InlineData("Łącznie: {totals.distance}, dwusetnego dnia.")]
+    [InlineData("Łącznie: {totals.distance}, pięćsetny kilometr.")]
+    [InlineData("Łącznie: {totals.distance}, piecsetny kilometr.")]
+    [InlineData("Łącznie: {totals.distance}, trzechsetna sesja.")]
+    [InlineData("Łącznie: {totals.distance}, dwutysięczny kilometr.")]
+    [InlineData("Łącznie: {totals.distance}, milionowy krok.")]
     [InlineData("Łącznie: {totals.distance}, DWA długie biegi.")] // upper case
     [InlineData("Łącznie: {totals.distance}, two long runs.")] // English number word inside a Polish draft
     [InlineData("Łącznie: {totals.distance} w 3 tygodnie.")] // digits stay banned
@@ -105,6 +133,9 @@ public sealed class PolishNarrativeRulesTests
     [InlineData("Stoper pokazał: {totals.distance}.")]
     [InlineData("Dwutlenek węgla w górach, łącznie: {totals.distance}.")]
     [InlineData("Długie wybieganie: {totals.distance}.")]
+    [InlineData("Jednodniowy obóz i kilkudniowy wyjazd: {totals.distance}.")]
+    [InlineData("Z zapałem, łącznie: {totals.distance}.")]
+    [InlineData("Na stadionie, łącznie: {totals.distance}.")]
     public void Everyday_Polish_words_are_not_number_words(string item)
     {
         var codes = Codes(item, Pl);
@@ -132,7 +163,8 @@ public sealed class PolishNarrativeRulesTests
         [
             "ten", "jeden", "jedna", "jedno", "jednego", "pol", "polowa", "polmaraton", "kilka", "oba", "obie", "raz", "piatek", "piatki",
             "piatkach", "piatkami", "piatkom", "piatku", "czwartek", "czwartki", "dwor", "trzymaj", "stopa", "stoper", "pieta", "set", "dysze",
-            "zero", "tydzien", "trening", "tempo",
+            "zero", "tydzien", "trening", "tempo", "jednodniowy", "kilkudniowy", "kilku", "stopien", "osmoza", "czworaki", "trojkat",
+            "stadion", "dwor", "milionerzy",
         ];
         Assert.All(allowed, w => Assert.False(PolishNumberWords.IsNumberWord(w), w));
         Assert.All(PolishNumberWords.Words, w => Assert.Equal(TextFolding.Fold(w), w));
@@ -162,6 +194,25 @@ public sealed class PolishNarrativeRulesTests
     [InlineData("Łącznie: {totals.distance}; nadwyrężenie łydki.")]
     [InlineData("Łącznie: {totals.distance}; naciągnięty mięsień.")]
     [InlineData("Łącznie: {totals.distance}; to sprawa medyczna.")]
+    [InlineData("Łącznie: {totals.distance}; możliwe złamanie przeciążeniowe.")] // review M1, with and without diacritics
+    [InlineData("Łącznie: {totals.distance}; mozliwe zlamanie przeciazeniowe.")]
+    [InlineData("Łącznie: {totals.distance}; po złamaniu nogi wracaj powoli.")]
+    [InlineData("Łącznie: {totals.distance}; po zlamaniu nogi wracaj powoli.")]
+    [InlineData("Łącznie: {totals.distance}; naderwanie łydki.")]
+    [InlineData("Łącznie: {totals.distance}; naderwany mięsień.")]
+    [InlineData("Łącznie: {totals.distance}; naderwanie lydki.")]
+    [InlineData("Łącznie: {totals.distance}; stan zapalny kolana.")]
+    [InlineData("Łącznie: {totals.distance}; proces zapalny stawu.")]
+    [InlineData("Łącznie: {totals.distance}; zmiany zapalne.")]
+    [InlineData("Łącznie: {totals.distance}; czas na rehabilitację.")]
+    [InlineData("Łącznie: {totals.distance}; czas na rehabilitacje.")]
+    [InlineData("Łącznie: {totals.distance}; wizyta u ortopedy.")]
+    [InlineData("Łącznie: {totals.distance}; buty ortopedyczne.")]
+    [InlineData("Łącznie: {totals.distance}; po pobycie w szpitalu.")]
+    [InlineData("Łącznie: {totals.distance}; leczenie szpitalne.")]
+    [InlineData("Łącznie: {totals.distance}; dolegliwości kolana.")]
+    [InlineData("Łącznie: {totals.distance}; dolegliwosci kolana.")]
+    [InlineData("Łącznie: {totals.distance}; DOLEGLIWOŚĆ stopy.")]
     [InlineData("Łącznie: {totals.distance}; watch for pain.")] // English entries apply to Polish (code-switching)
     [InlineData("Łącznie: {totals.distance}; ask a doctor.")]
     [InlineData("Łącznie: {totals.distance}; the risk of injury.")]
@@ -189,6 +240,14 @@ public sealed class PolishNarrativeRulesTests
     [InlineData("Biegniesz sercem, łącznie: {totals.distance}.")]
     [InlineData("Trening kardio, łącznie: {totals.distance}.")]
     [InlineData("Bez pośpiechu, łącznie: {totals.distance}.")]
+    [InlineData("Z zapałem, łącznie: {totals.distance}.")] // review M1: "zapał"/"zapalony" are not "zapaln*"
+    [InlineData("Zapalony biegacz, łącznie: {totals.distance}.")]
+    [InlineData("Zapalona drużyna, łącznie: {totals.distance}.")]
+    [InlineData("Mocne nogi, łącznie: {totals.distance}.")]
+    [InlineData("Cel: złamanie godziny, łącznie: {totals.distance}.")]
+    [InlineData("Przeciążenie tygodnia widać w danych: {totals.distance}.")]
+    [InlineData("Szpic formy przed startem, łącznie: {totals.distance}.")]
+    [InlineData("Ortodroma trasy, łącznie: {totals.distance}.")]
     public void Ordinary_running_Polish_is_not_a_forbidden_topic(string item)
     {
         var codes = Codes(item, Pl);
@@ -229,6 +288,9 @@ public sealed class PolishNarrativeRulesTests
     [InlineData("Spokojnie, a przy bolu przerwij.")]
     [InlineData("Bez ryzyka kontuzji.")]
     [InlineData("Stop if you feel pain.")]
+    [InlineData("Po rehabilitacji wracaj spokojnie.")]
+    [InlineData("Przy dolegliwosciach przerwij.")]
+    [InlineData("Przy stanie zapalnym odpuść.")]
     public void A_Polish_plan_text_with_a_forbidden_topic_is_rejected(string text)
     {
         var sheet = TrainingPlanValidatorTests.Sheet();
@@ -243,6 +305,7 @@ public sealed class PolishNarrativeRulesTests
     [InlineData("Spokojne wybieganie, 6 x 800 m w tempie na 5 km, trzymaj rytm.")]
     [InlineData("Zapaleni biegacze robią to w piątek: luźny bieg.")]
     [InlineData("Długie wybieganie w spokojnym tempie, cel: złamanie bariery.")]
+    [InlineData("Z zapałem, ale spokojnie: mocne nogi na podbiegach.")]
     public void A_Polish_plan_text_without_a_forbidden_topic_is_valid(string text)
     {
         var sheet = TrainingPlanValidatorTests.Sheet();

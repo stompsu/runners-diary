@@ -30,6 +30,8 @@ public sealed class DemoTextLocalizerTests : IDisposable
         Assert.Empty(missing);
         Assert.False(localizer.HasMap("en"));
         Assert.False(localizer.HasMap("pl"));
+        Assert.False(localizer.HasMap("../pl"));
+        Assert.False(localizer.HasMap("de"));
     }
 
     [Fact]

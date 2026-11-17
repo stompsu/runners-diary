@@ -4,6 +4,7 @@ import { Blob as NodeBlob, File as NodeFile } from 'node:buffer'
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 import i18n from '@/i18n'
+import { markExplicitLanguageChoice } from '@/i18n/language'
 import { resetSessionForTests } from '@/auth/session'
 import { getFakeApi, resetFakeApi } from './fake'
 import { installMissingKeyDetection, missingKeys } from './missingKeys'
@@ -43,6 +44,7 @@ installMissingKeyDetection()
 
 beforeEach(async () => {
   missingKeys.length = 0
+  markExplicitLanguageChoice(false)
   await i18n.changeLanguage('en')
   document.documentElement.lang = 'en'
   installMatchMedia()

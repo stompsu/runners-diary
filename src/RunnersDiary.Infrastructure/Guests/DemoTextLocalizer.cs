@@ -32,7 +32,8 @@ public sealed class DemoTextLocalizer(IOptions<GuestOptions> options)
     private readonly Lock _gate = new();
 
     /// <summary>True when a translation file exists for <paramref name="language"/> (always false for English).</summary>
-    public bool HasMap(string language) => language != SupportedLanguages.English && File.Exists(PathFor(language));
+    public bool HasMap(string language) =>
+        language != SupportedLanguages.English && SupportedLanguages.IsSupported(language) && File.Exists(PathFor(language));
 
     /// <summary>
     /// <paramref name="text"/> in <paramref name="language"/>; the English original for English, for null/empty text and for a text without an entry

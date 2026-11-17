@@ -68,12 +68,19 @@ public sealed class PolishEvalCaseTests
     {
         var files = EvalFiles.PolishBadDrafts().Select(row => row.Data.Item2).ToList();
 
-        foreach (var variant in new[] { "cardinal", "genitive", "ordinal", "multiplicative", "compound", "nodiacritics", "codeswitch" })
+        foreach (var variant in new[] { "cardinal", "genitive", "ordinal", "multiplicative", "compound", "nodiacritics", "codeswitch", "hyphenated", "hyphenated-nodiacritics", "numbernoun", "hundredsordinal" })
         {
             Assert.Contains($"bad-literalNumber-{variant}.json", files);
         }
 
-        foreach (var variant in new[] { "bol", "nodiacritics", "lekarz", "ryzyko", "sciegno", "codeswitch" })
+        foreach (var variant in new[]
+        {
+            "bol", "nodiacritics", "lekarz", "ryzyko", "sciegno", "codeswitch",
+
+            // M10 review M1: each added term, with and without diacritics.
+            "zlamanie", "zlamanienogi-nodiacritics", "naderwanie", "naderwanie-nodiacritics", "zapalny", "rehabilitacja",
+            "rehabilitacja-nodiacritics", "ortopeda", "szpital", "dolegliwosci", "dolegliwosci-nodiacritics",
+        })
         {
             Assert.Contains($"bad-forbiddenTopic-{variant}.json", files);
         }

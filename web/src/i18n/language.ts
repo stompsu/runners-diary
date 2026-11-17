@@ -93,6 +93,17 @@ export async function setLanguage(language: Language): Promise<void> {
   writeStoredLanguage(language)
 }
 
+let explicitChoice = false
+
+/** Whether the user picked a language in this page load: that choice beats the profile read (it may be older). */
+export function hasExplicitLanguageChoice(): boolean {
+  return explicitChoice
+}
+
+export function markExplicitLanguageChoice(made: boolean): void {
+  explicitChoice = made
+}
+
 /** The signed-in profile wins over `rd.lang` (ADR 0042 §2). Null, unknown or unreleased values change nothing. */
 export async function applyProfileLanguage(profile: string | null): Promise<void> {
   const language = toLanguage(profile)

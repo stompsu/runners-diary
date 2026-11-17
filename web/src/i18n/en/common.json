@@ -19,6 +19,7 @@
   },
   "close": "Close",
   "language": {
+    "failed": "Could not switch the language. Try again.",
     "label": "Language",
     "names": {
       "en": "English",
