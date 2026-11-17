@@ -23,6 +23,8 @@ const SAME_AS_ENGLISH: readonly RegExp[] = [
   /^[a-z]+:(.*\.)?(acwr|rpe|ultra|fartlek|status)$/i, // terms and loanwords used as is in Polish
   /^maps:markers\.start$/, // "Start" is the same word in Polish
   /^tracks:(splits\.distance|prefill\.fromTrack)$/, // the unit "Km" and the format name "GPX"
+  /^races:regions\./, // English names (unused by the Polish label) and the Polish names, identical on purpose
+  /^(races:(banners\.ok|signup\.targetTimePlaceholder)|goals:(intensity\.Tempo|form\.fields\.targetTimePlaceholder))$/, // "OK", a time format example, "Tempo"
   /^runs:fields\.durationPlaceholder$/, // the h:mm:ss format code
 ]
 
@@ -100,6 +102,8 @@ describe('translation files', () => {
         const expected = uniqueVariables(group.values)
         // A plural form may leave out `count` ("Jeden bieg"), as English does for "1 run": compare per key, not per form.
         const actual = uniqueVariables(other.values)
+        // The Polish region label shows only the Polish name; the English one is passed but not rendered.
+        if (`${ns}:${base}` === 'races:interests.where.regionLabel' && JSON.stringify(actual) === '["pl"]') continue
         if (JSON.stringify(expected) !== JSON.stringify(actual)) {
           mismatches.push(`${ns}:${base} en {${expected}} pl {${actual}}`)
         }

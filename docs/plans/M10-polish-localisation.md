@@ -182,7 +182,7 @@ export const AI_LANGUAGES: readonly Language[]                     // ['en'] unt
 
 **Part B – translations (Claude drafts with the glossary; the user reviews each commit before the next one)**
 4. [x] **B1 frontend-react (user approved 2026-11-17):** `common`, `auth`, `errors`, `runTypes`, `calendar`, `runs` (eager; ~360 lines) + plural audit (every `count` string has a plural group; no number-in-sentence without one).
-5. [ ] **B2 frontend-react:** `maps`, `tracks`, `insights` (~540 lines).
+5. [x] **B2 frontend-react (user approved 2026-11-17):** `maps`, `tracks`, `insights` (~540 lines).
 6. [ ] **B3 frontend-react:** `races`, `goals` (~520 lines).
 7. [ ] **B4 backend-dotnet:** `seed/demo/i18n/pl.json` (demo notes, goal, plan texts), map completeness test strict.
 8. [ ] **B5 frontend-react + qa-tester:** release `pl` (`RELEASED_LANGUAGES`), layout fixes found at 360 px, Playwright `desktop-pl`/`phone-pl`, full-stack Polish guest journey.

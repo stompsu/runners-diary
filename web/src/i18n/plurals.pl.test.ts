@@ -111,3 +111,66 @@ describe('Polish plurals', () => {
     counts.forEach((count, i) => expect(rendered[i], `${key} for ${count}`).toContain(`${count} ${nouns[i]}`))
   })
 })
+
+describe('Polish plurals (races and goals)', () => {
+  beforeEach(() => setLanguage('pl'))
+
+  const t = i18n.t as (key: string, options: object) => string
+  const counts = [0, 1, 2, 5, 12, 22, 25]
+  const all = (key: string, options: (count: number) => object) =>
+    counts.map((count) => t(key, { count, ...options(count) }))
+
+  it('races: look-ahead days and the signup deadline', () => {
+    expect(all('races:interests.when.horizonOption', () => ({}))).toEqual([
+      '0 dni',
+      '1 dzień',
+      '2 dni',
+      '5 dni',
+      '12 dni',
+      '22 dni',
+      '25 dni',
+    ])
+    expect(all('races:details.deadline.closesIn', () => ({ date: 'D' }))).toEqual([
+      'D (zamknięcie za 0 dni)',
+      'D (zamknięcie za 1 dzień)',
+      'D (zamknięcie za 2 dni)',
+      'D (zamknięcie za 5 dni)',
+      'D (zamknięcie za 12 dni)',
+      'D (zamknięcie za 22 dni)',
+      'D (zamknięcie za 25 dni)',
+    ])
+  })
+
+  it('goals: days to go, plan state, skipped suggestions and the weeks warning', () => {
+    expect(all('goals:list.daysAway', () => ({}))).toEqual([
+      'Pozostało 0 dni',
+      'Pozostał 1 dzień',
+      'Pozostały 2 dni',
+      'Pozostało 5 dni',
+      'Pozostało 12 dni',
+      'Pozostały 22 dni',
+      'Pozostało 25 dni',
+    ])
+    expect(all('goals:list.planState', () => ({ date: 'D' }))).toEqual([
+      'Plan: 0 sugestii, wygenerowano: D',
+      'Plan: 1 sugestia, wygenerowano: D',
+      'Plan: 2 sugestie, wygenerowano: D',
+      'Plan: 5 sugestii, wygenerowano: D',
+      'Plan: 12 sugestii, wygenerowano: D',
+      'Plan: 22 sugestie, wygenerowano: D',
+      'Plan: 25 sugestii, wygenerowano: D',
+    ])
+    expect(t('goals:plan.dropped', { count: 1 })).toBe('Pominięto 1 sugestię, bo w tym dniu masz już trening.')
+    expect(t('goals:plan.dropped', { count: 3 })).toBe('Pominięto 3 sugestie, bo w tych dniach masz już treningi.')
+    expect(t('goals:plan.dropped', { count: 7 })).toBe('Pominięto 7 sugestii, bo w tych dniach masz już treningi.')
+    expect(all('goals:warnings.tooLittleTime', (count) => ({ value: count }))).toEqual([
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 0 tygodni.',
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 1 tygodnia.',
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 2 tygodni.',
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 5 tygodni.',
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 12 tygodni.',
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 22 tygodni.',
+      'Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje 25 tygodni.',
+    ])
+  })
+})

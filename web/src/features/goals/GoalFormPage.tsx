@@ -84,7 +84,11 @@ function GoalForm({ today, goal, onReload }: { today: string; goal?: GoalDto; on
   const [formError, setFormError] = useState<string | null>(null)
   const [conflict, setConflict] = useState(false)
   const schema = useMemo(() => goalSchema(today, goal?.targetDate), [today, goal?.targetDate])
-  const defaults = useMemo(() => (goal ? toGoalFormValues(goal) : defaultGoalValues(today)), [goal, today])
+  // The default title is the label of the default preset (10K), in the UI language, so it follows the preset until edited.
+  const defaults = useMemo(
+    () => (goal ? toGoalFormValues(goal) : { ...defaultGoalValues(today), title: t('presets.tenK') }),
+    [goal, today, t],
+  )
   const {
     register,
     control,
