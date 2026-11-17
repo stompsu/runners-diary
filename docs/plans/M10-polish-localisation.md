@@ -267,6 +267,19 @@ If the user prefers, Part C can follow in a separate PR. Until then `AI_LANGUAGE
 
 (Filled in during and after the offline parts.)
 
+### Step 1 (backend-dotnet), implemented 2026-11-17
+
+Done: `SupportedLanguages`, migration `Localisation` (both nullable `varchar(8)` columns), `MeResponse.language`, `PUT /api/me/language`, `POST /api/guest-sessions?lang=`, `DemoTextLocalizer` + language-aware `DemoDataSeeder`/`DemoTrainingPlan`, `GoalDto.plan.language`, OpenAPI + `schema.d.ts` regenerated, Domain.Tests and Api.Tests. Deviations and decisions:
+
+1. **File location:** the Me endpoints live in the existing `Features/Account/MeEndpoints.cs` (not `Features/Me/*`); the new route and `UpdateMyLanguageRequest` are in that file.
+2. **Types:** `language` is a plain `string` in the OpenAPI document (`string` / `string | null` in TS), not an enum, because the API's enums serialise as PascalCase names; the allowed values are enforced by validation (`en`, `pl`) and documented. The SPA narrows to its `Language` type.
+3. **Errors:** a bad `PUT /api/me/language` body is a validation problem with `errors.language`; a bad guest `?lang` is a validation problem with `errors.lang` (checked before the guest limiters and any database work; the value is never echoed). A missing or null `language` in the body is also 400.
+4. **`GoalDto.plan.language`** (a `required string`, `PlanLanguage ?? "en"`) and `GoalPlanRecord.Language` (optional trailing parameter, validated against the list) are added now, because the column exists; `TrainingPlanService` does not pass a language yet (stays null = English until step C3). The demo plan sets it from the guest's language.
+5. **Demo seed map:** required texts are run `notes`, `gear`, `weather`, rating `comment`, and the goal title, plan notes and session descriptions. Run **titles** are mostly race names (proper names), so they are translated only when the map has an entry and are not required. The demo plan fact sheet is built with the guest's language tag.
+6. **Fallback and reporting:** a missing map file or text keeps English; seeding logs one warning per guest ("N demo texts have no translation") and never fails. `DemoTrainingPlanStartupCheck` validates the translated plan for every supported language, fails the host on a malformed `i18n/<lang>.json`, logs incomplete maps, and fails the host for incomplete maps only when the new option `Guests:RequireCompleteDemoTranslations` is true (default false). **Step B4 must turn it on** (set the default to true) in the commit that adds `seed/demo/i18n/pl.json`.
+7. **Packaging (B4):** `src/RunnersDiary.Api/RunnersDiary.Api.csproj` was not touched (it has a local `UserSecretsId` change). Step B4 must add `<Content Include="..\..\seed\demo\i18n\*.json" Link="seed\demo\i18n\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />` so the map is copied next to the binaries (and the API image).
+8. **Test fixture:** the Polish seeding test uses a generated map (`"PL " + text`) in a temp directory; no Polish translations are committed.
+
 ## Assumptions
 1. The user is a Polish speaker and will review the Polish texts. Claude's drafts are not merged unreviewed.
 2. `pl` and `en` only; tags without region (`pl` formats like `pl-PL`, `en` stays US-style as today).

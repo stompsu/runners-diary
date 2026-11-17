@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Stores the caller's UI language (en or pl). */
+        put: operations["updateMyLanguage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/run-types": {
         parameters: {
             query?: never;
@@ -790,6 +807,7 @@ export interface components {
             model: null | string;
             /** Format: date */
             horizonEnd: string;
+            language: string;
             horizonCapped: boolean;
             outdated: boolean;
             /** Format: int32 */
@@ -1009,6 +1027,7 @@ export interface components {
             timeZoneId: string;
             timeZoneIsDefault: boolean;
             unitSystem: components["schemas"]["UnitSystem"];
+            language: null | string;
             /** Format: date */
             today: string;
             /** Format: date-time */
@@ -1595,6 +1614,9 @@ export interface components {
             timeZoneId: string;
             unitSystem: components["schemas"]["UnitSystem"];
         };
+        UpdateMyLanguageRequest: {
+            language: string;
+        };
         UpdateRaceInterestsRequest: {
             kinds: components["schemas"]["RaceKind"][];
             regionCodes: string[];
@@ -1677,7 +1699,9 @@ export interface operations {
     };
     createGuestSession: {
         parameters: {
-            query?: never;
+            query?: {
+                lang?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1691,6 +1715,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GuestSessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
             /** @description Payload Too Large */
@@ -1799,6 +1832,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateMyLanguage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyLanguageRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {

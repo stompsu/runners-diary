@@ -18,6 +18,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(u => u.Kind).HasColumnType("tinyint");
         b.Property(u => u.DisplayName).HasMaxLength(User.DisplayNameMaxLength);
         b.Property(u => u.TimeZoneId).HasMaxLength(64).IsUnicode(false);
+        b.Property(u => u.Language).HasMaxLength(8).IsUnicode(false);
         b.Property(u => u.UnitSystem).HasColumnType("tinyint");
 
         b.HasIndex(u => new { u.ExternalTenantId, u.ExternalObjectId })

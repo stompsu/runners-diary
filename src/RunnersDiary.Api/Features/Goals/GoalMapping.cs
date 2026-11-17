@@ -36,6 +36,7 @@ internal static class GoalMapping
                     PromptVersion = g.PlanPromptVersion,
                     Model = g.IsDemoPlan ? null : g.PlanModelId ?? g.PlanModelDeployment,
                     HorizonEnd = g.PlanHorizonEnd ?? g.TargetDate,
+                    Language = RunnersDiary.Domain.Localization.SupportedLanguages.OrDefault(g.PlanLanguage),
                     HorizonCapped = g.PlanHorizonCapped,
                     Outdated = g.PlanOutdated,
                     PendingCount = view.PendingCount,

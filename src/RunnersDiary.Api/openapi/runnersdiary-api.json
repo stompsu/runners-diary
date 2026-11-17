@@ -64,6 +64,15 @@
         ],
         "summary": "Creates a 24 h guest account with demo data and returns its bearer token.",
         "operationId": "createGuestSession",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": "Created",
@@ -71,6 +80,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GuestSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }
@@ -229,6 +248,85 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/me/language": {
+      "put": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Stores the caller's UI language (en or pl).",
+        "operationId": "updateMyLanguage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyLanguageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
           },
           "400": {
             "description": "Bad Request",
@@ -4242,6 +4340,7 @@
           "promptVersion",
           "model",
           "horizonEnd",
+          "language",
           "horizonCapped",
           "outdated",
           "pendingCount",
@@ -4283,6 +4382,9 @@
           "horizonEnd": {
             "type": "string",
             "format": "date"
+          },
+          "language": {
+            "type": "string"
           },
           "horizonCapped": {
             "type": "boolean"
@@ -5094,6 +5196,7 @@
           "timeZoneId",
           "timeZoneIsDefault",
           "unitSystem",
+          "language",
           "today",
           "guestExpiresAt"
         ],
@@ -5120,6 +5223,12 @@
           },
           "unitSystem": {
             "$ref": "#/components/schemas/UnitSystem"
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "today": {
             "type": "string",
@@ -7481,6 +7590,18 @@
           },
           "unitSystem": {
             "$ref": "#/components/schemas/UnitSystem"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateMyLanguageRequest": {
+        "required": [
+          "language"
+        ],
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
           }
         },
         "additionalProperties": false

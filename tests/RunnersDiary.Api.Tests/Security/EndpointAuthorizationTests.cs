@@ -227,6 +227,23 @@ public sealed class EndpointAuthorizationTests(OfflineApiFactory factory) : ICla
     }
 
     [Fact]
+    public void The_me_routes_including_the_language_route_require_authorization_and_use_the_general_limiter()
+    {
+        var endpoints = Endpoints();
+        string[] expected = ["GET /api/me", "PUT /api/me", "PUT /api/me/language"];
+
+        foreach (var key in expected)
+        {
+            var endpoint = Assert.Single(endpoints, e => Key(e) == key);
+            Assert.Null(endpoint.Metadata.GetMetadata<IAllowAnonymous>());
+            Assert.NotEmpty(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+            Assert.Equal("api", endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName);
+        }
+
+        Assert.Equal(expected.Length, endpoints.Count(e => Route(e).StartsWith("/api/me", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void GuestSessions_exists_allows_anonymous_and_carries_the_guest_create_limiter()
     {
         var endpoint = Assert.Single(Endpoints(), e => Route(e) == "/api/guest-sessions");

@@ -96,6 +96,7 @@ public static class DependencyInjection
             builder.Services.AddHostedService<DemoTrainingPlanStartupCheck>();
         }
 
+        builder.Services.AddSingleton<DemoTextLocalizer>();
         builder.Services.AddSingleton<DemoTrainingPlan>();
         builder.Services.AddSingleton<DemoDataSeeder>();
 

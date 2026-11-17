@@ -85,6 +85,9 @@ public sealed record GoalPlanDto
 
     public required DateOnly HorizonEnd { get; init; }
 
+    /// <summary>Language tag of the plan texts (<c>en</c> or <c>pl</c>); plans generated before M10 are English.</summary>
+    public required string Language { get; init; }
+
     public required bool HorizonCapped { get; init; }
 
     /// <summary>A plan-relevant field of the goal changed after this plan was generated.</summary>

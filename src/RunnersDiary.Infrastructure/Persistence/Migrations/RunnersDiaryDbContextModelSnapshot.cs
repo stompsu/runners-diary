@@ -191,6 +191,11 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly?>("PlanHorizonEnd")
                         .HasColumnType("date");
 
+                    b.Property<string>("PlanLanguage")
+                        .HasMaxLength(8)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(8)");
+
                     b.Property<string>("PlanModelDeployment")
                         .HasMaxLength(64)
                         .IsUnicode(false)
@@ -1168,6 +1173,11 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
 
                     b.Property<byte>("Kind")
                         .HasColumnType("tinyint");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(8)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(8)");
 
                     b.Property<string>("TimeZoneId")
                         .IsRequired()

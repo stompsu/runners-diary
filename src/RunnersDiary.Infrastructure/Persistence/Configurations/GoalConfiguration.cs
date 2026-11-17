@@ -47,6 +47,7 @@ internal sealed class GoalConfiguration : IEntityTypeConfiguration<Goal>
         b.Property(g => g.PlanPromptVersion).HasColumnType("smallint");
         b.Property(g => g.PlanModelDeployment).HasMaxLength(64).IsUnicode(false);
         b.Property(g => g.PlanModelId).HasMaxLength(100).IsUnicode(false);
+        b.Property(g => g.PlanLanguage).HasMaxLength(8).IsUnicode(false);
         b.Property(g => g.PlanHorizonEnd).HasColumnType("date");
         b.Property(g => g.RowVersion).IsRowVersion();
 
