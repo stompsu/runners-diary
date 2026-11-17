@@ -6,7 +6,7 @@ namespace RunnersDiary.Ai.Tests.Evals;
 /// <summary>
 /// CI mode of the Polish eval cases (ADR 0043 §5, M10 C2): the same cases and fact sheets as English with <c>language: pl</c>; a Polish good
 /// draft per model case passes the Polish rules and the case checks; Polish adversarial drafts (number words in several cases and families,
-/// forbidden topics with and without diacritics, English words inside Polish text) fail with their rule code; a placeholder in the wrong
+/// forbidden topics with and without diacritics, English words inside Polish text, gendered second-person forms) fail with their rule code; a placeholder in the wrong
 /// case is a known limit (valid for the validator); an English draft for <c>pl</c> fails the case's language check, not the validator.
 /// </summary>
 public sealed class PolishEvalCaseTests
@@ -64,7 +64,7 @@ public sealed class PolishEvalCaseTests
     }
 
     [Fact]
-    public void Polish_adversarial_drafts_cover_number_words_and_forbidden_topics()
+    public void Polish_adversarial_drafts_cover_number_words_forbidden_topics_and_gendered_forms()
     {
         var files = EvalFiles.PolishBadDrafts().Select(row => row.Data.Item2).ToList();
 
@@ -83,6 +83,12 @@ public sealed class PolishEvalCaseTests
         })
         {
             Assert.Contains($"bad-forbiddenTopic-{variant}.json", files);
+        }
+
+        // G-L1 follow-up: the gendered second-person forms seen live ("ukończyłeś", "utrzymałeś") and the other covered endings.
+        foreach (var variant in new[] { "past", "past-feminine", "conditional", "conditional-nodiacritics", "powinienes", "utrzymales" })
+        {
+            Assert.Contains($"bad-genderedForm-{variant}.json", files);
         }
     }
 

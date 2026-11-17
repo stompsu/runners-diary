@@ -85,7 +85,7 @@ public sealed class PolishFakeModelTests
     }
 
     [Fact]
-    public void Every_polish_plan_text_passes_the_polish_deny_list()
+    public void Every_polish_plan_text_passes_the_polish_deny_list_and_is_gender_neutral()
     {
         var c = PlanEvalCases.Get(PlanEvalCases.HalfMarathon10Weeks);
         var sheet = c.Sheet with { Language = "pl" };
@@ -95,7 +95,7 @@ public sealed class PolishFakeModelTests
         foreach (var text in texts)
         {
             var probe = draft with { Notes = text };
-            Assert.DoesNotContain(TrainingPlanValidator.Validate(probe, sheet, PlanValidationPolicy.Default.ForLanguage("pl")).Violations, v => v.Rule is PlanRuleCode.ForbiddenTopic or PlanRuleCode.Markup);
+            Assert.DoesNotContain(TrainingPlanValidator.Validate(probe, sheet, PlanValidationPolicy.Default.ForLanguage("pl")).Violations, v => v.Rule is PlanRuleCode.ForbiddenTopic or PlanRuleCode.Markup or PlanRuleCode.GenderedForm);
         }
     }
 }

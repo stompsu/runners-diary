@@ -286,6 +286,11 @@ public static class TrainingPlanValidator
         {
             violations.Add(new PlanViolation(PlanRuleCode.ForbiddenTopic, location));
         }
+
+        if (NarrativeLanguages.HasGenderedForm(text, deny.Language))
+        {
+            violations.Add(new PlanViolation(PlanRuleCode.GenderedForm, location));
+        }
     }
 
     private static void CheckSessionsPerDay(List<PlannedSession> kept, List<PlanViolation> violations)

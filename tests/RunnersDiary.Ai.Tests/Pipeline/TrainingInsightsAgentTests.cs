@@ -105,6 +105,20 @@ public sealed class TrainingInsightsAgentTests
             text);
     }
 
+    /// <summary>G-L1 follow-up: <c>genderedForm</c> is not named in the (hashed) v3 prompt, so the retry note explains it in fixed text.</summary>
+    [Fact]
+    public void Retry_message_explains_the_gendered_form_rule()
+    {
+        var text = TrainingInsightsAgent.RetryMessage([new SummaryViolation(ValidationRuleCode.GenderedForm, "wentWell.1")]);
+
+        Assert.Equal(
+            "Your previous answer was rejected by the validator. Violated rules: genderedForm. Where: wentWell.1. "
+            + Domain.Insights.Narrative.Languages.PolishGenderedForms.RetryHint
+            + ". Write a new JSON object that follows every rule in the instructions.",
+            text);
+        Assert.Contains("-łeś, -łaś, -łbyś, -łabyś", text, StringComparison.Ordinal);
+    }
+
     private static void AssertStrictObject(JsonElement schema, string[] properties)
     {
         Assert.False(schema.GetProperty("additionalProperties").GetBoolean());

@@ -5,8 +5,8 @@ using RunnersDiary.Domain.Races;
 namespace RunnersDiary.Domain.Insights.Narrative.Languages;
 
 /// <summary>
-/// The per-language parts of the narrative rules (ADR 0043 §3): which number words count as <c>literalNumber</c>, and how the
-/// <c>forbiddenTopic</c> deny list is matched. Shared by the summary and the plan validator.
+/// The per-language parts of the narrative rules (ADR 0043 §3): which number words count as <c>literalNumber</c>, how the
+/// <c>forbiddenTopic</c> deny list is matched, and the Polish-only <c>genderedForm</c> rule. Shared by the summary and the plan validator.
 /// <list type="bullet">
 /// <item><b>en</b> (and every v1/v2 policy): exactly the pre-M10 behaviour: lower-cased letter runs, the English number words, the
 /// policy's deny list, no diacritic folding.</item>
@@ -63,6 +63,12 @@ public static class NarrativeLanguages
     /// <summary>The words the rules look at: lower-case letter runs; for Polish, of the folded text.</summary>
     internal static List<string> Words(string text, string language) =>
         Placeholders.Words(language == English ? text : TextFolding.Fold(text));
+
+    /// <summary>
+    /// The <c>genderedForm</c> rule: Polish only (English second-person verbs carry no gender), see <see cref="PolishGenderedForms"/>.
+    /// <paramref name="prose"/> is the original text (with diacritics), not the folded words.
+    /// </summary>
+    internal static bool HasGenderedForm(string prose, string language) => language == Polish && PolishGenderedForms.Contains(prose);
 
     /// <summary>True when a word of <paramref name="words"/> (from <see cref="Words"/>) is a number word of the language.</summary>
     internal static bool HasNumberWord(IEnumerable<string> words, string language) => language == English

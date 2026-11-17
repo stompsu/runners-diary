@@ -8,8 +8,8 @@ using RunnersDiary.Domain.Tests.Goals.Planning;
 namespace RunnersDiary.Domain.Tests.Insights.Narrative;
 
 /// <summary>
-/// M10 C1 (ADR 0043 §3, plan §8): per-language <c>literalNumber</c> and <c>forbiddenTopic</c> rules. Adversarial Polish drafts per rule,
-/// the everyday Polish words that must stay allowed, and English behaviour unchanged.
+/// M10 C1 (ADR 0043 §3, plan §8): per-language <c>literalNumber</c> and <c>forbiddenTopic</c> rules, and the Polish-only <c>genderedForm</c>
+/// rule (G-L1 follow-up, plan §10). Adversarial Polish drafts per rule, the everyday Polish words that must stay allowed, and English behaviour unchanged.
 /// </summary>
 public sealed class PolishNarrativeRulesTests
 {
@@ -320,6 +320,108 @@ public sealed class PolishNarrativeRulesTests
     {
         var sheet = TrainingPlanValidatorTests.Sheet();
         var result = TrainingPlanValidator.Validate(new TrainingPlanDraft("Bez kontuzji.", TrainingPlanValidatorTests.Good(sheet)), sheet, PlanValidationPolicy.Default);
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+    }
+
+    // genderedForm, Polish only (G-L1 follow-up)
+
+    [Theory]
+    [InlineData("Ukończyłeś start z wynikiem {totals.distance}.")] // the G-L1 forms
+    [InlineData("Na koniec utrzymałeś równe tempo: {totals.distance}.")]
+    [InlineData("W tym tygodniu zrobiłeś tapering, łącznie: {totals.distance}.")]
+    [InlineData("Potem zakończyłeś blok, łącznie: {totals.distance}.")]
+    [InlineData("Przebiegłeś łącznie {totals.distance}.")]
+    [InlineData("Zrobiłaś łącznie {totals.distance}.")] // feminine past
+    [InlineData("Byłeś regularny: {totals.distance}.")]
+    [InlineData("Byłaś regularna: {totals.distance}.")]
+    [InlineData("Wziąłeś się do pracy: {totals.distance}.")]
+    [InlineData("Mogłeś odpocząć, łącznie: {totals.distance}.")]
+    [InlineData("Mógłbyś dodać spokojny bieg, łącznie: {totals.distance}.")] // conditional
+    [InlineData("Mogłabyś dodać spokojny bieg, łącznie: {totals.distance}.")]
+    [InlineData("Zrobiłbyś więcej, łącznie: {totals.distance}.")]
+    [InlineData("Moglbys dodac spokojny bieg, lacznie: {totals.distance}.")] // conditional without diacritics
+    [InlineData("Moglabys dodac spokojny bieg, lacznie: {totals.distance}.")]
+    [InlineData("Powinieneś odpocząć, łącznie: {totals.distance}.")] // modal
+    [InlineData("Powinnaś odpocząć, łącznie: {totals.distance}.")]
+    [InlineData("Powinienes odpoczac, lacznie: {totals.distance}.")]
+    [InlineData("UKOŃCZYŁEŚ START: {totals.distance}.")] // upper case
+    public void A_gendered_second_person_form_is_rejected_for_Polish(string item)
+    {
+        Assert.Contains(ValidationRuleCode.GenderedForm, Codes(item, Pl));
+    }
+
+    [Fact]
+    public void A_gendered_form_in_decomposed_unicode_is_still_found()
+    {
+        var item = "Ukończyłeś start, łącznie: {totals.distance}.".Normalize(System.Text.NormalizationForm.FormD);
+        Assert.Contains(ValidationRuleCode.GenderedForm, Codes(item, Pl));
+    }
+
+    [Theory]
+    [InlineData("Jesteś w formie, łącznie: {totals.distance}.")] // neutral second person
+    [InlineData("Cześć! Łącznie: {totals.distance}.")]
+    [InlineData("Możesz dodać spokojny bieg, łącznie: {totals.distance}.")]
+    [InlineData("Masz za sobą {totals.distance}.")]
+    [InlineData("Zapiszesz kolejny trening, łącznie: {totals.distance}.")] // future
+    [InlineData("Zrobisz to spokojnie, łącznie: {totals.distance}.")]
+    [InlineData("Zapisano treningi, łącznie: {totals.distance}.")] // impersonal
+    [InlineData("Tydzień był lżejszy, obciążenie wzrosło: {totals.distance}.")] // a thing as the subject
+    [InlineData("Bieg przez wieś i las, łącznie: {totals.distance}.")]
+    [InlineData("Atlas tras, łącznie: {totals.distance}.")]
+    [InlineData("Zrobiłem, zrobiłam, zrobił, zrobiła: {totals.distance}.")] // first and third person
+    [InlineData("Żebyś biegał spokojnie, gdybyś chciał: {totals.distance}.")] // known limit: a past form after a separate "byś"
+    [InlineData("Jeśli chcesz, dodaj przebieżki: {totals.distance}.")]
+    [InlineData("Byłoby dobrze dodać spokojny bieg: {totals.distance}.")]
+    [InlineData("Zrobiles łącznie {totals.distance}.")] // known limit: the past tense without diacritics (see PolishGenderedForms)
+    public void Neutral_Polish_and_known_limits_are_not_gendered_forms(string item)
+    {
+        Assert.DoesNotContain(ValidationRuleCode.GenderedForm, Codes(item, Pl));
+    }
+
+    [Theory]
+    [InlineData("jesteś")]
+    [InlineData("cześć")]
+    [InlineData("wieś")]
+    [InlineData("możesz")]
+    [InlineData("masz")]
+    [InlineData("las")]
+    [InlineData("miles")]
+    [InlineData("żebyś")]
+    [InlineData("gdybyś")]
+    [InlineData("abyś")]
+    [InlineData("jakbyś")]
+    [InlineData("łeś")] // a bare suffix is not a word form
+    public void Common_words_are_not_gendered(string word) => Assert.False(PolishGenderedForms.IsGendered(word), word);
+
+    [Fact]
+    public void The_gendered_form_rule_is_Polish_only()
+    {
+        Assert.DoesNotContain(ValidationRuleCode.GenderedForm, Codes("You ran {totals.distance}, ukończyłeś.", En));
+    }
+
+    [Theory]
+    [InlineData("W tym tygodniu zrobiłeś dużo, teraz spokojnie.")]
+    [InlineData("Gdy poczujesz zmęczenie, mogłabyś skrócić bieg.")]
+    [InlineData("Powinienes zaczac spokojnie.")]
+    public void A_Polish_plan_text_with_a_gendered_form_is_rejected(string text)
+    {
+        var sheet = TrainingPlanValidatorTests.Sheet();
+        var sessions = TrainingPlanValidatorTests.Good(sheet);
+        sessions[4] = sessions[4] with { Description = text };
+        var policy = PlanValidationPolicy.Default.ForLanguage("pl");
+        Assert.Contains(new PlanViolation(PlanRuleCode.GenderedForm, "sessions[4].description"), TrainingPlanValidator.Validate(new TrainingPlanDraft("Plan.", sessions), sheet, policy).Violations);
+        Assert.Contains(new PlanViolation(PlanRuleCode.GenderedForm, "notes"), TrainingPlanValidator.Validate(new TrainingPlanDraft(text, TrainingPlanValidatorTests.Good(sheet)), sheet, policy).Violations);
+
+        // English plans never get the rule.
+        Assert.True(TrainingPlanValidator.Validate(new TrainingPlanDraft(text, TrainingPlanValidatorTests.Good(sheet)), sheet, PlanValidationPolicy.Default).IsValid);
+    }
+
+    [Fact]
+    public void A_neutral_Polish_plan_text_is_valid()
+    {
+        var sheet = TrainingPlanValidatorTests.Sheet();
+        const string text = "Jesteś w dobrym miejscu: zacznij spokojnie, przyspiesz w końcówce, a potem masz lżejszy dzień.";
+        var result = TrainingPlanValidator.Validate(new TrainingPlanDraft(text, TrainingPlanValidatorTests.Good(sheet)), sheet, PlanValidationPolicy.Default.ForLanguage("pl"));
         Assert.True(result.IsValid, string.Join(", ", result.Violations));
     }
 }

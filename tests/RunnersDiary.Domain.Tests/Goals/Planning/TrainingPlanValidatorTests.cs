@@ -746,7 +746,7 @@ public sealed class TrainingPlanValidatorTests
     public void Every_rule_code_has_a_stable_wire_name()
     {
         Assert.Equal(
-            ["schema", "dateRange", "sessionsPerDay", "phase", "weeklyVolume", "longRun", "frequency", "hardSessions", "taperIntensity", "pace", "emptyWeek", "markup", "forbiddenTopic", "empty"],
+            ["schema", "dateRange", "sessionsPerDay", "phase", "weeklyVolume", "longRun", "frequency", "hardSessions", "taperIntensity", "pace", "emptyWeek", "markup", "forbiddenTopic", "empty", "genderedForm"],
             Enum.GetValues<PlanRuleCode>().Select(c => c.ToCode()));
     }
 }

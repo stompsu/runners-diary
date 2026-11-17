@@ -21,6 +21,9 @@ public enum PlanRuleCode
     Markup,
     ForbiddenTopic,
     Empty,
+
+    /// <summary>Polish only: a gendered second-person past or conditional verb (M10 G-L1 follow-up), same rule as the summary's <c>genderedForm</c>.</summary>
+    GenderedForm,
 }
 
 public static class PlanRuleCodes
@@ -41,6 +44,7 @@ public static class PlanRuleCodes
         PlanRuleCode.Markup => "markup",
         PlanRuleCode.ForbiddenTopic => "forbiddenTopic",
         PlanRuleCode.Empty => "empty",
+        PlanRuleCode.GenderedForm => "genderedForm",
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown plan rule code."),
     };
 }

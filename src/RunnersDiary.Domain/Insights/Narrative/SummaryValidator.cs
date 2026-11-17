@@ -16,6 +16,9 @@ public enum ValidationRuleCode
     RaceWeekPeak,
     EstimatedLoad,
     Markup,
+
+    /// <summary>Polish only: a gendered second-person past or conditional verb (M10 G-L1 follow-up, <see cref="Languages.PolishGenderedForms"/>).</summary>
+    GenderedForm,
 }
 
 public static class ValidationRuleCodes
@@ -30,6 +33,7 @@ public static class ValidationRuleCodes
         ValidationRuleCode.RaceWeekPeak => "raceWeekPeak",
         ValidationRuleCode.EstimatedLoad => "estimatedLoad",
         ValidationRuleCode.Markup => "markup",
+        ValidationRuleCode.GenderedForm => "genderedForm",
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown rule code."),
     };
 }
@@ -167,6 +171,11 @@ public static class SummaryValidator
             if (HasMarkup(text))
             {
                 violations.Add(new SummaryViolation(ValidationRuleCode.Markup, location));
+            }
+
+            if (NarrativeLanguages.HasGenderedForm(scan.Prose, policy.Language))
+            {
+                violations.Add(new SummaryViolation(ValidationRuleCode.GenderedForm, location));
             }
 
             var isListItem = location.StartsWith("wentWell.", StringComparison.Ordinal)

@@ -1,0 +1,10 @@
+{
+  "headline": "Na {race.1.date} ukończyłeś start ({race.1.category}) z rekordem życiowym.",
+  "wentWell": [
+    { "text": "Start ({race.1.category}) z wynikiem {race.1.resultTime}, szybciej niż cel: {race.1.targetTime}." },
+    { "text": "Lżejszy tydzień od {week.5.start} był taperingiem przed startem ({week.6.raceType}), a wskaźnik {acwr.peak.value} z tygodnia startowego wynika ze startu: {acwr.peak.raceType}." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Wracaj do treningów stopniowo: kilka spokojnych tygodni, zanim znów zaczniesz budować formę." },
+  "dataNotes": []
+}

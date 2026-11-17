@@ -6,6 +6,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 
 namespace RunnersDiary.Infrastructure.Ai;
 
@@ -176,6 +177,11 @@ public sealed class TrainingInsightsAgent
 
         var locations = violations.Select(v => v.Location).Distinct(StringComparer.Ordinal).ToList();
         text.Append(". Where: ").AppendJoin(", ", locations);
+        if (violations.Any(v => v.Rule == ValidationRuleCode.GenderedForm))
+        {
+            text.Append(". ").Append(PolishGenderedForms.RetryHint);
+        }
+
         text.Append(". Write a new JSON object that follows every rule in the instructions.");
         return text.ToString();
     }

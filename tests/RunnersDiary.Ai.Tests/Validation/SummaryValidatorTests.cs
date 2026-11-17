@@ -298,7 +298,7 @@ public sealed class SummaryValidatorTests
     public void Rule_codes_have_stable_names()
     {
         Assert.Equal(
-            ["schema", "unknownKey", "literalNumber", "missingCitation", "forbiddenTopic", "raceWeekPeak", "estimatedLoad", "markup"],
+            ["schema", "unknownKey", "literalNumber", "missingCitation", "forbiddenTopic", "raceWeekPeak", "estimatedLoad", "markup", "genderedForm"],
             Enum.GetValues<ValidationRuleCode>().Select(c => c.ToCode()));
     }
 }
