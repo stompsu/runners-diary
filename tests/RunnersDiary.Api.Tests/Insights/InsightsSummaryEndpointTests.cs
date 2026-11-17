@@ -232,6 +232,31 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
     // ---- POST --------------------------------------------------------------------------------------------------------
 
     [Fact]
+    public async Task Post_with_lang_pl_stores_a_Polish_summary_that_is_cached_separately_from_English()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid();
+        using var host = AiTestHost.Create(factory, client);
+        var user = host.EntraUser("sumpl");
+        await SeedRunsAsync(user);
+        var userId = await user.GetUserIdAsync();
+
+        var created = await PostOkAsync(user, new { from = From, to = To, lang = "pl" });
+
+        Assert.Equal("pl", created.GetProperty("period").GetProperty("lang").GetString());
+        Assert.Equal("fresh", created.GetProperty("state").GetString());
+        Assert.Equal("model", created.GetProperty("summary").GetProperty("source").GetString());
+        Assert.Equal("pl", Assert.Single(await host.SummariesAsync(userId)).Language);
+
+        // English is a different cache entry: nothing stored for it yet.
+        var english = await GetOkAsync(user, $"?from={From}&to={To}");
+        Assert.Equal("none", english.GetProperty("state").GetString());
+        var polish = await GetOkAsync(user, $"?from={From}&to={To}&lang=pl");
+        Assert.Equal("fresh", polish.GetProperty("state").GetString());
+        Assert.Equal(1, client.CallCount);
+    }
+
+    [Fact]
     public async Task Post_generates_stores_and_then_get_returns_the_fresh_summary_and_a_repeat_post_reuses_it_without_the_model()
     {
         factory.SkipIfDockerUnavailable();

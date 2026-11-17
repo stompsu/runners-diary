@@ -224,7 +224,7 @@ export interface paths {
         };
         /**
          * The stored, example or automatic narrative of a period, if any, and whether a new one can be generated. Never calls the model.
-         * @description Same from/to/compare rules as the report, plus lang (en). State is none, fresh or stale (a run, the prompt or the model changed since it was written). generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.
+         * @description Same from/to/compare rules as the report, plus lang (en default, or pl; the languages of the prompt manifest). State is none, fresh or stale (a run, the prompt or the model changed since it was written). generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.
          */
         get: operations["getInsightsSummary"];
         put?: never;
@@ -506,7 +506,7 @@ export interface paths {
         put?: never;
         /**
          * Generates (or regenerates) the AI-suggested trainings up to an active goal, at most 16 weeks ahead.
-         * @description The body is optional. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. 400 errors.goalId: the goal is not Active or is less than two days away. 422 insufficient-history: fewer than 3 completed runs in the last 84 days. 409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), 409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model, plans switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After). 502 plan-failed carries reason (invalidOutput, timeout, provider). The response is never cached.
+         * @description The body is optional; lang (en default, or pl) is the language of the plan texts and is stored as plan.language. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. 400 errors.lang: unsupported language. 400 errors.goalId: the goal is not Active or is less than two days away. 422 insufficient-history: fewer than 3 completed runs in the last 84 days. 409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), 409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model, plans switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After). 502 plan-failed carries reason (invalidOutput, timeout, provider). The response is never cached.
          */
         post: operations["generateTrainingPlan"];
         delete?: never;
@@ -744,6 +744,7 @@ export interface components {
         };
         GenerateTrainingPlanRequest: {
             replaceOtherGoals?: null | boolean;
+            lang?: null | string;
         };
         /** @enum {unknown} */
         GenerationAvailabilityDto: "available" | "notConfigured" | "quotaExhausted" | "notNeeded";

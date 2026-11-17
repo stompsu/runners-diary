@@ -163,6 +163,36 @@ describe('Goal detail and plan section', () => {
     )
   })
 
+  it('sends the UI language with Generate and shows no language hint when the plan matches it', async () => {
+    const { user } = await detail()
+    const requests = recordRequests()
+    await user.click(await generateButton())
+    await screen.findByRole('button', { name: 'Regenerate' })
+    expect(requests.find((r) => r.path.endsWith('/plan'))?.body).toEqual({ lang: 'en' })
+    expect(screen.queryByTestId('plan-language-hint')).not.toBeInTheDocument()
+  })
+
+  it('hints that a plan generated in Polish is not in the current language, and Regenerate asks for English', async () => {
+    resetFakeApi({ goalsEnabled: true, guestSeed: HISTORY })
+    const token = signInForTest('guest')
+    const goal = getFakeApi().addGoal(token, { title: 'Autumn 10K' })
+    await getFakeApi().handle(
+      new Request(`http://localhost/api/goals/${goal.id}/plan`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang: 'pl' }),
+      }),
+    )
+    const user = userEvent.setup()
+    renderRoute(`/goals/${goal.id}`, { session: 'none' })
+    const hint = await screen.findByTestId('plan-language-hint')
+    expect(hint).toHaveTextContent('This plan was generated in Polish. Regenerate to get it in the current language.')
+    const requests = recordRequests()
+    await user.click(await generateButton())
+    await waitFor(() => expect(screen.queryByTestId('plan-language-hint')).not.toBeInTheDocument())
+    expect(requests.find((r) => r.path.endsWith('/plan'))?.body).toEqual({ lang: 'en' })
+  })
+
   it('shows a progress state while generating and cancel shows the limit hint and refreshes', async () => {
     const { user, token, goal } = await detail()
     getFakeApi().addFault(faults.delay({ method: 'POST', path: /\/plan$/ }, 200))
@@ -317,7 +347,7 @@ describe('Goal detail and plan section', () => {
       ).toBe(true),
     )
     const plans = requests.filter((r) => r.path.endsWith('/plan'))
-    expect(plans.at(-1)?.body).toEqual({ replaceOtherGoals: true })
+    expect(plans.at(-1)?.body).toEqual({ replaceOtherGoals: true, lang: 'en' })
   })
 
   it('opens the same dialog from a 409 plan-other-goal-active', async () => {

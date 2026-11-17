@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { $api, fetchClient } from '@/api/client'
+import { aiLanguage } from '@/i18n/language'
 import { INSIGHTS_STALE_TIME_MS } from '../insightsQueries'
 import type { CompareMode, SummaryResponse } from '../insightsTypes'
 import { classifySummaryError, isAbortError, type SummaryError } from './summaryProblem'
@@ -14,19 +16,21 @@ export interface SummaryRange {
 /** Query-key prefix shared with `useInvalidateRuns`: a run create/update/delete makes every stored summary stale. */
 export const SUMMARY_QUERY_KEY = ['get', '/api/insights/summary'] as const
 
-const summaryInit = (range: SummaryRange) => ({
-  params: { query: { from: range.from, to: range.to, compare: range.compare, lang: 'en' } },
+const summaryInit = (range: SummaryRange, lang: string) => ({
+  params: { query: { from: range.from, to: range.to, compare: range.compare, lang } },
 })
 
-const summaryKey = (range: SummaryRange) =>
-  $api.queryOptions('get', '/api/insights/summary', summaryInit(range)).queryKey
+const summaryKey = (range: SummaryRange, lang: string) =>
+  $api.queryOptions('get', '/api/insights/summary', summaryInit(range, lang)).queryKey
 
 /**
  * `GET /api/insights/summary` (`getInsightsSummary`). Never calls the model: it reads the stored summary, the demo
  * example or the automatic note, plus the quota. The server sends `private, no-store`, so this cache is the only one.
  */
 export function useInsightsSummary(range: SummaryRange) {
-  return $api.useQuery('get', '/api/insights/summary', summaryInit(range), { staleTime: INSIGHTS_STALE_TIME_MS })
+  // Summaries are stored and cached per language, so the language is part of the query key.
+  const lang = aiLanguage(useTranslation().i18n.language)
+  return $api.useQuery('get', '/api/insights/summary', summaryInit(range, lang), { staleTime: INSIGHTS_STALE_TIME_MS })
 }
 
 interface GenerateVariables {
@@ -42,20 +46,21 @@ interface GenerateVariables {
  */
 export function useGenerateSummary(range: SummaryRange) {
   const queryClient = useQueryClient()
+  const lang = aiLanguage(useTranslation().i18n.language)
   const controller = useRef<AbortController | null>(null)
 
   const mutation = useMutation<SummaryResponse, unknown, GenerateVariables>({
     retry: false,
     mutationFn: async ({ regenerate, signal }) => {
       const { data, error } = await fetchClient.POST('/api/insights/summary', {
-        body: { from: range.from, to: range.to, compare: range.compare, lang: 'en', regenerate },
+        body: { from: range.from, to: range.to, compare: range.compare, lang, regenerate },
         signal,
       })
       if (data === undefined) throw error ?? new Error('Empty response')
       return data
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(summaryKey(range), data)
+      queryClient.setQueryData(summaryKey(range, lang), data)
     },
     onError: () => {
       // A cancel is recorded by the server too (Cancelled ledger row), so the remaining count is refreshed either way.

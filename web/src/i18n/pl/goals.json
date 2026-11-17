@@ -168,6 +168,11 @@
     "sourceDemo": "Przykładowy plan dla danych demo",
     "notes": "Uwagi do planu",
     "outdated": "Cel zmienił się od czasu utworzenia tego planu. Wygeneruj ponownie, aby go odświeżyć.",
+    "languageHint": {
+      "en": "Ten plan wygenerowano po angielsku.",
+      "pl": "Ten plan wygenerowano po polsku."
+    },
+    "languageHintAction": "Wygeneruj ponownie, aby uzyskać plan w bieżącym języku.",
     "horizonCapped": "Obejmuje najbliższe 16 tygodni; resztę wygeneruj później.",
     "dropped_one": "Pominięto {{count}} sugestię, bo w tym dniu masz już trening.",
     "dropped_few": "Pominięto {{count}} sugestie, bo w tych dniach masz już treningi.",

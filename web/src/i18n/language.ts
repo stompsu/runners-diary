@@ -15,8 +15,8 @@ export function releasedLanguages(dev: boolean = import.meta.env.DEV): readonly 
   return dev ? SUPPORTED_LANGUAGES : RELEASED_LANGUAGES
 }
 
-/** Languages the AI summary and plan can be requested in. Part C adds `pl`; for any other UI language `en` is sent. */
-export const AI_LANGUAGES: readonly Language[] = ['en']
+/** Languages the AI summary and plan can be requested in. A UI language outside the list sends `en`. */
+export const AI_LANGUAGES: readonly Language[] = ['en', 'pl']
 
 /** The `lang` to send to the AI endpoints for a UI language. */
 export function aiLanguage(lng: string): Language {

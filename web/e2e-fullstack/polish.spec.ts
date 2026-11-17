@@ -4,7 +4,7 @@ import { test } from '../e2e/support.ts'
 
 // M10 B5: a Polish guest through the real stack (web -> /api proxy -> API -> SQL). The browser locale is pl-PL, so the
 // SPA detects Polish and asks for `POST /api/guest-sessions?lang=pl`; the API then seeds the demo data with the Polish
-// texts of seed/demo/i18n/pl.json. Nothing is mocked. The AI summary stays English until Part C.
+// texts of seed/demo/i18n/pl.json. Nothing is mocked. The AI summary and plan are requested in Polish too (Part C3).
 
 test.use({ locale: 'pl-PL', timezoneId: 'Europe/Warsaw' })
 
@@ -78,6 +78,27 @@ test('Polish guest -> Polish UI and demo texts (run comment, goal, plan) -> swit
   await card.getByRole('link', { name: 'Otwórz' }).click()
   await expect(page.getByRole('heading', { level: 1, name: DEMO_GOAL_PL })).toBeVisible()
   await expect(page.getByText('Po półmaratonie plan przechodzi na trail', { exact: false })).toBeVisible()
+
+  // The plan of the demo goal is in the guest's language, so the Polish UI shows no language hint.
+  await expect(page.getByTestId('plan-language-hint')).toHaveCount(0)
+
+  // Insights (C3): the SPA asks for the summary in Polish and the API answers with the Polish example summary of the
+  // guest's default view (a model summary from the fake provider would also be Polish, but is not generated here).
+  const summaryResponse = page.waitForResponse(
+    (r) => new URL(r.url()).pathname === '/api/insights/summary' && r.request().method() === 'GET',
+  )
+  await page.goto('/insights')
+  const summary = await summaryResponse
+  expect(new URL(summary.url()).searchParams.get('lang')).toBe('pl')
+  expect(summary.status()).toBe(200)
+  const summaryBody = (await summary.json()) as { period: { lang: string }; summary: { source: string } | null }
+  expect(summaryBody.period.lang).toBe('pl')
+  expect(summaryBody.summary?.source).toBe('demo')
+  await expect(page.getByTestId('summary-badge')).toHaveText('Przykładowe podsumowanie dla danych demo')
+  await expect(page.getByTestId('summary-card')).not.toContainText('You covered')
+  await page.goto('/goals')
+  await page.locator('li[data-goal-id]').filter({ hasText: DEMO_GOAL_PL }).getByRole('link', { name: 'Otwórz' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: DEMO_GOAL_PL })).toBeVisible()
 
   // Switching to English re-renders without a reload and is saved to the profile; the data stays as seeded (Polish).
   const saved = page.waitForResponse(

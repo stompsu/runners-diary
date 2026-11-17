@@ -169,6 +169,62 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
     }
 
     [Fact]
+    public async Task Lang_pl_stores_and_returns_the_plan_language_and_the_texts_are_Polish()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid().ReplyValid();
+        using var host = Host(client);
+        var user = await UserAsync(host, "plan-pl");
+        var goal = await user.CreateGoalAsync();
+
+        var body = await GenerateOkAsync(user, Id(goal), new { lang = "pl" });
+
+        Assert.Equal("pl", body.GetProperty("goal").GetProperty("plan").GetProperty("language").GetString());
+        Assert.NotEqual(RuleBasedNotes, body.GetProperty("goal").GetProperty("plan").GetProperty("notes").GetString());
+        Assert.Contains("\"language\":\"pl\"", ScriptedChatClient.AllText(Assert.Single(client.Requests)).Replace(" ", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Equal("pl", (await user.GetGoalJsonAsync(Id(goal))).GetProperty("plan").GetProperty("language").GetString());
+
+        // A regeneration without lang is English again (the default), and the stored language follows.
+        var again = await GenerateOkAsync(user, Id(goal));
+        Assert.Equal("en", again.GetProperty("goal").GetProperty("plan").GetProperty("language").GetString());
+        Assert.Equal(RuleBasedNotes, again.GetProperty("goal").GetProperty("plan").GetProperty("notes").GetString());
+    }
+
+    [Fact]
+    public async Task Without_lang_the_plan_language_is_en()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid();
+        using var host = Host(client);
+        var user = await UserAsync(host, "plan-en");
+        var goal = await user.CreateGoalAsync();
+
+        var body = await GenerateOkAsync(user, Id(goal));
+
+        Assert.Equal("en", body.GetProperty("goal").GetProperty("plan").GetProperty("language").GetString());
+    }
+
+    [Theory]
+    [InlineData("de")]
+    [InlineData("")]
+    [InlineData("PL")]
+    public async Task An_unsupported_lang_is_a_400_with_the_lang_key_and_no_model_call(string lang)
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid();
+        using var host = Host(client);
+        var user = await UserAsync(host, "plan-badlang");
+        var goal = await user.CreateGoalAsync();
+
+        var response = await GenerateAsync(user, Id(goal), new { lang });
+
+        var problem = await response.ProblemAsync(HttpStatusCode.BadRequest);
+        Assert.True(problem.GetProperty("errors").TryGetProperty("lang", out _), problem.ToString());
+        Assert.Equal(0, client.CallCount);
+        Assert.Empty(await LedgerAsync(user));
+    }
+
+    [Fact]
     public async Task Regenerate_replaces_pending_and_dismissed_suggestions_and_never_touches_runs()
     {
         factory.SkipIfDockerUnavailable();

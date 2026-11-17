@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
 import {
+  AI_LANGUAGES,
   aiLanguage,
   applyProfileLanguage,
   initLanguage,
@@ -129,8 +130,9 @@ describe('applying a language', () => {
 })
 
 describe('aiLanguage', () => {
-  it('sends en until Part C releases Polish AI texts', () => {
-    expect(aiLanguage('pl')).toBe('en')
+  it('sends the UI language when the AI supports it, else en', () => {
+    expect(AI_LANGUAGES).toEqual(['en', 'pl'])
+    expect(aiLanguage('pl')).toBe('pl')
     expect(aiLanguage('en')).toBe('en')
     expect(aiLanguage('xx')).toBe('en')
   })

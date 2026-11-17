@@ -3,6 +3,7 @@ import { act, render, renderHook, screen, waitFor, within } from '@testing-libra
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/app/queryClient'
+import { setLanguage } from '@/i18n/language'
 import { useInvalidateRuns } from '@/features/runs/runQueries'
 import { getFakeApi, resetFakeApi } from '@/test/fake'
 import { faults, type FakeApiOptions, type SummaryPostOutcome, type SummaryScenario } from '@/test/fakeApi'
@@ -166,6 +167,25 @@ describe('SummaryCard states', () => {
     expect(await inCard().findByRole('alert')).toHaveTextContent("Couldn't load the summary.")
     await user.click(inCard().getByRole('button', { name: 'Try again' }))
     expect(await inCard().findByRole('button', { name: 'Generate summary' })).toBeVisible()
+  })
+})
+
+describe('language', () => {
+  it('asks for the stored summary and generates in the UI language, and caches per language', async () => {
+    const user = userEvent.setup()
+    await act(() => setLanguage('pl'))
+    open('none')
+    const requests = recordRequests()
+
+    await user.click(await inCard().findByRole('button', { name: /^Wygeneruj podsumowanie/ }))
+    await waitFor(() => expect(inCard().getByRole('heading', { level: 3 })).toHaveTextContent(/Spokojny blok/))
+    expect(requests.find((r) => r.method === 'POST')?.body).toMatchObject({ lang: 'pl' })
+    expect(getFakeApi().requests).toContain(GET)
+
+    // The stored Polish summary is not served for English: switching the language is a different query.
+    await act(() => setLanguage('en'))
+    await inCard().findByRole('button', { name: 'Generate summary' })
+    expect(inCard().queryByRole('heading', { level: 3, name: /Spokojny blok/ })).not.toBeInTheDocument()
   })
 })
 

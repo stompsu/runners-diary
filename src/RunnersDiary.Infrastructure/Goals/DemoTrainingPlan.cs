@@ -59,7 +59,7 @@ public sealed class DemoTrainingPlan(IOptions<GuestOptions> options, DemoTextLoc
         var template = localizer.Localize(Template, language, missing);
         var target = template.Goal.TargetDate(today);
         var sheet = Sheet(template.Goal.Spec(today), today, demoRuns, language);
-        var result = TrainingPlanValidator.Validate(template.Draft(today), sheet, PlanValidationPolicy.Default);
+        var result = TrainingPlanValidator.Validate(template.Draft(today), sheet, PlanValidationPolicy.Default.ForLanguage(sheet.Language));
         if (!result.IsValid)
         {
             throw new DomainRuleException("The demo training plan is not valid for the demo diary: " + string.Join(", ", result.Violations));

@@ -106,6 +106,19 @@ test('insights is Polish and fits the screen', async ({ page }) => {
   await expectPolishScreen(page)
 })
 
+test('the AI summary is requested and shown in Polish', async ({ page }) => {
+  const fake = await mockApi(page, { today: DEMO_REPORT_TODAY, summary: { scenario: 'none' } })
+  await restoreGuest(page, fake)
+  await page.goto('/insights')
+  const card = page.getByTestId('summary-card')
+  const post = page.waitForRequest((r) => r.url().includes('/api/insights/summary') && r.method() === 'POST')
+  await card.getByRole('button', { name: /^Wygeneruj podsumowanie/ }).click()
+  expect((await post).postDataJSON()).toMatchObject({ lang: 'pl' })
+  await expect(card.getByRole('heading', { level: 3 })).toContainText('Spokojny blok')
+  await expect(card).toContainText('Przebiegnięto 382,6 km')
+  await expectPolishScreen(page)
+})
+
 test('race interests (settings) are Polish and fit the screen', async ({ page }) => {
   await start(page)
   await page.goto('/settings/races')
@@ -132,6 +145,15 @@ test('goals: the list, a goal with a generated plan, and the new-goal form are P
   await page.goto(`/goals/${goal.id}`)
   await expect(page.getByRole('heading', { level: 1, name: 'Jesienna dycha' })).toBeVisible()
   await expect(page.getByRole('region', { name: /^Tydzień \d+/ }).first()).toBeVisible()
+  // The plan above was generated without `lang` (English), so the Polish UI flags it; Regenerate asks for Polish.
+  const hint = page.getByTestId('plan-language-hint')
+  await expect(hint).toContainText('Ten plan wygenerowano po angielsku.')
+  await expectPolishScreen(page)
+  const regenerate = page.waitForRequest((r) => r.url().includes('/plan') && r.method() === 'POST')
+  await page.getByRole('button', { name: 'Wygeneruj ponownie' }).click()
+  expect((await regenerate).postDataJSON()).toEqual({ lang: 'pl' })
+  await expect(hint).toHaveCount(0)
+  await expect(page.getByText('Zwiększaj obciążenie stopniowo', { exact: false })).toBeVisible()
   await expectPolishScreen(page)
 
   await page.goto('/goals/new')

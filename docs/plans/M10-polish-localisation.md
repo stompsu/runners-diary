@@ -162,7 +162,7 @@ export function resolveInitialLanguage(stored: string | null, navigatorLanguages
 export function initLanguage(): Promise<void>                      // resolve → ensure bundle → changeLanguage → <html lang>
 export function setLanguage(lng: Language, opts: { persistToProfile: boolean }): Promise<void>
 export function applyProfileLanguage(profile: Language | null): Promise<void>
-export const AI_LANGUAGES: readonly Language[]                     // ['en'] until Part C, then ['en','pl']; else 'en' is sent
+export const AI_LANGUAGES: readonly Language[]                     // ['en','pl'] (C3); a language outside the list sends 'en'
 ```
 
 ## 4. UI
@@ -189,8 +189,8 @@ export const AI_LANGUAGES: readonly Language[]                     // ['en'] unt
 
 **Part C – AI in Polish (ai-insights)**
 9. [x] **C1:** Polish number words, per-language policies, folded deny matching; Domain.Tests (adversarial drafts per rule).
-10. [ ] **C2:** prompt v3 (both features), manifests, `templates/pl.json`, `demo/pl/12w-previous.v1.json` (user reviews the Polish), Polish fake drafts, eval cases (CI mode).
-11. [ ] **C3 (+ backend-dotnet, frontend-react):** plan `lang` + `PlanLanguage`, demo plan per language, SPA `AI_LANGUAGES` += `pl`, summary/plan `lang`, language hint; Api.Tests/Vitest.
+10. [x] **C2 (user approved 2026-11-17):** prompt v3 (both features), manifests, `templates/pl.json`, `demo/pl/12w-previous.v1.json` (user reviews the Polish), Polish fake drafts, eval cases (CI mode).
+11. [x] **C3 (+ backend-dotnet, frontend-react):** plan `lang` + `PlanLanguage`, demo plan per language, SPA `AI_LANGUAGES` += `pl`, summary/plan `lang`, language hint; Api.Tests/Vitest.
 12. [ ] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits, and stops for approval.
 
 If the user prefers, Part C can follow in a separate PR. Until then `AI_LANGUAGES = ['en']`, so a Polish UI shows English AI texts.
@@ -308,6 +308,24 @@ Done: prompt v3 for both features (`prompts/training-insights/v3.md`, `prompts/t
 7. **Live evals (G-L1, not run):** `LiveEvalTests` and `PlanLiveEvalTests` run every case in `en` and `pl` (`RD_AI_LIVE_LANGUAGES=pl` limits it); the plan live eval sets the fact sheet's `language`, prints the notes and a few descriptions for the human read, and fails a Polish run whose texts read as English. The pass assertion is unchanged (every run of a case passes), stricter than G-L1's "≥ 2/3 per case"; the printed counts give the gate's numbers.
 8. **Tests changed outside Ai.Tests:** Api.Tests `InsightsSummaryEndpointTests` (`lang=pl` is valid now, so the invalid-value cases use `de`; prompt version 3) and `GenerateTrainingPlanTests` (prompt version 3). No API code changed; OpenAPI unchanged.
 9. **Left for C3:** `DemoTrainingPlan` validates the demo plan with `PlanValidationPolicy.Default` (English rules) for every language; it should use `.ForLanguage(sheet.Language)`. The OpenAPI description of `GET /api/insights/summary` still says "lang (en)". `TrainingPlanService.Language`, the plan `lang` and the SPA side are C3 as planned.
+
+### Step 11 / C3 backend (backend-dotnet), implemented 2026-11-17 (frontend part still open)
+
+Done: plan `lang`, `Goals.PlanLanguage` written on generation, demo plan validated with the guest's language rules, OpenAPI descriptions, `schema.d.ts` regenerated, Api.Tests. Deviations and decisions:
+
+1. **Contract:** `POST /api/goals/{goalId}/plan` body gets `lang?: string` (`en` default; allowed values = the languages of the plan prompt manifest, today `en`, `pl`; case-sensitive). Anything else, including an empty string, is 400 `errors.lang` before any lookup, quota or model call. The generated schema types it `lang?: null | string` (the API does not publish an enum, like the summary `lang`). The default is `en`, not the profile language: the SPA sends the UI language explicitly.
+2. **Wiring:** `TrainingPlanService.GenerateAsync(goalId, replaceOtherGoals, language, ct)` (the old constant `Language` became `DefaultLanguage`); the language goes to the fact sheet (and so the prompt and the validator policy `ForLanguage`) and into `GoalPlanRecord.Language`, so `GoalDto.plan.language` reflects it. A regeneration without `lang` is English again and overwrites the stored language.
+3. **Demo plan:** `DemoTrainingPlan` validates with `PlanValidationPolicy.Default.ForLanguage(sheet.Language)`; `DemoTrainingPlanStartupCheck` (already looping over every supported language) therefore checks the Polish demo plan against the Polish rules at startup.
+4. **Summary:** the cache is keyed by language already (`EfAiSummaryStore` filters on `Language`); only the OpenAPI/XML text of `lang` changed ("en default, or pl"). Quotas are not per language (a Polish and an English generation count the same).
+5. **Tests:** Api.Tests `GenerateTrainingPlanTests` (pl stored and returned, Polish texts, the fact sheet sent says `pl`, regenerate without lang is `en`, default `en`, invalid `lang` 400 without a model call or ledger row) and `InsightsSummaryEndpointTests` (pl summary stored with `Language = pl` and cached apart from English).
+
+### Step 11 / C3 frontend (frontend-react), implemented 2026-11-17
+
+Done: `AI_LANGUAGES = ['en', 'pl']`; `aiLanguage()` wired into the summary GET (query key and `lang` param, so a stored Polish summary is a different cache entry from the English one), the summary POST and its `setQueryData`, and into every plan generation (`PlanSection.start`, which the replace dialog also uses): the body is now always `{ lang }` or `{ replaceOtherGoals: true, lang }`, Regenerate included. Language hint under the plan header. Fake API (`lang` en/pl for summary GET/POST and plan POST, per-language stored summaries, Polish sample summary and plan notes, `plan.language` follows the request). Decisions:
+
+1. **Hint:** `goals:plan.languageHint.{en,pl}` is the text for a plan written in that language ("Ten plan wygenerowano po angielsku." / "This plan was generated in Polish."), followed by `plan.languageHintAction` ("Regenerate to get it in the current language." / "Wygeneruj ponownie, aby uzyskać plan w bieżącym języku."). Two keys per language instead of an interpolated language name because Polish inflects it ("po angielsku", "po polsku"). It shows when `plan.language` differs from `aiLanguage(UI language)`; a plan is never regenerated automatically. The existing Regenerate button is the action. Plain wrapping paragraph, no overflow at 360 px (`phone-pl` e2e checks it).
+2. **Summaries:** no hint (the plan only asks for one on plans). Switching the language shows the summary stored for that language or the Generate state.
+3. **Tests:** Vitest for `AI_LANGUAGES`/`aiLanguage`, the summary card (Polish request, query key per language), plan section en and pl (sends `lang`, hint, Regenerate sends the current language), fake API; Playwright `desktop-pl`/`phone-pl` (Polish summary, plan hint, Regenerate with `lang: pl`). The full-stack Polish journey (CI runs the API with `Ai__Provider=Fake`) asserts `lang=pl` on the summary GET, `period.lang = pl` and the Polish example badge; it does not generate a model summary (not run locally, needs the stack).
 
 ### Step 3 (frontend-react), implemented 2026-11-17
 

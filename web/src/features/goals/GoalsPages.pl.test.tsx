@@ -1,9 +1,10 @@
-import { act, screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { setLanguage } from '@/i18n/language'
 import { getFakeApi, resetFakeApi } from '@/test/fake'
 import { typeId, type RunWriteRequest } from '@/test/fakeApi'
+import { recordRequests } from '@/test/requests'
 import { renderRoute, signInForTest } from '@/test/render'
 import { stubResizeObserver } from '@/test/resizeObserver'
 import '@/i18n/lazyBundles'
@@ -67,6 +68,41 @@ describe('Goals in Polish', () => {
     expect(screen.getByRole('button', { name: 'Wygeneruj ponownie' })).toBeInTheDocument()
     expect(screen.getAllByText('Sugestia').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: /Akceptuj/ }).length).toBeGreaterThan(0)
+  })
+
+  it('generates the plan in Polish and sends lang pl', async () => {
+    const { user } = await open(
+      '/goals/:id',
+      (t) => getFakeApi().addGoal(t, { title: 'Jesienna dycha', targetDate: '2026-12-20' }).id,
+    )
+    const requests = recordRequests()
+    await user.click(await screen.findByRole('button', { name: 'Wygeneruj sugestie' }))
+    await screen.findByRole('button', { name: 'Wygeneruj ponownie' })
+    expect(requests.find((r) => r.path.endsWith('/plan'))?.body).toEqual({ lang: 'pl' })
+    expect(await screen.findByText(/Zwiększaj obciążenie stopniowo/)).toBeInTheDocument()
+    expect(screen.queryByTestId('plan-language-hint')).not.toBeInTheDocument()
+  })
+
+  it('keeps an older English plan, flags it in Polish, and Regenerate asks for Polish', async () => {
+    const { user } = await open('/goals/:id', (token) => {
+      const goal = getFakeApi().addGoal(token, { title: 'Jesienna dycha', targetDate: '2026-12-20' })
+      void getFakeApi().handle(
+        new Request(`http://localhost/api/goals/${goal.id}/plan`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lang: 'en' }),
+        }),
+      )
+      return goal.id
+    })
+    const hint = await screen.findByTestId('plan-language-hint')
+    expect(hint).toHaveTextContent(
+      'Ten plan wygenerowano po angielsku. Wygeneruj ponownie, aby uzyskać plan w bieżącym języku.',
+    )
+    const requests = recordRequests()
+    await user.click(await screen.findByRole('button', { name: 'Wygeneruj ponownie' }))
+    await waitFor(() => expect(screen.queryByTestId('plan-language-hint')).not.toBeInTheDocument())
+    expect(requests.find((r) => r.path.endsWith('/plan'))?.body).toEqual({ lang: 'pl' })
   })
 
   it('renders the goal form with Polish labels, a comma decimal for presets and the generic estimate hint', async () => {
