@@ -1,4 +1,4 @@
-import { Target } from 'lucide-react'
+import { MapPin, Target } from 'lucide-react'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -43,6 +43,12 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
           .filter(Boolean)
           .join(' · ')}
       </p>
+      {goal.location?.name ? (
+        <p className="mt-1 flex items-center gap-1.5 text-sm">
+          <MapPin className="size-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">{goal.location.name}</span>
+        </p>
+      ) : null}
       <p className="mt-1 text-sm text-muted-foreground">{planLine}</p>
       <div className="mt-3">
         <Button asChild variant="outline" className="h-11 sm:h-9">

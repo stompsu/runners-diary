@@ -3,6 +3,7 @@ import { addDays, diffDays, isValid } from '@/lib/dates/plainDate'
 import { formatDuration, parseDuration } from '@/lib/format/duration'
 import i18n from '@/i18n'
 import { formatKmInput, kmToMeters, parseKm } from '@/lib/format/units'
+import type { LocationFormValue } from '@/features/runs/runFormTypes'
 import type { GoalDto, GoalStatus, GoalType, GoalWriteRequest, Surface } from './goalTypes'
 
 // Same CSP reason as the run form schema (ADR 0029): zod's JIT needs 'unsafe-eval'.
@@ -46,6 +47,8 @@ export interface GoalFormValues {
   targetTime: string
   eventName: string
   raceRunId: string
+  /** `null` = no location */
+  location: LocationFormValue | null
   notes: string
   status: GoalStatus
 }
@@ -62,6 +65,7 @@ export function defaultGoalValues(today: string): GoalFormValues {
     targetTime: '',
     eventName: '',
     raceRunId: '',
+    location: null,
     notes: '',
     status: 'Active',
   }
@@ -79,10 +83,16 @@ export function toGoalFormValues(goal: GoalDto): GoalFormValues {
     targetTime: goal.targetDurationSeconds == null ? '' : formatDuration(goal.targetDurationSeconds),
     eventName: goal.eventName ?? '',
     raceRunId: goal.raceRunId ?? '',
+    location: goal.location
+      ? { latitude: goal.location.latitude, longitude: goal.location.longitude, name: goal.location.name ?? '' }
+      : null,
     notes: goal.notes ?? '',
     status: goal.status,
   }
 }
+
+/** Server `GoalRules.LocationNameMaxLength`. */
+export const LOCATION_NAME_MAX = 200
 
 const blank = (value: string) => value.trim() === ''
 
@@ -115,11 +125,18 @@ export function goalSchema(today: string, previousTargetDate?: string) {
       targetTime: z.string(),
       eventName: z.string(),
       raceRunId: z.string(),
+      location: z
+        .object({
+          latitude: z.number({ error: () => 'locationLatitude' }),
+          longitude: z.number({ error: () => 'locationLongitude' }),
+          name: z.string(),
+        })
+        .nullable(),
       notes: z.string(),
       status: z.enum(['Active', 'Achieved', 'Archived']),
     })
     .superRefine((values, ctx) => {
-      const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message })
+      const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: path.split('.'), message })
       if (blank(values.title)) issue('title', 'titleRequired')
       else if (values.title.length > 120) issue('title', 'titleTooLong')
 
@@ -138,6 +155,16 @@ export function goalSchema(today: string, previousTargetDate?: string) {
         if (e === null || e < 0 || e > 10_000) issue('elevationGain', 'elevation')
       }
 
+      if (values.location) {
+        const { latitude, longitude, name } = values.location
+        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) issue('location', 'locationLatitude')
+        else if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
+          issue('location', 'locationLongitude')
+        else if (name.length > LOCATION_NAME_MAX) issue('location.name', 'locationNameTooLong')
+      }
+
+      if (values.notes.length > 1000) issue('notes', 'notesTooLong')
+
       if (values.type === 'Distance') return
       if (blank(values.targetTime)) {
         if (values.type === 'Performance') issue('targetTime', 'targetTimeRequired')
@@ -152,7 +179,6 @@ export function goalSchema(today: string, previousTargetDate?: string) {
         if (blank(values.eventName)) issue('eventName', 'eventRequired')
         else if (values.eventName.length > 150) issue('eventName', 'eventTooLong')
       }
-      if (values.notes.length > 1000) issue('notes', 'notesTooLong')
     })
 }
 
@@ -171,6 +197,13 @@ export function toGoalRequest(values: GoalFormValues, version?: string): GoalWri
     surface: values.surface === '' ? null : values.surface,
     eventName: values.type === 'Race' ? orNull(values.eventName) : null,
     raceRunId: values.raceRunId === '' ? null : values.raceRunId,
+    location: values.location
+      ? {
+          latitude: values.location.latitude,
+          longitude: values.location.longitude,
+          name: orNull(values.location.name),
+        }
+      : null,
     notes: orNull(values.notes),
     status: values.status,
     ...(version ? { version } : {}),
@@ -194,6 +227,7 @@ export const GOAL_FORM_FIELDS: ReadonlySet<string> = new Set([
   'targetTime',
   'eventName',
   'raceRunId',
+  'location',
   'notes',
   'status',
 ])

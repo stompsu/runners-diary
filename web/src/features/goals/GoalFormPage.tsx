@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { QueryError } from '@/features/errors/QueryError'
 import { FormField } from '@/features/runs/FormField'
+import { LocationField } from '@/features/runs/LocationField'
 import { SURFACES } from '@/features/runs/runFormTypes'
 import { genericFieldMessage } from '@/lib/api/fieldMessage'
 import { mapFieldErrors, parseProblem } from '@/lib/api/problem'
@@ -52,6 +53,9 @@ const VALIDATION_KEYS = new Set([
   'targetPace',
   'eventRequired',
   'eventTooLong',
+  'locationLatitude',
+  'locationLongitude',
+  'locationNameTooLong',
   'notesTooLong',
 ])
 
@@ -308,6 +312,18 @@ function GoalForm({ today, goal, onReload }: { today: string; goal?: GoalDto; on
           }}
         />
       ) : null}
+
+      <Controller
+        control={control}
+        name="location"
+        render={({ field: place }) => (
+          <LocationField
+            value={place.value}
+            onChange={place.onChange}
+            nameError={message(errors.location?.name?.message)}
+          />
+        )}
+      />
 
       <FormField label={t('form.fields.notes')} error={message(errors.notes?.message)}>
         {(ctl) => <Textarea {...ctl} rows={3} maxLength={1000} {...register('notes')} />}
