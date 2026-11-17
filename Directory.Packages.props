@@ -44,7 +44,7 @@
   </ItemGroup>
   <ItemGroup Label="Race import">
     <!-- M8 race import (ADR 0035 section 6): MIT-licensed, actively maintained HTML5 parser without native code; used without loaders (no network, scripts or CSS). 1.10.2 published 2026-11-11. -->
-    <PackageVersion Include="AngleSharp" Version="1.10.2" />
+    <PackageVersion Include="AngleSharp" Version="1.10.4" />
   </ItemGroup>
   <ItemGroup Label="Tests">
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
