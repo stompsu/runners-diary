@@ -1,6 +1,7 @@
 using System.Globalization;
 using RunnersDiary.Domain.Calendar;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.RunTypes;
 
@@ -43,7 +44,7 @@ public static class TrainingPlanValidator
 
         var envelope = sheet.Envelope;
         var violations = new List<PlanViolation>();
-        var deny = SummaryValidator.DenyPattern.ParseAll(policy.DenyList);
+        var deny = DenyMatcher.Create(policy.Language, policy.DenyList, policy.LanguageDenyLists);
 
         var notes = draft.Notes.Trim();
         if (draft.Notes.Length > NotesMaxLength)
@@ -162,7 +163,7 @@ public static class TrainingPlanValidator
         && (min < MinPaceShareOfReference * r || (s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && min < r));
 
     private static PlannedSession? Convert(
-        DraftSession s, string location, bool trailGoal, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations, List<PlanRepair> repairs)
+        DraftSession s, string location, bool trailGoal, DenyMatcher deny, List<PlanViolation> violations, List<PlanRepair> repairs)
     {
         var before = violations.Count;
         var paceMax = s.PaceMaxSecondsPerKm;
@@ -269,7 +270,7 @@ public static class TrainingPlanValidator
             date, type.Id, s.DistanceMeters, s.DurationSeconds, intensity, s.PaceMinSecondsPerKm, paceMax, s.Description.Trim(), phase);
     }
 
-    private static void CheckText(string text, string location, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
+    private static void CheckText(string text, string location, DenyMatcher deny, List<PlanViolation> violations)
     {
         if (string.IsNullOrEmpty(text))
         {
@@ -281,8 +282,7 @@ public static class TrainingPlanValidator
             violations.Add(new PlanViolation(PlanRuleCode.Markup, location));
         }
 
-        var words = Placeholders.Words(text);
-        if (deny.Any(p => p.Matches(words)))
+        if (deny.Matches(NarrativeLanguages.Words(text, deny.Language)))
         {
             violations.Add(new PlanViolation(PlanRuleCode.ForbiddenTopic, location));
         }
