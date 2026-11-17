@@ -186,6 +186,51 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         Assert.Empty(TrainingPlanValidator.Validate(TrainingPlanDraftJson.ToJson(draft), sheet, PlanValidationPolicy.Default).Violations);
     }
 
+    /// <summary>
+    /// The G-P4 live finding: on the demo-like diary the model adds sessions to weeks that are already at the weekly session limit. The over-full answer
+    /// succeeds in one attempt, the excess is dropped (counted) and recorded as <c>frequency</c> repairs, and no week ends above the limit.
+    /// </summary>
+    [Fact]
+    public async Task An_over_full_answer_for_the_dense_demo_like_diary_succeeds_in_one_attempt()
+    {
+        var c = PlanEvalCases.Get(PlanEvalCases.DenseDiary);
+        var sheet = c.Sheet;
+        var good = FakeDraft(sheet);
+        var taken = good.Sessions.Select(s => s.Date).Concat(TrainingPlanValidator.BlockedDates(sheet.Commitments).Select(PlanEvalCases.D)).ToHashSet();
+        var extra = new List<DraftSession>();
+        foreach (var week in sheet.Envelope.Weeks.Take(6).Where(w => w.AvailableDistanceMeters >= 12_000))
+        {
+            var added = 0;
+            for (var d = 0; d < 7 && added < 2; d++)
+            {
+                var date = week.Start.AddDays(d);
+                if (date < sheet.Envelope.PlanStart || date > sheet.Envelope.PlanEnd || taken.Contains(PlanEvalCases.D(date)))
+                {
+                    continue;
+                }
+
+                extra.Add(new DraftSession(PlanEvalCases.D(date), "recovery", "recovery", week.Phase.ToWire(), 3_000, null, null, null, "Short recovery run."));
+                taken.Add(PlanEvalCases.D(date));
+                added++;
+            }
+        }
+
+        var overfull = good with { Sessions = [.. good.Sessions.Concat(extra).OrderBy(s => s.Date, StringComparer.Ordinal)] };
+        var withoutRepair = TrainingPlanValidator.Validate(good with { Sessions = overfull.Sessions }, sheet, PlanValidationPolicy.Default);
+        Assert.Contains(PlanRuleCode.Frequency, withoutRepair.Repairs.Select(r => r.Rule).Concat(withoutRepair.Violations.Select(v => v.Rule)));
+        var harness = new PlanHarness(new ScriptedChatClient().Reply(TrainingPlanDraftJson.ToJson(overfull), 9_000, 4_000));
+
+        var result = await harness.Generate(sheet);
+
+        Assert.True(result.Status == GenerationStatus.Succeeded, $"{result.Status} {result.Failure}: {string.Join(", ", result.AttemptDetails?.SelectMany(a => a.Violations) ?? [])}");
+        Assert.Equal(1, result.Attempts);
+        var repairs = Assert.Single(result.AttemptDetails!).Repairs;
+        Assert.Contains(repairs, r => r.Rule == PlanRuleCode.Frequency && r.Action == PlanRepairAction.Drop);
+        Assert.True(result.Plan!.DroppedCount > 0);
+        Assert.All(repairs, r => Assert.True(TrainingPlanAgent.IsSafeLocation(r.Location), r.Location));
+        c.AssertPlan(result.Plan!, sheet);
+    }
+
     [Fact]
     public async Task Plan_switch_off_or_no_model_is_unavailable_without_a_call()
     {
