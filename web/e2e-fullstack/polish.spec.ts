@@ -54,7 +54,9 @@ test('Polish guest -> Polish UI and demo texts (run comment, goal, plan) -> swit
   expect(((await me.json()) as { language: string | null }).language).toBe('pl')
 
   // The seeded race run (20 weeks back) has its rating comment in Polish.
-  const runs = await page.request.get('/api/runs?from=2000-01-01&to=2100-01-01', {
+  // GET /api/runs allows at most 92 days: weeks -22 to -9 contain the race (week -20).
+  const isoDay = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10)
+  const runs = await page.request.get(`/api/runs?from=${isoDay(-22 * 7)}&to=${isoDay(-22 * 7 + 91)}`, {
     headers: { authorization: authorization! },
   })
   expect(runs.status()).toBe(200)

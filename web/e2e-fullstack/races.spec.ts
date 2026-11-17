@@ -32,7 +32,7 @@ test('guest -> demo proposals -> I signed up (21.1 km) -> calendar, month list, 
   await page.goto('/')
   await expect(page).toHaveURL(/\/signin/)
   const created = page.waitForResponse(
-    (r) => r.url().endsWith('/api/guest-sessions') && r.request().method() === 'POST',
+    (r) => new URL(r.url()).pathname === '/api/guest-sessions' && r.request().method() === 'POST',
   )
   await page.getByRole('button', { name: 'Try as guest' }).click()
   expect((await created).status()).toBe(201)
