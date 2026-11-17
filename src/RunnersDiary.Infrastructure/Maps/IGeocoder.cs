@@ -10,8 +10,9 @@ public interface IGeocoder
     bool IsAvailable { get; }
 
     /// <summary>At most five places, best first. <paramref name="biasLatitude"/>/<paramref name="biasLongitude"/> are both set or both null.</summary>
+    /// <param name="language">A supported UI language tag (<c>en</c>/<c>pl</c>, ADR 0042); the provider returns place names in it. Anything else is treated as <c>en</c>.</param>
     Task<IReadOnlyList<GeocodedPlace>> SearchAsync(
-        string query, double? biasLatitude, double? biasLongitude, CancellationToken cancellationToken);
+        string query, double? biasLatitude, double? biasLongitude, string language, CancellationToken cancellationToken);
 }
 
 /// <summary>The default when <c>Maps:Geocoding:Provider</c> is <c>None</c>.</summary>
@@ -19,6 +20,6 @@ public sealed class NoGeocoder : IGeocoder
 {
     public bool IsAvailable => false;
 
-    public Task<IReadOnlyList<GeocodedPlace>> SearchAsync(string query, double? biasLatitude, double? biasLongitude, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<GeocodedPlace>> SearchAsync(string query, double? biasLatitude, double? biasLongitude, string language, CancellationToken cancellationToken) =>
         throw new InvalidOperationException("No geocoding provider is configured.");
 }

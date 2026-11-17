@@ -39,7 +39,7 @@ public sealed class AzureMapsGeocoderTests
     {
         var (geocoder, handler, credential, _) = Create(_ => StubHandler.Json(Sample));
 
-        await geocoder.SearchAsync("Gliwice Rynek & more", 50.29, 18.67, Ct);
+        await geocoder.SearchAsync("Gliwice Rynek & more", 50.29, 18.67, "en", Ct);
 
         var request = Assert.Single(handler.Requests).Request;
         Assert.Equal(HttpMethod.Get, request.Method);
@@ -55,12 +55,29 @@ public sealed class AzureMapsGeocoderTests
         Assert.False(request.Headers.Contains("Ocp-Apim-Subscription-Key"));
     }
 
+    [Theory]
+    [InlineData("pl", "pl")]
+    [InlineData("en", "en")]
+    [InlineData("de", "en")]
+    [InlineData("pl-PL, \r\nX-Injected: 1", "en")]
+    [InlineData("", "en")]
+    public async Task The_request_language_is_sent_as_an_allowlisted_Accept_Language_header(string language, string expected)
+    {
+        var (geocoder, handler, _, _) = Create(_ => StubHandler.Json(Sample));
+
+        await geocoder.SearchAsync("Gliwice", null, null, language, Ct);
+
+        var request = Assert.Single(handler.Requests).Request;
+        Assert.Equal(expected, Assert.Single(request.Headers.GetValues("Accept-Language")));
+        Assert.DoesNotContain("language", request.RequestUri!.Query, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task Without_a_bias_no_coordinates_are_sent()
     {
         var (geocoder, handler, _, _) = Create(_ => StubHandler.Json(Sample));
 
-        await geocoder.SearchAsync("Gliwice", null, null, Ct);
+        await geocoder.SearchAsync("Gliwice", null, null, "en", Ct);
 
         Assert.DoesNotContain("coordinates", handler.Requests[0].Request.RequestUri!.Query, StringComparison.Ordinal);
     }
@@ -70,7 +87,7 @@ public sealed class AzureMapsGeocoderTests
     {
         var (geocoder, _, _, _) = Create(_ => StubHandler.Json(Sample));
 
-        var places = await geocoder.SearchAsync("Gliwice", null, null, Ct);
+        var places = await geocoder.SearchAsync("Gliwice", null, null, "en", Ct);
 
         Assert.Equal(5, places.Count);
         Assert.Equal(new GeocodedPlace("Gliwice, Silesia, Poland", 50.2945, 18.6714, "locality"), places[0]);
@@ -90,7 +107,7 @@ public sealed class AzureMapsGeocoderTests
     {
         var (geocoder, _, _, _) = Create(_ => StubHandler.Json(json));
 
-        Assert.Empty(await geocoder.SearchAsync("Gliwice", null, null, Ct));
+        Assert.Empty(await geocoder.SearchAsync("Gliwice", null, null, "en", Ct));
     }
 
     [Theory]
@@ -102,7 +119,7 @@ public sealed class AzureMapsGeocoderTests
     {
         var (geocoder, _, _, log) = Create(_ => StubHandler.Json("{\"error\":{\"message\":\"provider detail\"}}", status));
 
-        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => geocoder.SearchAsync("secret place name", 50.123456, 18.654321, Ct));
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => geocoder.SearchAsync("secret place name", 50.123456, 18.654321, "en", Ct));
 
         Assert.Equal(status, ex.StatusCode);
         Assert.DoesNotContain("secret place name", ex.ToString(), StringComparison.Ordinal);
@@ -116,8 +133,8 @@ public sealed class AzureMapsGeocoderTests
         var (geocoder, _, _, log) = Create(_ => StubHandler.Json(Sample));
         var (failing, _, _, failLog) = Create(_ => StubHandler.Json("{}", HttpStatusCode.BadGateway));
 
-        await geocoder.SearchAsync("secret place name", 50.123456, 18.654321, Ct);
-        await Assert.ThrowsAsync<HttpRequestException>(() => failing.SearchAsync("secret place name", 50.123456, 18.654321, Ct));
+        await geocoder.SearchAsync("secret place name", 50.123456, 18.654321, "en", Ct);
+        await Assert.ThrowsAsync<HttpRequestException>(() => failing.SearchAsync("secret place name", 50.123456, 18.654321, "en", Ct));
 
         foreach (var line in log.Lines.Concat(failLog.Lines))
         {
@@ -132,7 +149,7 @@ public sealed class AzureMapsGeocoderTests
     {
         var (geocoder, _, _, _) = Create(_ => StubHandler.Json("<html>nope"));
 
-        await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(() => geocoder.SearchAsync("Gliwice", null, null, Ct));
+        await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(() => geocoder.SearchAsync("Gliwice", null, null, "en", Ct));
     }
 
     [Fact]
@@ -140,7 +157,7 @@ public sealed class AzureMapsGeocoderTests
     {
         var (geocoder, handler, _, _) = Create(_ => StubHandler.Json(Sample));
 
-        await Assert.ThrowsAnyAsync<ArgumentException>(() => geocoder.SearchAsync("  ", null, null, Ct));
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => geocoder.SearchAsync("  ", null, null, "en", Ct));
         Assert.Empty(handler.Requests);
     }
 

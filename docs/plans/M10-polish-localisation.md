@@ -299,3 +299,14 @@ Done: `Insights/Narrative/Languages/{EnglishNumberWords, PolishNumberWords, Narr
 5. Entra (G8) is not live yet. `ui_locales` is wired now, and the tenant's Polish page customisation becomes a G8 checklist item for the user.
 6. Node 26 (Vitest) and Chromium ship full ICU with `pl` data.
 7. i18next stays on 26.x; an upgrade to ≥ 27.1 would only soften the missing-plural fallback, and the parity test makes it irrelevant.
+
+### Step 2 (maps-gpx), implemented 2026-11-17
+
+Done: geocoder language, Azure Maps display language. Deviations and decisions:
+
+1. **Provider call:** Azure Maps Get Geocoding (`2026-01-01`) takes the language in the `Accept-Language` request header (no `language` query parameter); verified against the current REST reference. `AzureMapsGeocoder` sends only `en` or `pl` (value passed through `SupportedLanguages.OrDefault`), never client text.
+2. **Interface:** `IGeocoder.SearchAsync` gained a required `string language` parameter (before the cancellation token). `FakeGeocoder` records `LastLanguage`.
+3. **Parsing:** new pure `Domain/Localization/AcceptLanguage.Reduce` (bounded to 256 chars and 16 entries, honours `q`, ignores `q=0`, region subtags dropped, default `en`). It lives in Domain, not `Features/Geocoding`, so other endpoints can reuse it. `SearchPlaces` reads the header, reduces it and answers with `Vary: Accept-Language`. The header is not declared as an OpenAPI parameter (the SPA's `Accept-Language` is added globally by the client); only the operation summary changed, so `openapi/runnersdiary-api.json` and `schema.d.ts` were regenerated (comment-only diff).
+4. **Caching:** there is no server-side geocoder result cache today (only the daily `GeocodeBudget` counter), so nothing to key. Any future cache must key on the reduced language (noted here).
+5. **Azure Maps display:** `AzureMapsMap` passes `language` (`pl-PL` for `pl`, else `en-US`, helper `azure/azureLanguage.ts`) read from `i18n.language` (the language module in `web/src/i18n/language.ts` has no hook; i18next is the source of truth). The map is rebuilt on a language switch (the option is read at construction).
+6. **MapLibre/OpenFreeMap:** no label-language change, as ADR 0042 section 7 says (labels are local names already). Its control strings already use the `maps` namespace, so Polish comes with step B2.

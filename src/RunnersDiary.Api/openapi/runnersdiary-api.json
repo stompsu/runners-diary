@@ -600,7 +600,7 @@
         "tags": [
           "Geocoding"
         ],
-        "summary": "Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent.",
+        "summary": "Searches places by name (provider-neutral). Place names follow the Accept-Language header, reduced to en or pl (default en). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent.",
         "operationId": "searchPlaces",
         "parameters": [
           {

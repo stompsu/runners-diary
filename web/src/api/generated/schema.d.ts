@@ -151,7 +151,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent. */
+        /** Searches places by name (provider-neutral). Place names follow the Accept-Language header, reduced to en or pl (default en). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent. */
         get: operations["searchPlaces"];
         put?: never;
         post?: never;
