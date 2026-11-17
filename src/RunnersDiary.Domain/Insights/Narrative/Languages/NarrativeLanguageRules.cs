@@ -6,7 +6,8 @@ namespace RunnersDiary.Domain.Insights.Narrative.Languages;
 
 /// <summary>
 /// The per-language parts of the narrative rules (ADR 0043 §3): which number words count as <c>literalNumber</c>, how the
-/// <c>forbiddenTopic</c> deny list is matched, and the Polish-only <c>genderedForm</c> rule. Shared by the summary and the plan validator.
+/// <c>forbiddenTopic</c> deny list is matched, and the Polish-only <c>genderedForm</c> and <c>wrongLanguage</c> rules. Shared by the summary
+/// and the plan validator.
 /// <list type="bullet">
 /// <item><b>en</b> (and every v1/v2 policy): exactly the pre-M10 behaviour: lower-cased letter runs, the English number words, the
 /// policy's deny list, no diacritic folding.</item>
@@ -69,6 +70,13 @@ public static class NarrativeLanguages
     /// <paramref name="prose"/> is the original text (with diacritics), not the folded words.
     /// </summary>
     internal static bool HasGenderedForm(string prose, string language) => language == Polish && PolishGenderedForms.Contains(prose);
+
+    /// <summary>
+    /// The <c>wrongLanguage</c> rule: Polish only (see <see cref="PolishWrongLanguage"/>). <paramref name="texts"/> are all text fields of one
+    /// draft (the rule has a per-draft threshold); returns the indexes of the rejected ones.
+    /// </summary>
+    internal static IReadOnlyList<int> WrongLanguageFields(IReadOnlyList<string> texts, string language) =>
+        language == Polish ? PolishWrongLanguage.Flagged(texts) : [];
 
     /// <summary>True when a word of <paramref name="words"/> (from <see cref="Words"/>) is a number word of the language.</summary>
     internal static bool HasNumberWord(IEnumerable<string> words, string language) => language == English

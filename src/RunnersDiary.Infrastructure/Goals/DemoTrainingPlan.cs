@@ -60,9 +60,12 @@ public sealed class DemoTrainingPlan(IOptions<GuestOptions> options, DemoTextLoc
         var target = template.Goal.TargetDate(today);
         var sheet = Sheet(template.Goal.Spec(today), today, demoRuns, language);
         var result = TrainingPlanValidator.Validate(template.Draft(today), sheet, PlanValidationPolicy.Default.ForLanguage(sheet.Language));
-        if (!result.IsValid)
+
+        // wrongLanguage (G-L1 follow-up) guards model output; the demo texts are ours, and an untranslated one stays English by design (ADR 0042 §7).
+        var violations = result.Violations.Where(v => v.Rule != PlanRuleCode.WrongLanguage).ToList();
+        if (violations.Count > 0)
         {
-            throw new DomainRuleException("The demo training plan is not valid for the demo diary: " + string.Join(", ", result.Violations));
+            throw new DomainRuleException("The demo training plan is not valid for the demo diary: " + string.Join(", ", violations));
         }
 
         var goal = Goal.Create(

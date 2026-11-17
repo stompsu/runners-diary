@@ -175,6 +175,20 @@ public sealed class TrainingPlanAgentTests
             note);
     }
 
+    /// <summary>G-L1 follow-up: <c>wrongLanguage</c> is explained in fixed text, after the locations.</summary>
+    [Fact]
+    public void The_retry_note_explains_the_wrong_language_rule()
+    {
+        var note = TrainingPlanAgent.RetryMessage([new PlanViolation(PlanRuleCode.WrongLanguage, "notes"), new PlanViolation(PlanRuleCode.WrongLanguage, "sessions[0].description")]);
+
+        Assert.Equal(
+            "Your previous plan was rejected by the validator. Violated rules: wrongLanguage. " +
+            "Where (week starts, dates or fields): notes, sessions[0].description. " +
+            Domain.Insights.Narrative.Languages.PolishWrongLanguage.RetryHint + ". " +
+            "Write a new JSON object that follows every rule in the instructions and stays inside the envelope.",
+            note);
+    }
+
     [Fact]
     public void The_retry_note_carries_the_validators_numbers_for_volume_long_run_and_pace_spread()
     {

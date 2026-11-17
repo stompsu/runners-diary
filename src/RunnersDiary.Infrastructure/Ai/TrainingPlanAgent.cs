@@ -173,6 +173,11 @@ public sealed class TrainingPlanAgent
             text.Append(". ").Append(PolishGenderedForms.RetryHint);
         }
 
+        if (violations.Any(v => v.Rule == PlanRuleCode.WrongLanguage))
+        {
+            text.Append(". ").Append(PolishWrongLanguage.RetryHint);
+        }
+
         text.Append(". Write a new JSON object that follows every rule in the instructions and stays inside the envelope.");
         return text.ToString();
     }

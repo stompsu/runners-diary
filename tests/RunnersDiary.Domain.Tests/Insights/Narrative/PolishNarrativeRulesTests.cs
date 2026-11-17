@@ -9,7 +9,7 @@ namespace RunnersDiary.Domain.Tests.Insights.Narrative;
 
 /// <summary>
 /// M10 C1 (ADR 0043 §3, plan §8): per-language <c>literalNumber</c> and <c>forbiddenTopic</c> rules, and the Polish-only <c>genderedForm</c>
-/// rule (G-L1 follow-up, plan §10). Adversarial Polish drafts per rule, the everyday Polish words that must stay allowed, and English behaviour unchanged.
+/// and <c>wrongLanguage</c> rules (G-L1 follow-ups, plan §10). Adversarial Polish drafts per rule, the everyday Polish words that must stay allowed, and English behaviour unchanged.
 /// </summary>
 public sealed class PolishNarrativeRulesTests
 {
@@ -423,5 +423,97 @@ public sealed class PolishNarrativeRulesTests
         const string text = "Jesteś w dobrym miejscu: zacznij spokojnie, przyspiesz w końcówce, a potem masz lżejszy dzień.";
         var result = TrainingPlanValidator.Validate(new TrainingPlanDraft(text, TrainingPlanValidatorTests.Good(sheet)), sheet, PlanValidationPolicy.Default.ForLanguage("pl"));
         Assert.True(result.IsValid, string.Join(", ", result.Violations));
+    }
+
+    // wrongLanguage, Polish only (G-L1 follow-up)
+
+    [Theory]
+    [InlineData("So far, you kept the load ratio in the {totals.runCount} range as of {totals.distance}.")] // the G-L1 headline, shortened
+    [InlineData("You ran {totals.distance} with the group.")]
+    [InlineData("Łącznie {totals.distance}. The week of easy running paid off.")] // one English sentence in Polish text
+    [InlineData("Łącznie {totals.distance}, keep it easy after the race.")]
+    [InlineData("THE END OF THE BLOCK: {totals.distance}.")] // upper case
+    [InlineData("Your total: {totals.distance}, and {totals.runCount} runs.")]
+    public void An_English_text_is_rejected_for_Polish(string item)
+    {
+        Assert.Contains(ValidationRuleCode.WrongLanguage, Codes(item, Pl));
+        Assert.DoesNotContain(ValidationRuleCode.WrongLanguage, Codes(item, En));
+    }
+
+    [Theory]
+    [InlineData("Tapering przed startem, potem trail i cross: {totals.distance}.")] // glossary loanwords
+    [InlineData("Wskaźnik ACWR, RPE i bieg OCR: {totals.distance}.")] // acronyms
+    [InlineData("Treningi easy, long run i tempo w normie: {totals.distance}.")] // running loanwords are not function words
+    [InlineData("To jest ten bieg, a potem do domu i na trening, no i tak: {totals.distance}.")] // Polish homographs of English words
+    [InlineData("Dla was on by to zrobił, a we wtorek as w rękawie: {totals.distance}.")]
+    [InlineData("Branża IT, zmiana in plus, but do biegania: {totals.distance}.")] // "it", "in", "but" are not on the list
+    [InlineData("Bieg z przebieżkami, the best: {totals.distance}.")] // one stray English word
+    [InlineData("Start {totals.runCount}: Gliwice City Run, łącznie {totals.distance}.")] // an English name without function words
+    public void Polish_with_loanwords_acronyms_and_homographs_is_not_wrong_language(string item)
+    {
+        Assert.DoesNotContain(ValidationRuleCode.WrongLanguage, Codes(item, Pl));
+    }
+
+    [Fact]
+    public void Placeholders_are_ignored_by_the_wrong_language_rule()
+    {
+        Assert.Empty(PolishWrongLanguage.EnglishWords("Łącznie {the.end.of} i {with.and.from}."));
+        Assert.Equal(["the", "of"], PolishWrongLanguage.EnglishWords("The {x} end of the {of} block."));
+    }
+
+    [Fact]
+    public void Short_English_phrases_across_a_draft_are_rejected_by_the_draft_threshold()
+    {
+        // Each field alone stays below the field threshold (one stop word each); three distinct ones across the draft flag every field that has one.
+        var draft = new SummaryDraft(
+            "Dobry blok, with {totals.distance}.",
+            [new SummaryItem("Łącznie {totals.distance} for {totals.runCount}."), new SummaryItem("Spokojne tygodnie: {totals.distance}.")],
+            [],
+            new SummaryItem("Ease back in after: kilka spokojnych dni."),
+            []);
+
+        var result = SummaryValidator.Validate(draft, Sheet, Pl);
+
+        Assert.Equal(
+            ["headline", "wentWell.1", "suggestion"],
+            result.Violations.Where(v => v.Rule == ValidationRuleCode.WrongLanguage).Select(v => v.Location));
+        Assert.Equal([0, 1, 3], PolishWrongLanguage.Flagged(draft.Texts().Select(t => t.Text).ToList()));
+
+        // Two distinct stop words across the draft, one per field: below both thresholds.
+        Assert.Empty(PolishWrongLanguage.Flagged(["Dobry blok, with {totals.distance}.", "Łącznie for {totals.distance}."]));
+    }
+
+    [Fact]
+    public void An_English_plan_is_rejected_for_Polish_in_the_notes_and_the_descriptions()
+    {
+        var sheet = TrainingPlanValidatorTests.Sheet();
+        var sessions = TrainingPlanValidatorTests.Good(sheet); // English descriptions: "Easy run at a relaxed effort.", "Long run at an easy effort."
+        var policy = PlanValidationPolicy.Default.ForLanguage("pl");
+
+        var english = TrainingPlanValidator.Validate(new TrainingPlanDraft("Build gradually with the long run as the anchor.", sessions), sheet, policy);
+
+        var flagged = english.Violations.Where(v => v.Rule == PlanRuleCode.WrongLanguage).Select(v => v.Location).ToList();
+        Assert.Equal(["notes", .. Enumerable.Range(0, sessions.Count).Select(i => $"sessions[{i}].description")], flagged);
+
+        // Polish notes: the descriptions' single stop word ("at") stays below both thresholds.
+        var mixed = TrainingPlanValidator.Validate(new TrainingPlanDraft("Spokojne budowanie objętości, długie wybieganie co tydzień.", sessions), sheet, policy);
+        Assert.DoesNotContain(mixed.Violations, v => v.Rule == PlanRuleCode.WrongLanguage);
+
+        // One English description with two stop words is enough on its own.
+        sessions[2] = sessions[2] with { Description = "Run with the group." };
+        var one = TrainingPlanValidator.Validate(new TrainingPlanDraft("Spokojne budowanie objętości.", sessions), sheet, policy);
+        Assert.Contains(new PlanViolation(PlanRuleCode.WrongLanguage, "sessions[2].description"), one.Violations);
+
+        // English plans never get the rule.
+        Assert.DoesNotContain(TrainingPlanValidator.Validate(new TrainingPlanDraft("Build gradually with the long run.", sessions), sheet, PlanValidationPolicy.Default).Violations, v => v.Rule == PlanRuleCode.WrongLanguage);
+    }
+
+    [Fact]
+    public void The_stop_list_has_no_Polish_homograph()
+    {
+        foreach (var word in new[] { "a", "i", "o", "u", "w", "z", "to", "do", "na", "no", "go", "on", "we", "by", "as", "was", "ten", "but", "tak", "it", "in", "per", "my", "me", "ma", "pod", "nad", "od", "ze", "co", "jak" })
+        {
+            Assert.DoesNotContain(word, PolishWrongLanguage.EnglishStopWords);
+        }
     }
 }

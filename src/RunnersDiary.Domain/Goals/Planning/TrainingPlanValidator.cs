@@ -81,6 +81,8 @@ public static class TrainingPlanValidator
             candidates.Add(session);
         }
 
+        CheckLanguage(draft, policy.Language, violations);
+
         // Item level: a session on a blocked day is dropped and counted (never a retry).
         var (collisionKept, dropped) = DropCollisions(candidates, sheet.Commitments);
 
@@ -290,6 +292,21 @@ public static class TrainingPlanValidator
         if (NarrativeLanguages.HasGenderedForm(text, deny.Language))
         {
             violations.Add(new PlanViolation(PlanRuleCode.GenderedForm, location));
+        }
+    }
+
+    /// <summary>The Polish <c>wrongLanguage</c> rule over the notes and every session description (one draft, see <see cref="PolishWrongLanguage"/>).</summary>
+    private static void CheckLanguage(TrainingPlanDraft draft, string language, List<PlanViolation> violations)
+    {
+        var fields = new List<(string Location, string Text)> { ("notes", draft.Notes ?? string.Empty) };
+        for (var i = 0; i < draft.Sessions.Count; i++)
+        {
+            fields.Add(($"sessions[{i.ToString(CultureInfo.InvariantCulture)}].description", draft.Sessions[i].Description ?? string.Empty));
+        }
+
+        foreach (var index in NarrativeLanguages.WrongLanguageFields([.. fields.Select(f => f.Text)], language))
+        {
+            violations.Add(new PlanViolation(PlanRuleCode.WrongLanguage, fields[index].Location));
         }
     }
 

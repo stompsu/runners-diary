@@ -119,6 +119,25 @@ public sealed class TrainingInsightsAgentTests
         Assert.Contains("-łeś, -łaś, -łbyś, -łabyś", text, StringComparison.Ordinal);
     }
 
+    /// <summary>G-L1 follow-up: <c>wrongLanguage</c> is explained in fixed text, after the gendered-form hint when both are violated.</summary>
+    [Fact]
+    public void Retry_message_explains_the_wrong_language_rule()
+    {
+        var text = TrainingInsightsAgent.RetryMessage([new SummaryViolation(ValidationRuleCode.WrongLanguage, "headline"), new SummaryViolation(ValidationRuleCode.WrongLanguage, "suggestion")]);
+
+        Assert.Equal(
+            "Your previous answer was rejected by the validator. Violated rules: wrongLanguage. Where: headline, suggestion. "
+            + Domain.Insights.Narrative.Languages.PolishWrongLanguage.RetryHint
+            + ". Write a new JSON object that follows every rule in the instructions.",
+            text);
+
+        var both = TrainingInsightsAgent.RetryMessage([new SummaryViolation(ValidationRuleCode.GenderedForm, "headline"), new SummaryViolation(ValidationRuleCode.WrongLanguage, "suggestion")]);
+        Assert.True(
+            both.IndexOf(Domain.Insights.Narrative.Languages.PolishGenderedForms.RetryHint, StringComparison.Ordinal)
+            < both.IndexOf(Domain.Insights.Narrative.Languages.PolishWrongLanguage.RetryHint, StringComparison.Ordinal));
+        Assert.DoesNotContain(Domain.Insights.Narrative.Languages.PolishWrongLanguage.RetryHint, TrainingInsightsAgent.RetryMessage([new SummaryViolation(ValidationRuleCode.Markup, "headline")]), StringComparison.Ordinal);
+    }
+
     private static void AssertStrictObject(JsonElement schema, string[] properties)
     {
         Assert.False(schema.GetProperty("additionalProperties").GetBoolean());

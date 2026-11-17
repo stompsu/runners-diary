@@ -5,7 +5,7 @@ namespace RunnersDiary.Ai.Tests.Evals;
 
 /// <summary>
 /// Case-level checks shared by the CI (scripted) and live evals: required keys are cited, forbidden ones are not, and a Polish case is written
-/// in Polish (<see cref="LanguageCheck"/>, a prompt-quality metric, not a validator rule; ADR 0043 §5).
+/// in Polish (<see cref="LanguageCheck"/>, a prompt-quality metric, stricter than the validator's <c>wrongLanguage</c> rule; ADR 0043 §5).
 /// </summary>
 internal static class EvalAssertions
 {

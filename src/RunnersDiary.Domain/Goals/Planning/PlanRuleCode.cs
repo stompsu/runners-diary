@@ -24,6 +24,9 @@ public enum PlanRuleCode
 
     /// <summary>Polish only: a gendered second-person past or conditional verb (M10 G-L1 follow-up), same rule as the summary's <c>genderedForm</c>.</summary>
     GenderedForm,
+
+    /// <summary>Polish only: English text in a Polish plan's notes or descriptions (M10 G-L1 follow-up), same rule as the summary's <c>wrongLanguage</c>.</summary>
+    WrongLanguage,
 }
 
 public static class PlanRuleCodes
@@ -45,6 +48,7 @@ public static class PlanRuleCodes
         PlanRuleCode.ForbiddenTopic => "forbiddenTopic",
         PlanRuleCode.Empty => "empty",
         PlanRuleCode.GenderedForm => "genderedForm",
+        PlanRuleCode.WrongLanguage => "wrongLanguage",
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown plan rule code."),
     };
 }

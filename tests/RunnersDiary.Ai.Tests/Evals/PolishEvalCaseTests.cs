@@ -6,8 +6,9 @@ namespace RunnersDiary.Ai.Tests.Evals;
 /// <summary>
 /// CI mode of the Polish eval cases (ADR 0043 §5, M10 C2): the same cases and fact sheets as English with <c>language: pl</c>; a Polish good
 /// draft per model case passes the Polish rules and the case checks; Polish adversarial drafts (number words in several cases and families,
-/// forbidden topics with and without diacritics, English words inside Polish text, gendered second-person forms) fail with their rule code; a placeholder in the wrong
-/// case is a known limit (valid for the validator); an English draft for <c>pl</c> fails the case's language check, not the validator.
+/// forbidden topics with and without diacritics, English words inside Polish text, gendered second-person forms, English text) fail with their rule code; a
+/// placeholder in the wrong case is a known limit (valid for the validator); an English draft for <c>pl</c> fails the validator (<c>wrongLanguage</c>,
+/// G-L1 follow-up) and the case's language check.
 /// </summary>
 public sealed class PolishEvalCaseTests
 {
@@ -64,7 +65,7 @@ public sealed class PolishEvalCaseTests
     }
 
     [Fact]
-    public void Polish_adversarial_drafts_cover_number_words_forbidden_topics_and_gendered_forms()
+    public void Polish_adversarial_drafts_cover_number_words_forbidden_topics_gendered_forms_and_english_text()
     {
         var files = EvalFiles.PolishBadDrafts().Select(row => row.Data.Item2).ToList();
 
@@ -90,6 +91,12 @@ public sealed class PolishEvalCaseTests
         {
             Assert.Contains($"bad-genderedForm-{variant}.json", files);
         }
+
+        // G-L1 follow-up: the all-English summary seen live for race-week-peak-demo, one English sentence, and short English phrases (draft threshold).
+        foreach (var variant in new[] { "live", "mixed", "short" })
+        {
+            Assert.Contains($"bad-wrongLanguage-{variant}.json", files);
+        }
     }
 
     /// <summary>ADR 0043 Consequences: a placeholder after a preposition that needs another case ("przed Bieg uliczny") is a style defect the prompt prevents, not a validator rule.</summary>
@@ -104,16 +111,23 @@ public sealed class PolishEvalCaseTests
         Assert.Contains("przed {week.6.raceType}", draft!.Headline, StringComparison.Ordinal);
     }
 
-    /// <summary>ADR 0043 §5: an English answer to a Polish request passes the validator but fails the case (a prompt-quality metric).</summary>
+    /// <summary>
+    /// G-L1 follow-up: an English answer to a Polish request is rejected by the validator (<c>wrongLanguage</c>, before: only the eval's
+    /// language check caught it), and still fails the case's language check; the same draft is valid for <c>en</c>. The rule flags the fields
+    /// that contain stop words; the headline "A well-structured build ending in a ... personal best on ..." has none ("in", "a", "on" are
+    /// left out as Polish homographs), so it is not listed, but the whole draft is rejected and the retry asks for every field in Polish.
+    /// </summary>
     [Fact]
-    public void An_english_draft_for_pl_passes_the_validator_but_fails_the_language_check()
+    public void An_english_draft_for_pl_fails_the_validator_and_the_language_check()
     {
         var evalCase = EvalCases.Get(EvalCases.TaperBeforeRace, Polish);
 
         var (draft, result) = SummaryValidator.Validate(PolishFile(EvalCases.TaperBeforeRace, "english-draft.json"), evalCase.Sheet, PolishPolicy);
 
-        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal([ValidationRuleCode.WrongLanguage], result.Codes);
+        Assert.Equal(["wentWell.1", "wentWell.2", "suggestion"], result.Violations.Select(v => v.Location));
         Assert.Contains(EvalAssertions.Failures(evalCase, draft!), f => f.Contains("English words", StringComparison.Ordinal));
+        Assert.True(SummaryValidator.Validate(draft!, EvalCases.Get(EvalCases.TaperBeforeRace).Sheet, SummaryValidationPolicy.Default.ForLanguage("en")).IsValid);
         Assert.Empty(EvalAssertions.Failures(EvalCases.Get(EvalCases.TaperBeforeRace), draft!));
     }
 
@@ -145,14 +159,19 @@ public sealed class PolishEvalCaseTests
         Assert.Contains(outcome.Attempts[0].Violations, v => v.Rule.ToCode() == EvalFiles.ExpectedCode(badFile));
     }
 
+    /// <summary>G-L1 follow-up: the pipeline retries an English answer for <c>pl</c> with the <c>wrongLanguage</c> hint; the Polish retry passes.</summary>
     [Fact]
-    public async Task An_english_answer_for_pl_succeeds_in_the_pipeline_but_the_eval_case_fails()
+    public async Task An_english_answer_for_pl_is_retried_in_the_pipeline()
     {
-        var scripted = new ScriptedChatClient().Reply(PolishFile(EvalCases.TaperBeforeRace, "english-draft.json"));
+        var scripted = new ScriptedChatClient()
+            .Reply(PolishFile(EvalCases.TaperBeforeRace, "english-draft.json"))
+            .Reply(EvalFiles.GoodDraft(EvalCases.TaperBeforeRace, Polish));
 
         var outcome = await EvalRunner.RunAsync(EvalCases.Get(EvalCases.TaperBeforeRace, Polish), scripted, "gpt-test");
 
         Assert.Equal(Infrastructure.Ai.GenerationStatus.Succeeded, outcome.Result.Status);
-        Assert.False(outcome.Passed);
+        Assert.True(outcome.Passed, outcome.ToString());
+        Assert.Equal(2, outcome.Result.Summary!.Attempts);
+        Assert.Contains(Domain.Insights.Narrative.Languages.PolishWrongLanguage.RetryHint, scripted.Requests[1].Messages[^1].Text, StringComparison.Ordinal);
     }
 }

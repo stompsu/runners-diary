@@ -182,6 +182,11 @@ public sealed class TrainingInsightsAgent
             text.Append(". ").Append(PolishGenderedForms.RetryHint);
         }
 
+        if (violations.Any(v => v.Rule == ValidationRuleCode.WrongLanguage))
+        {
+            text.Append(". ").Append(PolishWrongLanguage.RetryHint);
+        }
+
         text.Append(". Write a new JSON object that follows every rule in the instructions.");
         return text.ToString();
     }

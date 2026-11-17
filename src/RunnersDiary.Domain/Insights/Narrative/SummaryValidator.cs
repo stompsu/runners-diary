@@ -19,6 +19,9 @@ public enum ValidationRuleCode
 
     /// <summary>Polish only: a gendered second-person past or conditional verb (M10 G-L1 follow-up, <see cref="Languages.PolishGenderedForms"/>).</summary>
     GenderedForm,
+
+    /// <summary>Polish only: English text in a Polish draft (M10 G-L1 follow-up, <see cref="Languages.PolishWrongLanguage"/>).</summary>
+    WrongLanguage,
 }
 
 public static class ValidationRuleCodes
@@ -34,6 +37,7 @@ public static class ValidationRuleCodes
         ValidationRuleCode.EstimatedLoad => "estimatedLoad",
         ValidationRuleCode.Markup => "markup",
         ValidationRuleCode.GenderedForm => "genderedForm",
+        ValidationRuleCode.WrongLanguage => "wrongLanguage",
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown rule code."),
     };
 }
@@ -185,6 +189,11 @@ public static class SummaryValidator
             {
                 violations.Add(new SummaryViolation(ValidationRuleCode.MissingCitation, location));
             }
+        }
+
+        foreach (var index in NarrativeLanguages.WrongLanguageFields([.. texts.Select(t => t.Text)], policy.Language))
+        {
+            violations.Add(new SummaryViolation(ValidationRuleCode.WrongLanguage, texts[index].Location));
         }
 
         CheckRaceWeekPeak(draft, sheet, cited, violations);
