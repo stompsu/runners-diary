@@ -97,6 +97,9 @@
       "targetPace": "Ten czas oznacza tempo poza zakresem od 2:30 do 15:00 /km.",
       "eventRequired": "Podaj nazwę zawodów.",
       "eventTooLong": "Nazwa zawodów może mieć najwyżej 150 znaków.",
+      "locationLatitude": "Wybierz miejsce na mapie ponownie: szerokość geograficzna jest poza zakresem.",
+      "locationLongitude": "Wybierz miejsce na mapie ponownie: długość geograficzna jest poza zakresem.",
+      "locationNameTooLong": "Nazwa miejsca może mieć najwyżej 200 znaków.",
       "notesTooLong": "Notatki mogą mieć najwyżej 1000 znaków."
     },
     "problem": {
@@ -138,6 +141,7 @@
     "targetTime": "Czas docelowy",
     "targetPace": "Tempo docelowe",
     "event": "Zawody",
+    "location": "Lokalizacja",
     "notes": "Notatki",
     "linkedRun": "Powiązany trening",
     "viewRun": "Otwórz trening",
