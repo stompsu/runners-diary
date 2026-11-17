@@ -1,0 +1,11 @@
+{
+  "headline": "Obiecujący początek dziennika od {period.from}, liczba treningów: {totals.runCount}.",
+  "wentWell": [
+    { "text": "Regularne treningi: łącznie {totals.distance} w czasie {totals.duration}." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Zapisuj dalej odczuwalny wysiłek, a wkrótce będzie można obliczyć wskaźnik obciążenia." },
+  "dataNotes": [
+    { "text": "Do obliczenia wskaźnika obciążenia potrzeba {thresholds.acwrMinHistoryDays} historii; twój dziennik zaczyna się {load.historyStart}." }
+  ]
+}

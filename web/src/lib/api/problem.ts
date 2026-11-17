@@ -99,15 +99,20 @@ export function parseProblem(body: unknown, response?: Pick<Response, 'status' |
  */
 export function mapFieldErrors(
   fieldErrors: FieldErrors,
-  options: { keyMap?: Readonly<Record<string, string>>; isField: (name: string) => boolean },
+  options: {
+    keyMap?: Readonly<Record<string, string>>
+    isField: (name: string) => boolean
+    /** Shown instead of the server's (English) texts in a non-English UI (ADR 0042 §7); see `genericFieldMessage`. */
+    genericMessage?: string
+  },
 ): { fields: Record<string, string>; summary: string[] } {
   const fields: Record<string, string> = {}
   const summary: string[] = []
   for (const [key, messages] of Object.entries(fieldErrors)) {
     const name = options.keyMap?.[key] ?? key
-    const text = messages.join(' ')
-    if (options.isField(name)) fields[name] = fields[name] ? `${fields[name]} ${text}` : text
-    else summary.push(text)
+    const text = options.genericMessage ?? messages.join(' ')
+    if (options.isField(name)) fields[name] = fields[name] && !options.genericMessage ? `${fields[name]} ${text}` : text
+    else if (!options.genericMessage || !summary.includes(text)) summary.push(text)
   }
   return { fields, summary }
 }

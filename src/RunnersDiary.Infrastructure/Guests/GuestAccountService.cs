@@ -49,7 +49,8 @@ public sealed partial class GuestAccountService(
 
     private readonly SemaphoreSlim _seedingSlots = new(Math.Max(1, options.Value.SeedingConcurrency));
 
-    public async Task<GuestCreationResult> CreateAsync(CancellationToken cancellationToken)
+    /// <param name="language">A <see cref="Domain.Localization.SupportedLanguages"/> tag (already validated by the caller; null = never chosen) stored on the guest before seeding, so the demo texts are seeded in it.</param>
+    public async Task<GuestCreationResult> CreateAsync(CancellationToken cancellationToken, string? language = null)
     {
         var settings = options.Value;
         var now = clock.GetUtcNow();
@@ -74,7 +75,7 @@ public sealed partial class GuestAccountService(
                 return GuestCreationResult.Failed(GuestCreationFailure.AtCapacity, CapacityRetryAfter);
             }
 
-            var guest = User.CreateGuest(now);
+            var guest = User.CreateGuest(now, language: language);
             await seeder.SeedAsync(guest, cancellationToken);
             cleanup.RequestOpportunisticRun();
             return GuestCreationResult.Created(new GuestAccount(guest.Id, new DateTimeOffset(guest.ExpiresAt!.Value, TimeSpan.Zero)));

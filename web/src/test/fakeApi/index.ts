@@ -149,13 +149,18 @@ export interface FakeApi {
   /** For Playwright: `await page.route('**\/api/**', (route) => fake.fulfillRoute(route))`. */
   fulfillRoute(route: RouteLike): Promise<void>
   /** Creates an account and returns its bearer token (what the real API would issue). */
-  issueToken(kind: 'Guest' | 'User', overrides?: { displayName?: string; seed?: RunWriteRequest[] }): string
+  issueToken(
+    kind: 'Guest' | 'User',
+    overrides?: { displayName?: string; seed?: RunWriteRequest[]; language?: string | null },
+  ): string
   addFault(fault: Fault): void
   clearFaults(): void
   setEntra(entra: ClientConfigResponse['entra']): void
   setToday(today: string): void
   /** Test inspection: the runs held by the account behind a token. */
   runsOf(token: string): RunDto[]
+  /** The stored UI language of the account (`Users.Language`); null = never chosen. */
+  languageOf(token: string): string | null
   /** Puts a track straight into the account behind `token`; returns its DTO. */
   addTrack(token: string, runId: string, seed: TrackSeed): TrackDto
   /** Test inspection: the tracks of a run (stored DTOs), newest first. */
@@ -196,6 +201,9 @@ const DEFAULT_LIMITS: Limits = {
   maxUserFileBytes: 20 * 1024 * 1024,
 }
 const DAY_MS = 24 * 60 * 60 * 1000
+
+/** The languages the real API accepts (`SupportedLanguages`). */
+const SUPPORTED_LANGUAGES: readonly string[] = ['en', 'pl']
 
 export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   let today = options.today ?? '2026-11-03'
@@ -245,7 +253,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
 
   function issueToken(
     kind: 'Guest' | 'User',
-    overrides: { displayName?: string; seed?: RunWriteRequest[] } = {},
+    overrides: { displayName?: string; seed?: RunWriteRequest[]; language?: string | null } = {},
   ): string {
     const id = nextId()
     const token = `fake-${kind.toLowerCase()}-${id}`
@@ -256,6 +264,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       timeZoneId: zone,
       timeZoneIsDefault: true,
       unitSystem: 'Metric',
+      language: overrides.language ?? null,
       expiresAtMs: kind === 'Guest' ? now() + guestTtlMs : null,
       runs: new Map(),
       tracks: new Map(),
@@ -337,6 +346,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     timeZoneId: a.timeZoneId,
     timeZoneIsDefault: a.timeZoneIsDefault,
     unitSystem: a.unitSystem,
+    language: a.language,
     today,
     guestExpiresAt: a.expiresAtMs === null ? null : new Date(a.expiresAtMs).toISOString(),
   })
@@ -414,7 +424,11 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       )
     }
     if (method === 'POST' && path === '/api/guest-sessions') {
-      const token = issueToken('Guest')
+      // `?lang=` is optional and allow-listed like the real API (400 errors.lang otherwise); the guest keeps it.
+      const lang = new URL(request.url).searchParams.get('lang')
+      if (lang !== null && !SUPPORTED_LANGUAGES.includes(lang))
+        return validation({ lang: ['Language is not supported.'] })
+      const token = issueToken('Guest', { language: lang })
       const guest = accounts.get(token)!
       return json(
         {
@@ -452,6 +466,16 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         account.displayName = v.displayName ?? null
         return json(me(account))
       }
+    }
+
+    if (path === '/api/me/language' && method === 'PUT') {
+      const body = await readJson(request)
+      if ('response' in body) return body.response
+      const v = body.value as { language?: unknown } | null
+      if (typeof v?.language !== 'string' || !SUPPORTED_LANGUAGES.includes(v.language))
+        return validation({ language: ['Language is not supported.'] })
+      account.language = v.language
+      return new Response(null, { status: 204 })
     }
 
     if (method === 'GET' && path === '/api/run-types') return json(RUN_TYPES)
@@ -821,6 +845,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     clearFaults: () => void (faultList.length = 0),
     setEntra: (value) => void (entra = value),
     setToday: (value) => void (today = value),
+    languageOf: (token) => accounts.get(token)?.language ?? null,
     runsOf: (token) => sortRuns([...(accounts.get(token)?.runs.values() ?? [])]),
     addTrack: (token, runId, seed) => {
       const account = accounts.get(token)

@@ -15,6 +15,7 @@ import { QueryError } from '@/features/errors/QueryError'
 import { FormField } from '@/features/runs/FormField'
 import { LocationField } from '@/features/runs/LocationField'
 import { SURFACES } from '@/features/runs/runFormTypes'
+import { genericFieldMessage } from '@/lib/api/fieldMessage'
 import { mapFieldErrors, parseProblem } from '@/lib/api/problem'
 import { todayFromMe } from '@/lib/dates/plainDate'
 import { formatDuration } from '@/lib/format/duration'
@@ -79,7 +80,7 @@ function GoalFormLoader({ goal, onReload }: { goal?: GoalDto; onReload?: () => v
 }
 
 function GoalForm({ today, goal, onReload }: { today: string; goal?: GoalDto; onReload?: () => void }) {
-  const { t } = useTranslation('goals')
+  const { t, i18n } = useTranslation('goals')
   const navigate = useNavigate()
   const create = useCreateGoal()
   const update = useUpdateGoal()
@@ -87,7 +88,11 @@ function GoalForm({ today, goal, onReload }: { today: string; goal?: GoalDto; on
   const [formError, setFormError] = useState<string | null>(null)
   const [conflict, setConflict] = useState(false)
   const schema = useMemo(() => goalSchema(today, goal?.targetDate), [today, goal?.targetDate])
-  const defaults = useMemo(() => (goal ? toGoalFormValues(goal) : defaultGoalValues(today)), [goal, today])
+  // The default title is the label of the default preset (10K), in the UI language, so it follows the preset until edited.
+  const defaults = useMemo(
+    () => (goal ? toGoalFormValues(goal) : { ...defaultGoalValues(today), title: t('presets.tenK') }),
+    [goal, today, t],
+  )
   const {
     register,
     control,
@@ -141,7 +146,7 @@ function GoalForm({ today, goal, onReload }: { today: string; goal?: GoalDto; on
     setValue('preset', id)
     if (id === 'custom') return
     const preset = PRESETS[id]
-    setValue('distanceKm', formatKmInput(preset.distanceMeters), { shouldValidate: true })
+    setValue('distanceKm', formatKmInput(preset.distanceMeters, i18n.language), { shouldValidate: true })
     setValue('elevationGain', preset.elevationGainMeters == null ? '' : String(preset.elevationGainMeters))
     setValue('surface', preset.surface ?? '')
     // The title follows the preset until the user has typed their own.
@@ -171,6 +176,7 @@ function GoalForm({ today, goal, onReload }: { today: string; goal?: GoalDto; on
           const mapped = mapFieldErrors(api.fieldErrors, {
             keyMap: GOAL_FIELD_KEY_MAP,
             isField: (name) => GOAL_FORM_FIELDS.has(name),
+            genericMessage: genericFieldMessage(),
           })
           for (const [name, text] of Object.entries(mapped.fields))
             setError(name as keyof GoalFormValues, { type: 'server', message: text })

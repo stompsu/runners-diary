@@ -218,7 +218,7 @@ describe('DataQualityNote and InsightsEmptyState', () => {
     const note = screen.getByRole('complementary', { name: 'About these numbers' })
     expect(note).toHaveTextContent('25% of the training load comes from 5 sessions')
     expect(note).toHaveTextContent('2 sessions have no duration')
-    expect(note).toHaveTextContent('1 runs have no distance')
+    expect(note).toHaveTextContent('1 run has no distance')
   })
 
   it('links the empty state to the diary month of the period', async () => {

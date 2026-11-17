@@ -2,6 +2,7 @@ import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gliwice10kGeoJson } from '@/test/fixtures/tracks'
 import AzureMapsMap from './AzureMapsMap'
+import { azureMapsLanguage } from './azureLanguage'
 import { resetAzureMapsFallback, useAzureMapsFailed } from './azureSession'
 import { getMapsToken } from './mapsToken'
 
@@ -121,6 +122,28 @@ describe('AzureMapsMap', () => {
     expect(options).toMatchObject({ domain: DOMAIN, disableTelemetry: true, authOptions: { authType: 'sas' } })
     expect(JSON.stringify(options)).not.toMatch(/subscription|key/i)
     expect(options.scrollZoomInteraction).toBe(false) // view-only maps leave wheel scrolling to the page
+  })
+
+  it('passes the UI language to the SDK so map labels follow it', async () => {
+    const { default: i18n } = await import('@/i18n')
+    const previous = i18n.language
+    try {
+      await act(() => i18n.changeLanguage('pl'))
+      render(<AzureMapsMap azureMapsDomain={DOMAIN} onStateChange={() => {}} />)
+      expect(created().options.language).toBe('pl-PL')
+    } finally {
+      await act(() => i18n.changeLanguage(previous))
+    }
+    maps.created.length = 0
+    render(<AzureMapsMap azureMapsDomain={DOMAIN} onStateChange={() => {}} />)
+    expect(created().options.language).toBe('en-US')
+  })
+
+  it('maps unknown UI languages to English', () => {
+    expect(azureMapsLanguage('pl')).toBe('pl-PL')
+    expect(azureMapsLanguage('pl-PL')).toBe('pl-PL')
+    expect(azureMapsLanguage('de')).toBe('en-US')
+    expect(azureMapsLanguage('')).toBe('en-US')
   })
 
   it('does not create a map without a domain', () => {

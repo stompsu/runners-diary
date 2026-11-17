@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using RunnersDiary.Domain.Goals.Planning;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 using RunnersDiary.Domain.RunTypes;
 
 namespace RunnersDiary.Infrastructure.Ai;
@@ -14,11 +15,11 @@ namespace RunnersDiary.Infrastructure.Ai;
 /// the goal). At most <c>maxSessionsPerWeek</c> minus the week's running commitments, at most three. Distances share 85 % of the week's
 /// available distance (long 45 %, quality 25 %, easy the rest; with fewer sessions long 60 % / 100 %), each capped at the long-run cap and
 /// rounded down to 100 m. Paces follow the reference pace (easy +45..+90 s, steady +20..+60 s, tempo +0..+20 s per km), none on trail goals.</para>
+/// <para>Notes and descriptions are in the fact sheet's <c>language</c> (<c>en</c> or <c>pl</c>, ADR 0043 §5); any other value gets English.</para>
 /// </summary>
 public static class RuleBasedFakePlanWriter
 {
-    public const string Notes =
-        "A gradual plan toward your goal: easy running, a weekly long run and one quality session in the build and peak weeks, then a lighter taper.";
+    public const string Notes = FakePlanTexts.EnglishNotes;
 
     private const double BudgetShare = 0.85;
 
@@ -27,6 +28,7 @@ public static class RuleBasedFakePlanWriter
         ArgumentNullException.ThrowIfNull(planFactSheetJson);
         using var document = JsonDocument.Parse(planFactSheetJson);
         var root = document.RootElement;
+        var texts = root.TryGetProperty("language", out var language) && language.GetString() == NarrativeLanguages.Polish ? FakePlanTexts.Polish : FakePlanTexts.English;
         var envelope = root.GetProperty("envelope");
         var goal = root.GetProperty("goal");
 
@@ -123,28 +125,28 @@ public static class RuleBasedFakePlanWriter
 
             var week_ = new List<DraftSession>();
             Add(week_, longDay, "long", "easy", phase, longMeters, reference, trail, 45,
-                trail ? "Long run on hilly trails at an easy effort; walk the steep climbs." : "Long run at an easy, conversational effort.");
+                trail ? texts.LongTrail : texts.Long);
             if (easyDay is { } e)
             {
-                Add(week_, e, "easy", "easy", phase, easyMeters, reference, trail, 45, "Easy run at a comfortable effort.");
+                Add(week_, e, "easy", "easy", phase, easyMeters, reference, trail, 45, texts.Easy);
             }
 
             if (qualityDay is { } q)
             {
                 if (hardQuality)
                 {
-                    Add(week_, q, "tempo", "tempo", phase, qualityMeters, reference, trail, 0, "Tempo run: warm up, a sustained block at tempo effort, cool down.");
+                    Add(week_, q, "tempo", "tempo", phase, qualityMeters, reference, trail, 0, texts.Tempo);
                 }
                 else
                 {
-                    Add(week_, q, "progression", "steady", phase, qualityMeters, reference, trail, 20, "Progression run: start easy and finish at a steady effort.");
+                    Add(week_, q, "progression", "steady", phase, qualityMeters, reference, trail, 20, texts.Progression);
                 }
             }
 
             sessions.AddRange(week_);
         }
 
-        return new TrainingPlanDraft(Notes, [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
+        return new TrainingPlanDraft(texts.Notes, [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
     }
 
     private static void Add(
@@ -182,4 +184,28 @@ public static class RuleBasedFakePlanWriter
 
     private static DateOnly Date(JsonElement element) =>
         DateOnly.ParseExact(element.GetString()!, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+}
+
+/// <summary>The fixed texts of <see cref="RuleBasedFakePlanWriter"/> per language.</summary>
+internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail, string Easy, string Tempo, string Progression)
+{
+    public const string EnglishNotes =
+        "A gradual plan toward your goal: easy running, a weekly long run and one quality session in the build and peak weeks, then a lighter taper.";
+
+    public static FakePlanTexts English { get; } = new(
+        EnglishNotes,
+        "Long run at an easy, conversational effort.",
+        "Long run on hilly trails at an easy effort; walk the steep climbs.",
+        "Easy run at a comfortable effort.",
+        "Tempo run: warm up, a sustained block at tempo effort, cool down.",
+        "Progression run: start easy and finish at a steady effort.");
+
+    /// <summary>Glossary terms of <c>docs/i18n.md</c>; imperatives and noun phrases only (gender-neutral).</summary>
+    public static FakePlanTexts Polish { get; } = new(
+        "Stopniowy plan do twojego celu: spokojne bieganie, co tydzień długie wybieganie i jeden mocniejszy trening w tygodniach budowania i szczytu formy, a na koniec lżejszy tapering.",
+        "Długie wybieganie w spokojnym tempie, swobodnie, tak aby móc rozmawiać.",
+        "Długie wybieganie po pagórkowatych szlakach w spokojnym tempie; strome podejścia pokonuj marszem.",
+        "Bieg spokojny w komfortowym tempie.",
+        "Bieg tempowy: rozgrzewka, dłuższy odcinek w równym, mocnym tempie, schłodzenie.",
+        "Bieg z narastającą prędkością: zacznij spokojnie i zakończ w równym tempie.");
 }

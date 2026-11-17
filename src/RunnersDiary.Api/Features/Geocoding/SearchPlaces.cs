@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using RunnersDiary.Api.Http;
+using RunnersDiary.Domain.Localization;
 using RunnersDiary.Api.RateLimiting;
 using RunnersDiary.Infrastructure.Maps;
 
@@ -35,7 +37,7 @@ public static class SearchPlaces
         endpoints.MapGet("/geocoding/search", HandleAsync)
             .WithName("searchPlaces")
             .WithTags("Geocoding")
-            .WithSummary("Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent.")
+            .WithSummary("Searches places by name (provider-neutral). Place names follow the Accept-Language header, reduced to en or pl (default en). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent.")
             .Produces<PlaceSearchResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status429TooManyRequests)
@@ -96,7 +98,9 @@ public static class SearchPlaces
 
         try
         {
-            var places = await geocoder.SearchAsync(query, lat, lon, cancellationToken);
+            var language = AcceptLanguage.Reduce(context.Request.Headers.AcceptLanguage);
+            context.Response.Headers.Vary = HeaderNames.AcceptLanguage;
+            var places = await geocoder.SearchAsync(query, lat, lon, language, cancellationToken);
             return TypedResults.Ok(new PlaceSearchResponse
             {
                 Results = [.. places.Take(5).Select(p => new PlaceDto { Name = p.Name, Latitude = p.Latitude, Longitude = p.Longitude, Type = p.Type })],

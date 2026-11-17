@@ -12,6 +12,7 @@ import { QueryError } from '@/features/errors/QueryError'
 import { useClosePanel, usePanelMonth } from '@/features/runs/usePanel'
 import {
   compare,
+  capitalizeFirst,
   dayLabel,
   diffDays,
   firstOfMonth,
@@ -110,7 +111,7 @@ export function ProposalsListPanel() {
             groups.map(([date, items]) => (
               <section key={date} aria-labelledby={`proposals-${date}`}>
                 <h3 id={`proposals-${date}`} className="mb-2 font-semibold">
-                  {dayLabel(date, locale)}
+                  {capitalizeFirst(dayLabel(date, locale), locale)}
                 </h3>
                 <ul className="flex flex-col gap-3">
                   {items.map((proposal) => (

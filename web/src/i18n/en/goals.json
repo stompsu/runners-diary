@@ -162,6 +162,11 @@
     "sourceDemo": "Example plan for the demo data",
     "notes": "Notes on the plan",
     "outdated": "The goal changed since this plan was made. Regenerate to refresh it.",
+    "languageHint": {
+      "en": "This plan was generated in English.",
+      "pl": "This plan was generated in Polish."
+    },
+    "languageHintAction": "Regenerate to get it in the current language.",
     "horizonCapped": "Covers the next 16 weeks; regenerate later for the rest.",
     "dropped_one": "{{count}} suggestion was skipped because you already have a run on that day.",
     "dropped_other": "{{count}} suggestions were skipped because you already have runs on those days.",

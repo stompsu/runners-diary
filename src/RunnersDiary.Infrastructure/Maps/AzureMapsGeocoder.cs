@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Azure.Core;
 using Microsoft.Extensions.Logging;
+using RunnersDiary.Domain.Localization;
 
 namespace RunnersDiary.Infrastructure.Maps;
 
@@ -21,7 +22,7 @@ public sealed partial class AzureMapsGeocoder(
     public bool IsAvailable => true;
 
     public async Task<IReadOnlyList<GeocodedPlace>> SearchAsync(
-        string query, double? biasLatitude, double? biasLongitude, CancellationToken cancellationToken)
+        string query, double? biasLatitude, double? biasLongitude, string language, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         var url = $"geocode?api-version={ApiVersion}&top={MaxResults}&query={Uri.EscapeDataString(query)}";
@@ -35,6 +36,8 @@ public sealed partial class AzureMapsGeocoder(
         request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + token.Token);
         request.Headers.TryAddWithoutValidation("x-ms-client-id", options.AccountClientId);
         request.Headers.TryAddWithoutValidation("Accept", "application/geo+json, application/json");
+        // Place names in the UI language (Get Geocoding reads the Accept-Language header). Allowlisted, so nothing the client sent is forwarded.
+        request.Headers.TryAddWithoutValidation("Accept-Language", SupportedLanguages.OrDefault(language));
 
         using var response = await http.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)

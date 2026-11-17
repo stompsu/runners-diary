@@ -1,4 +1,5 @@
 using RunnersDiary.Domain.Common;
+using RunnersDiary.Domain.Localization;
 using RunnersDiary.Domain.Time;
 
 namespace RunnersDiary.Domain.Users;
@@ -33,13 +34,17 @@ public sealed class User
 
     public UnitSystem UnitSystem { get; private set; }
 
+    /// <summary>UI language tag from <see cref="SupportedLanguages"/>; null = never chosen (ADR 0042 §3).</summary>
+    public string? Language { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
 
     /// <summary>Guests only: equals the guest token expiry.</summary>
     public DateTime? ExpiresAt { get; private set; }
 
-    public static User CreateGuest(DateTimeOffset now, Guid? id = null)
+    public static User CreateGuest(DateTimeOffset now, Guid? id = null, string? language = null)
     {
+        EnsureLanguage(language);
         var created = Truncate(now);
         return new User
         {
@@ -48,6 +53,7 @@ public sealed class User
             TimeZoneId = GuestTimeZoneId,
             TimeZoneIsDefault = false,
             UnitSystem = UnitSystem.Metric,
+            Language = language,
             CreatedAt = created,
             ExpiresAt = created + GuestLifetime,
         };
@@ -90,6 +96,21 @@ public sealed class User
         TimeZoneId = timeZoneId;
         TimeZoneIsDefault = false;
         UnitSystem = unitSystem;
+    }
+
+    /// <summary>Stores the caller's UI language; throws <see cref="DomainRuleException"/> (field <c>language</c>) for an unsupported tag.</summary>
+    public void SetLanguage(string language)
+    {
+        EnsureLanguage(language ?? throw new DomainRuleException([new DomainError("language", "Required.")]));
+        Language = language;
+    }
+
+    private static void EnsureLanguage(string? language)
+    {
+        if (language is not null && !SupportedLanguages.IsSupported(language))
+        {
+            throw new DomainRuleException([new DomainError("language", $"Must be one of: {string.Join(", ", SupportedLanguages.All)}.")]);
+        }
     }
 
     private static string? NormalizeDisplayName(string? displayName)

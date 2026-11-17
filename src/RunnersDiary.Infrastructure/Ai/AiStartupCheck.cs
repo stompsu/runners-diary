@@ -22,7 +22,7 @@ internal sealed class AiStartupCheck(
         var today = UserToday.Get(clock, template.TimeZoneId);
         foreach (var fixture in demos.Fixtures)
         {
-            CheckDemoFixture(fixture, template, today, prompts.Current.Policy);
+            CheckDemoFixture(fixture, template, today, prompts.Current.Policy.ForLanguage(fixture.Language));
         }
 
         return Task.CompletedTask;

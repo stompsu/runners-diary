@@ -233,7 +233,7 @@ public sealed class InsightsSummaryService(
         var fixture = demos.Fixtures.FirstOrDefault(f =>
             f.Language == key.Language && DemoPresets.Matches(f.Preset, today, key.From, key.To, key.Compare));
         if (fixture is null || !fixture.Holds(sheet)
-            || !SummaryValidator.Validate(fixture.Draft, sheet, prompts.Current.Policy).IsValid)
+            || !SummaryValidator.Validate(fixture.Draft, sheet, prompts.Current.Policy.ForLanguage(key.Language)).IsValid)
         {
             return null;
         }

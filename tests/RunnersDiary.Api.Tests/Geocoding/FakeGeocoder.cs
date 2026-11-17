@@ -9,11 +9,13 @@ internal sealed class FakeGeocoder : IGeocoder
 
     public static (double? Lat, double? Lon) LastBias { get; private set; }
 
+    public static string? LastLanguage { get; private set; }
+
     public static bool Throw { get; set; }
 
     public bool IsAvailable => true;
 
-    public Task<IReadOnlyList<GeocodedPlace>> SearchAsync(string query, double? biasLatitude, double? biasLongitude, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<GeocodedPlace>> SearchAsync(string query, double? biasLatitude, double? biasLongitude, string language, CancellationToken cancellationToken)
     {
         if (Throw)
         {
@@ -21,6 +23,7 @@ internal sealed class FakeGeocoder : IGeocoder
         }
 
         LastQuery = query;
+        LastLanguage = language;
         LastBias = (biasLatitude, biasLongitude);
         IReadOnlyList<GeocodedPlace> places =
         [

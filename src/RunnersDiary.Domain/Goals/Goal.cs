@@ -3,7 +3,7 @@ using RunnersDiary.Domain.Runs;
 
 namespace RunnersDiary.Domain.Goals;
 
-/// <summary>The metadata a plan generation writes on its goal (ADR 0040 §1 step 10, ADR 0041 §2). The demo plan uses <see cref="Goal.DemoModelDeployment"/> and no prompt version.</summary>
+/// <summary>The metadata a plan generation writes on its goal (<see cref="Language"/>: the plan's language tag, M10; null = English) (ADR 0040 §1 step 10, ADR 0041 §2). The demo plan uses <see cref="Goal.DemoModelDeployment"/> and no prompt version.</summary>
 public sealed record GoalPlanRecord(
     Guid GenerationId,
     DateTimeOffset GeneratedAt,
@@ -12,7 +12,8 @@ public sealed record GoalPlanRecord(
     string ModelDeployment,
     string? ModelId,
     DateOnly HorizonEnd,
-    bool HorizonCapped);
+    bool HorizonCapped,
+    string? Language = null);
 
 /// <summary>
 /// A training goal (ADR 0039). One row per goal, owned by one user. Links to runs (<see cref="RaceRunId"/>) are plain ids whose
@@ -71,6 +72,9 @@ public sealed class Goal : IUserOwned
     public DateOnly? PlanHorizonEnd { get; private set; }
 
     public bool PlanHorizonCapped { get; private set; }
+
+    /// <summary>Language tag of the plan texts (M10); null on plans generated before M10 (English).</summary>
+    public string? PlanLanguage { get; private set; }
 
     /// <summary>True when a plan-relevant field changed after the plan was generated (ADR 0039 §1); the suggestions stay and the UI offers "Regenerate".</summary>
     public bool PlanOutdated { get; private set; }
@@ -140,6 +144,7 @@ public sealed class Goal : IUserOwned
         PlanModelId = plan.ModelId is { Length: > 100 } id ? id[..100] : plan.ModelId;
         PlanHorizonEnd = plan.HorizonEnd;
         PlanHorizonCapped = plan.HorizonCapped;
+        PlanLanguage = plan.Language is null ? null : Localization.SupportedLanguages.IsSupported(plan.Language) ? plan.Language : throw new DomainRuleException("Unsupported plan language.");
         PlanOutdated = false;
         UpdatedAt = Utc(now);
     }

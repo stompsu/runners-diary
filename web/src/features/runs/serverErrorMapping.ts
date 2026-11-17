@@ -44,6 +44,10 @@ export const RUN_FORM_FIELDS: ReadonlySet<string> = new Set([
   'rating.comment',
 ])
 
-export function mapRunFieldErrors(fieldErrors: FieldErrors) {
-  return mapFieldErrors(fieldErrors, { keyMap: RUN_FIELD_KEY_MAP, isField: (name) => RUN_FORM_FIELDS.has(name) })
+export function mapRunFieldErrors(fieldErrors: FieldErrors, genericMessage?: string) {
+  return mapFieldErrors(fieldErrors, {
+    keyMap: RUN_FIELD_KEY_MAP,
+    isField: (name) => RUN_FORM_FIELDS.has(name),
+    genericMessage,
+  })
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   addMonths,
+  capitalizeFirst,
   compare,
   dayLabel,
   daysInMonth,
@@ -167,5 +168,47 @@ describe('rangeLabel', () => {
 
   it('shows a single date when the range is one day', () => {
     expect(label('2026-11-04', '2026-11-04')).toBe('Nov 4, 2026')
+  })
+})
+
+describe('Polish labels and capitalizeFirst (AC6)', () => {
+  const flat = (text: string) => text.replace(/\s/g, ' ')
+
+  it('Intl gives lower-case Polish names; headings capitalise the first letter only', () => {
+    expect(monthLabel(2026, 11, 'pl')).toBe('listopad 2026')
+    expect(capitalizeFirst(monthLabel(2026, 11, 'pl'), 'pl')).toBe('Listopad 2026')
+    expect(dayLabel('2026-11-14', 'pl')).toBe('sobota, 14 listopada 2026')
+    expect(capitalizeFirst(dayLabel('2026-11-14', 'pl'), 'pl')).toBe('Sobota, 14 listopada 2026')
+  })
+
+  it('leaves English headings, empty text and already capitalised text alone', () => {
+    expect(capitalizeFirst('November 2026', 'en')).toBe('November 2026')
+    expect(capitalizeFirst('', 'pl')).toBe('')
+    expect(capitalizeFirst('Żółć', 'pl')).toBe('Żółć')
+    expect(capitalizeFirst('łódź', 'pl')).toBe('Łódź')
+  })
+
+  it('is safe for characters outside the BMP', () => {
+    expect(capitalizeFirst('\u{1F3C3} run', 'pl')).toBe('\u{1F3C3} run')
+    expect(capitalizeFirst('\u{10428}x', 'en')).toBe('\u{10400}x')
+  })
+
+  it('weeks stay Monday-first with Polish weekday names, unaffected by the language', () => {
+    const days = weekdayLabels('pl', 'long')
+    expect(days).toHaveLength(7)
+    expect(days[0]).toBe('poniedziałek')
+    expect(days[6]).toBe('niedziela')
+    expect(isoWeekday('2026-11-16')).toBe(1)
+    expect(isoWeek('2026-11-16')).toEqual({ isoYear: 2026, isoWeek: 47 })
+  })
+
+  it('formats ranges and short labels in Polish', () => {
+    expect(flat(rangeLabel('2026-08-17', '2026-11-08', 'pl'))).toMatch(/17 sie.*8 lis.*2026/)
+    expect(shortDayLabel('2026-11-14', 'pl')).toBe('14 lis')
+  })
+
+  it('months keep their calendar identity: names do not shift with the browser zone (LA, Kiritimati under test:tz)', () => {
+    expect(monthName(1, 'pl')).toBe('styczeń')
+    expect(monthName(12, 'pl', 'short')).toBe('gru')
   })
 })

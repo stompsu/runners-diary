@@ -1,0 +1,337 @@
+{
+  "title": "Analiza",
+  "intro": "Twoje obciążenie treningowe i trendy, obliczone na podstawie zapisanych treningów.",
+  "loading": "Wczytywanie analizy",
+  "refreshing": "Aktualizowanie",
+  "sections": {
+    "summary": "Podsumowanie",
+    "load": "Obciążenie treningowe",
+    "charts": "Wykresy",
+    "races": "Wyniki startów"
+  },
+  "period": {
+    "groupLabel": "Okres",
+    "views": {
+      "week": "Ten tydzień",
+      "month": "Ten miesiąc",
+      "12w": "Ostatnie 12 tygodni",
+      "ytd": "Od początku roku",
+      "custom": "Własny"
+    },
+    "earlier": "Pokaż wcześniejszy okres",
+    "later": "Pokaż późniejszy okres",
+    "current": "Wyświetlany okres: {{range}}",
+    "partial": "Okres częściowy: dane do {{date}} ({{elapsed}} z {{days}} dni).",
+    "custom": {
+      "legend": "Własny okres",
+      "from": "Od",
+      "to": "Do",
+      "apply": "Pokaż okres",
+      "errors": {
+        "invalidFrom": "Podaj prawidłową datę początkową.",
+        "invalidTo": "Podaj prawidłową datę końcową.",
+        "toBeforeFrom": "Data końcowa nie może być wcześniejsza niż początkowa.",
+        "tooLong": "Okres może mieć najwyżej 366 dni.",
+        "outOfRange": "Daty muszą mieścić się między rokiem 1950 a 2100."
+      }
+    }
+  },
+  "compare": {
+    "label": "Porównaj z",
+    "previous": "Poprzedni okres",
+    "previousYear": "Ten sam okres rok wcześniej",
+    "none": "Bez porównania",
+    "comparedWith": "Porównano z: {{range}} ({{kind}}).",
+    "noComparison": "Dla tego okresu nie ma dostępnego porównania.",
+    "partialRange": "{{range}} (taka sama liczba upłyniętych dni)"
+  },
+  "kpi": {
+    "distance": "Dystans",
+    "duration": "Czas",
+    "runs": "Treningi",
+    "elevation": "Przewyższenie",
+    "load": "Obciążenie treningowe",
+    "pace": "Średnie tempo"
+  },
+  "delta": {
+    "up": "Więcej o {{amount}} ({{percent}})",
+    "down": "Mniej o {{amount}} ({{percent}})",
+    "slower": "Wolniej o {{amount}} ({{percent}})",
+    "faster": "Szybciej o {{amount}} ({{percent}})",
+    "same": "Bez zmian",
+    "vs": "wobec: {{range}}"
+  },
+  "planned": {
+    "title": "Zaplanowane",
+    "none": "Brak zaplanowanych treningów w tym okresie.",
+    "summary_one": "{{count}} zaplanowany trening: {{distance}}, {{time}}.",
+    "summary_few": "{{count}} zaplanowane treningi: {{distance}}, {{time}}.",
+    "summary_many": "{{count}} zaplanowanych treningów: {{distance}}, {{time}}.",
+    "summary_other": "{{count}} zaplanowanego treningu: {{distance}}, {{time}}.",
+    "upcoming_one": "{{count}} nadchodzący trening",
+    "upcoming_few": "{{count}} nadchodzące treningi",
+    "upcoming_many": "{{count}} nadchodzących treningów",
+    "upcoming_other": "{{count}} nadchodzącego treningu",
+    "missed_one": "{{count}} niewykonany trening (zaplanowany przed dzisiejszym dniem)",
+    "missed_few": "{{count}} niewykonane treningi (zaplanowane przed dzisiejszym dniem)",
+    "missed_many": "{{count}} niewykonanych treningów (zaplanowanych przed dzisiejszym dniem)",
+    "missed_other": "{{count}} niewykonanego treningu (zaplanowanego przed dzisiejszym dniem)"
+  },
+  "acwr": {
+    "title": "Zmiana obciążenia względem typowego poziomu",
+    "label": "Stosunek obciążenia ostrego do przewlekłego (ACWR)",
+    "value": "Wskaźnik na dzień: {{date}}",
+    "band": {
+      "low": "Niski: ostatnie 7 dni były lżejsze niż twoje typowe obciążenie.",
+      "optimal": "Optymalny: ostatnie 7 dni były zgodne z twoim typowym obciążeniem.",
+      "high": "Wysoki: ostatnie 7 dni były cięższe niż twoje typowe obciążenie."
+    },
+    "bandShort": {
+      "low": "Niski",
+      "optimal": "Optymalny",
+      "high": "Wysoki"
+    },
+    "acute": "Ostatnie 7 dni",
+    "chronic": "Typowe obciążenie (4 tygodnie wcześniej, na tydzień)",
+    "insufficientHistory": "Dostępne po zapisaniu treningów z {{days}} dni; dotychczas: {{logged}}.",
+    "noChronicLoad": "W 4 tygodniach przed ostatnimi 7 dniami nie zapisano treningów, więc nie ma z czym porównać.",
+    "peak": "Najwyższy w tym okresie: {{value}}, {{date}} ({{band}}).",
+    "bandDays": "Dni w tym okresie: {{low}} niskich, {{optimal}} optymalnych, {{high}} wysokich, {{unavailable}} bez wskaźnika.",
+    "meansTitle": "Co to oznacza:",
+    "means": "Wskaźnik porównuje twoje obciążenie treningowe z ostatnich 7 dni ze średnią tygodniową z 4 poprzednich tygodni. Pokazuje, jak bardzo zmieniło się twoje obciążenie względem typowego poziomu.",
+    "notTitle": "Czego to nie oznacza:",
+    "not": "Nie przewiduje kontuzji i nie jest poradą medyczną. Wysoka lub niska wartość mówi tylko, że ten tydzień wyglądał inaczej niż poprzednie.",
+    "thresholds": "Przedziały: niski poniżej {{low}}, optymalny od {{low}} do {{high}}, wysoki powyżej {{high}}."
+  },
+  "monotony": {
+    "title": "Monotonia tygodniowa",
+    "week": "Ostatni pełny tydzień: {{range}}",
+    "value": "Monotonia",
+    "strain": "Obciążenie skumulowane (strain)",
+    "uniform": "Twoje dni w tym tygodniu były do siebie podobne, z niewielką różnicą między ciężkimi a lekkimi dniami.",
+    "varied": "Twoje dni w tym tygodniu różniły się między ciężkimi a lekkimi.",
+    "unavailable": "Niedostępne dla tego tygodnia: potrzebne są treningi w co najmniej dwa dni o różnym obciążeniu.",
+    "noWeek": "Jeszcze niedostępne: w tym okresie nie ma pełnego tygodnia.",
+    "explain": "Monotonia to średnie dzienne obciążenie podzielone przez jego zmienność z dnia na dzień; obciążenie skumulowane (strain) to obciążenie tygodniowe razy monotonia. Wartości powyżej {{high}} oznaczają tydzień o małej różnorodności w porównaniu z twoim zwykłym schematem. Opisuje to tydzień, nie przewiduje kontuzji."
+  },
+  "empty": {
+    "title": "Brak wykonanych treningów w tym okresie",
+    "body": "Dodaj trening lub wybierz inny okres, aby zobaczyć sumy i wykresy.",
+    "addRun": "Dodaj trening"
+  },
+  "quality": {
+    "title": "O tych liczbach",
+    "estimated_one": "{{share}} obciążenia treningowego pochodzi z {{count}} treningu bez zapisanego wysiłku (RPE); przyjęto typowy wysiłek dla tego rodzaju treningu. Zapisuj RPE, aby obciążenie było dokładniejsze.",
+    "estimated_few": "{{share}} obciążenia treningowego pochodzi z {{count}} treningów bez zapisanego wysiłku (RPE); przyjęto typowy wysiłek dla tego rodzaju treningu. Zapisuj RPE, aby obciążenie było dokładniejsze.",
+    "estimated_many": "{{share}} obciążenia treningowego pochodzi z {{count}} treningów bez zapisanego wysiłku (RPE); przyjęto typowy wysiłek dla tego rodzaju treningu. Zapisuj RPE, aby obciążenie było dokładniejsze.",
+    "estimated_other": "{{share}} obciążenia treningowego pochodzi z {{count}} treningu bez zapisanego wysiłku (RPE); przyjęto typowy wysiłek dla tego rodzaju treningu. Zapisuj RPE, aby obciążenie było dokładniejsze.",
+    "noDuration_one": "{{count}} trening nie ma czasu trwania i liczy się jako zerowe obciążenie.",
+    "noDuration_few": "{{count}} treningi nie mają czasu trwania i liczą się jako zerowe obciążenie.",
+    "noDuration_many": "{{count}} treningów nie ma czasu trwania i liczy się jako zerowe obciążenie.",
+    "noDuration_other": "{{count}} treningu nie ma czasu trwania i liczy się jako zerowe obciążenie.",
+    "noDistance_one": "{{count}} trening nie ma dystansu i jest pominięty w dystansie i tempie.",
+    "noDistance_few": "{{count}} treningi nie mają dystansu i są pominięte w dystansie i tempie.",
+    "noDistance_many": "{{count}} treningów nie ma dystansu i jest pominiętych w dystansie i tempie.",
+    "noDistance_other": "{{count}} treningu nie ma dystansu i jest pominięte w dystansie i tempie."
+  },
+  "chart": {
+    "showData": "Pokaż dane",
+    "tableRegion": "{{title}}: tabela danych",
+    "legend": "Legenda",
+    "completed": "Wykonane",
+    "planned": "Zaplanowane",
+    "period": "Okres",
+    "date": "Data",
+    "noData": "Brak danych dla tego okresu."
+  },
+  "volume": {
+    "metricLabel": "Miara",
+    "metrics": {
+      "distance": "Dystans",
+      "duration": "Czas",
+      "load": "Obciążenie",
+      "elevation": "Przewyższenie"
+    },
+    "week": "Tydzień od {{date}}",
+    "weekShort": "T{{week}}",
+    "plannedNote": "Kreskowane słupki to zaplanowane treningi, które nie zostały jeszcze wykonane.",
+    "titleWeek": "Objętość tygodniowa",
+    "titleMonth": "Objętość miesięczna",
+    "summaryWeek": "Najwyższy tydzień: {{label}} – {{value}}; średnia tygodniowa: {{average}}; liczba tygodni: {{total}}.",
+    "summaryMonth": "Najwyższy miesiąc: {{label}} – {{value}}; średnia miesięczna: {{average}}; liczba miesięcy: {{total}}."
+  },
+  "loadChart": {
+    "title": "Obciążenie ostre i przewlekłe",
+    "summary": "{{date}}: obciążenie ostre wynosiło {{acute}}, a przewlekłe {{chronic}}.",
+    "summaryNoChronic": "{{date}}: obciążenie ostre wynosiło {{acute}}; obciążenia przewlekłego jeszcze nie ma.",
+    "acute": "Ostre (ostatnie 7 dni)",
+    "chronic": "Przewlekłe (średnia tygodniowa z 4 poprzednich tygodni)",
+    "daily": "Obciążenie dzienne"
+  },
+  "acwrChart": {
+    "title": "Zmiana obciążenia w czasie",
+    "summary": "{{date}}: wskaźnik wynosił {{value}} ({{band}}). Dni z niskim wskaźnikiem: {{low}}, z optymalnym: {{optimal}}, z wysokim: {{high}}.",
+    "summaryUnavailable": "Dla dnia {{date}} nie ma wskaźnika.",
+    "value": "Wskaźnik",
+    "band": "Przedział"
+  },
+  "types": {
+    "title": "Czas według rodzaju treningu",
+    "summary": "Największy udział w czasie: {{label}} – {{share}} z {{time}}.",
+    "type": "Rodzaj treningu",
+    "runs": "Treningi",
+    "distance": "Dystans",
+    "time": "Czas",
+    "share": "Udział w czasie",
+    "load": "Obciążenie",
+    "category": {
+      "Race": "Starty",
+      "Training": "Treningi",
+      "Other": "Inne"
+    }
+  },
+  "pace": {
+    "title": "Tempo spokojnych biegów",
+    "summaryFaster": "Tempo spokojnych biegów przyspieszało średnio o {{amount}} na tydzień.",
+    "summarySlower": "Tempo spokojnych biegów zwalniało średnio o {{amount}} na tydzień.",
+    "summaryFlat": "Tempo spokojnych biegów pozostało mniej więcej takie samo.",
+    "notEnough": "Za mało tygodni ze spokojnymi biegami, aby pokazać trend; potrzeba co najmniej 4.",
+    "none": "Brak spokojnych biegów w tym okresie. Trend uwzględnia treningi typu Bieg spokojny na asfalcie i stadionie; biegi w terenie i bardzo krótkie są pomijane.",
+    "excluded_one": "Pominięto {{count}} spokojny bieg (nawierzchnia szlakowa, poniżej 1 km lub nietypowe tempo).",
+    "excluded_few": "Pominięto {{count}} spokojne biegi (nawierzchnia szlakowa, poniżej 1 km lub nietypowe tempo).",
+    "excluded_many": "Pominięto {{count}} spokojnych biegów (nawierzchnia szlakowa, poniżej 1 km lub nietypowe tempo).",
+    "excluded_other": "Pominięto {{count}} spokojnego biegu (nawierzchnia szlakowa, poniżej 1 km lub nietypowe tempo).",
+    "week": "Tydzień od",
+    "runs": "Treningi",
+    "distance": "Dystans",
+    "pace": "Tempo",
+    "heartRate": "Średnie tętno",
+    "fasterIsUp": "Tempo w min/km; szybsze jest wyżej na wykresie."
+  },
+  "races": {
+    "title": "Wyniki startów",
+    "none": "Brak startów w tym okresie.",
+    "region": "Tabela wyników startów",
+    "date": "Data",
+    "name": "Start",
+    "distance": "Dystans",
+    "result": "Wynik",
+    "target": "Czas docelowy: {{time}}",
+    "pace": "Tempo",
+    "place": "Miejsce",
+    "placeOverall": "{{place}}. w klasyfikacji generalnej",
+    "placeCategory": "{{place}}. (kategoria: {{category}})",
+    "rating": "Ocena",
+    "stars": "{{count}} z 5",
+    "planned": "Zaplanowany",
+    "personalBest": "Rekord życiowy (PB)",
+    "personalBestHint": "Najszybszy dotychczasowy wynik na tym dystansie",
+    "status": "Status",
+    "completed": "Wykonany"
+  },
+  "error": {
+    "invalidPeriod": "Ten okres jest nieprawidłowy."
+  },
+  "summary": {
+    "title": "Podsumowanie AI",
+    "loading": "Wczytywanie podsumowania",
+    "loadFailed": "Nie udało się wczytać podsumowania.",
+    "retry": "Spróbuj ponownie",
+    "badge": {
+      "model": "Wygenerowane przez AI",
+      "demo": "Przykładowe podsumowanie dla danych demo",
+      "template": "Notatka automatyczna"
+    },
+    "none": {
+      "title": "Otrzymaj krótkie podsumowanie tego okresu",
+      "body": "Model widzi tylko liczby obliczone na podstawie twojego dziennika: sumy, obciążenie treningowe i wyniki startów według rodzaju i daty. Nigdy nie widzi twoich notatek, tytułów, nazw ani lokalizacji."
+    },
+    "notConfigured": "Podsumowania AI nie są włączone w tym środowisku.",
+    "notConfiguredHint": "Generowanie własnego podsumowania nie jest tu dostępne.",
+    "notNeeded": "W tym okresie jest za mało treningów na podsumowanie.",
+    "sections": {
+      "wentWell": "Co poszło dobrze",
+      "watchOuts": "Na co uważać",
+      "suggestion": "Sugestia",
+      "dataNotes": "Uwagi o danych"
+    },
+    "stale": {
+      "note": "Dostępne są nowsze dane. To podsumowanie pochodzi z dnia: {{date}}.",
+      "noDate": "Dostępne są nowsze dane. To podsumowanie jest nieaktualne."
+    },
+    "footer": {
+      "generated": "Wygenerowano: {{date}}",
+      "model": "Model: {{model}}",
+      "prompt": "Wersja promptu: {{version}}",
+      "demo": "Przykład napisany dla danych demo. Wygeneruj własne podsumowanie, aby podsumować swoje liczby.",
+      "aiDisclosure": "Napisane przez model AI na podstawie obliczonych liczb treningowych. Może zawierać błędy.",
+      "notMedical": "To nie jest porada medyczna."
+    },
+    "actions": {
+      "generate": "Wygeneruj podsumowanie",
+      "generateOwn": "Wygeneruj własne podsumowanie",
+      "regenerate": "Wygeneruj ponownie",
+      "cancel": "Anuluj",
+      "retry": "Spróbuj ponownie"
+    },
+    "remaining": {
+      "guest": "Pozostało {{left}} z {{limit}}",
+      "user": "Pozostało {{left}} z {{limit}} w ciągu 24 godzin"
+    },
+    "generating": {
+      "title": "Generowanie podsumowania…",
+      "elapsed": "Dotychczas: {{seconds}} s"
+    },
+    "status": {
+      "generating": "Generowanie podsumowania…",
+      "done": "Podsumowanie jest gotowe.",
+      "cancelled": "Generowanie anulowano."
+    },
+    "quota": {
+      "guest": "Osiągnięto limit wersji demo (maksymalna liczba podsumowań: {{limit}}).",
+      "user": "Osiągnięto dzienny limit. Możesz wygenerować ponownie: {{time}}.",
+      "userNoTime": "Osiągnięto dzienny limit."
+    },
+    "errors": {
+      "inProgress": "Trwa generowanie innego podsumowania. Spróbuj za chwilę.",
+      "quotaAccount": "Osiągnięto limit generowania.",
+      "quotaAccountReset": "Osiągnięto limit generowania. Limit odnowi się: {{time}}.",
+      "quotaGlobal": "Dzienna pojemność AI została wykorzystana. Spróbuj ponownie później.",
+      "quotaGlobalReset": "Dzienna pojemność AI została wykorzystana. Odnowi się: {{time}}.",
+      "rateLimited": "Zbyt wiele żądań. Odczekaj chwilę i spróbuj ponownie.",
+      "rateLimitedWait": "Zbyt wiele żądań. Spróbuj ponownie za {{seconds}} s.",
+      "failedInvalidOutput": "Odpowiedź modelu nie przeszła kontroli, więc nic nie zapisano. Ta próba wlicza się do limitu.",
+      "failedTimeout": "Model odpowiadał zbyt długo. Ta próba wlicza się do limitu.",
+      "failedProvider": "Usługa AI napotkała problem. Spróbuj za chwilę.",
+      "failed": "Nie udało się wygenerować podsumowania.",
+      "unavailable": "Podsumowania AI są teraz niedostępne.",
+      "busy": "Usługa AI jest zajęta. Spróbuj ponownie za kilka sekund.",
+      "network": "Serwer jest teraz niedostępny. Spróbuj ponownie.",
+      "generic": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "unit": {
+      "paceSlope": "{{value}} s/km na tydzień",
+      "days_one": "{{count}} dzień",
+      "days_few": "{{count}} dni",
+      "days_many": "{{count}} dni",
+      "days_other": "{{count}} dnia",
+      "daysDelta": "{{amount}} dn.",
+      "stars": "{{count}} z 5"
+    },
+    "raceCategory": {
+      "fiveK": "5 km",
+      "tenK": "10 km",
+      "halfMarathon": "półmaraton",
+      "marathon": "maraton",
+      "other": "bieg"
+    },
+    "raceStatus": {
+      "planned": "zaplanowany",
+      "completed": "wykonany"
+    },
+    "flag": {
+      "yes": "tak",
+      "no": "nie"
+    }
+  }
+}

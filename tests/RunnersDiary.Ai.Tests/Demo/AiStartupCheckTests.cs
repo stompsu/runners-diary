@@ -26,7 +26,7 @@ public sealed class AiStartupCheckTests
     public void A_fixture_whose_claim_does_not_hold_fails_startup()
     {
         var prompts = PromptCatalog.Load(RepoPaths.PromptsInOutput);
-        var fixture = DemoSummaryCatalog.Load(prompts).Fixtures.Single();
+        var fixture = DemoSummaryCatalog.Load(prompts).Fixtures.Single(f => f.Language == "en");
         var broken = fixture with { Requires = [.. fixture.Requires, new FactPredicate("races.completedCount", PredicateOperator.Gte, FactValue.Of(99))] };
         var template = DemoTemplateParser.Parse(File.ReadAllText(Path.Combine(RepoPaths.DemoSeed, "runs.json")));
 

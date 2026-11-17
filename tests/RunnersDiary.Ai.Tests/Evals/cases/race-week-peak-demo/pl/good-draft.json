@@ -1,0 +1,13 @@
+{
+  "headline": "Mocny blok z rekordem życiowym ({race.1.category}) i startem z dnia {race.2.date}: {race.2.type}.",
+  "wentWell": [
+    { "text": "Łącznie: {totals.distance}, liczba treningów: {totals.runCount}; zmiana względem poprzedniego okresu: {comparison.delta.distance.percent}." },
+    { "text": "Start z dnia {race.1.date} ({race.1.category}) to rekord życiowy: {race.1.resultTime}." }
+  ],
+  "watchOuts": [
+    { "text": "Najwyższy wskaźnik wyniósł {acwr.peak.value} ({acwr.peak.date}) po starcie ({acwr.peak.raceType}), więc wynika ze startu, a nie z treningu." },
+    { "text": "W tygodniu od {week.1.start} wskaźnik ACWR skoczył do {week.1.acwrAtEnd} (przedział: {week.1.acwrBand})." }
+  ],
+  "suggestion": { "text": "Po starcie zaplanuj kilka spokojnych dni przed kolejnym mocnym treningiem." },
+  "dataNotes": []
+}

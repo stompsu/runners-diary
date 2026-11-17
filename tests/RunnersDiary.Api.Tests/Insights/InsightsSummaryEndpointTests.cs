@@ -33,7 +33,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         { "?from=1949-12-31&to=1950-01-05", "from" },
         { "?from=2025-03-03&to=2025-03-16&compare=bogus", "compare" },
         { "?from=2025-03-03&to=2025-03-16&compare=Previous", "compare" },
-        { "?from=2025-03-03&to=2025-03-16&lang=pl", "lang" },
+        { "?from=2025-03-03&to=2025-03-16&lang=de", "lang" },
         { "?from=2025-03-03&to=2025-03-16&lang=", "lang" },
         { "?from=2025-03-03&to=2025-03-16&lang=EN", "lang" },
     };
@@ -60,7 +60,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         { """{"from":"2025-01-01","to":"2026-01-02"}""", "to" },
         { """{"from":"2025-03-03","to":"2025-03-16","compare":"Previous"}""", "compare" },
         { """{"from":"2025-03-03","to":"2025-03-16","compare":"bogus"}""", "compare" },
-        { """{"from":"2025-03-03","to":"2025-03-16","lang":"pl"}""", "lang" },
+        { """{"from":"2025-03-03","to":"2025-03-16","lang":"de"}""", "lang" },
         { """{"from":"2025-03-03","to":"2025-03-16","regenerate":"yes"}""", "regenerate" },
         { """{"from":"2025-03-03","to":"2025-03-16","userId":"00000000-0000-0000-0000-000000000001"}""", "userId" },
         { """{"from":"2025-03-03","to":"2025-03-16","extra":1}""", "extra" },
@@ -232,6 +232,31 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
     // ---- POST --------------------------------------------------------------------------------------------------------
 
     [Fact]
+    public async Task Post_with_lang_pl_stores_a_Polish_summary_that_is_cached_separately_from_English()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid();
+        using var host = AiTestHost.Create(factory, client);
+        var user = host.EntraUser("sumpl");
+        await SeedRunsAsync(user);
+        var userId = await user.GetUserIdAsync();
+
+        var created = await PostOkAsync(user, new { from = From, to = To, lang = "pl" });
+
+        Assert.Equal("pl", created.GetProperty("period").GetProperty("lang").GetString());
+        Assert.Equal("fresh", created.GetProperty("state").GetString());
+        Assert.Equal("model", created.GetProperty("summary").GetProperty("source").GetString());
+        Assert.Equal("pl", Assert.Single(await host.SummariesAsync(userId)).Language);
+
+        // English is a different cache entry: nothing stored for it yet.
+        var english = await GetOkAsync(user, $"?from={From}&to={To}");
+        Assert.Equal("none", english.GetProperty("state").GetString());
+        var polish = await GetOkAsync(user, $"?from={From}&to={To}&lang=pl");
+        Assert.Equal("fresh", polish.GetProperty("state").GetString());
+        Assert.Equal(1, client.CallCount);
+    }
+
+    [Fact]
     public async Task Post_generates_stores_and_then_get_returns_the_fresh_summary_and_a_repeat_post_reuses_it_without_the_model()
     {
         factory.SkipIfDockerUnavailable();
@@ -247,7 +272,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         var summary = created.GetProperty("summary");
         Assert.Equal("model", summary.GetProperty("source").GetString());
         Assert.Equal("scripted-model", summary.GetProperty("model").GetString());
-        Assert.Equal(2, summary.GetProperty("promptVersion").GetInt32());
+        Assert.Equal(3, summary.GetProperty("promptVersion").GetInt32());
         Assert.Equal(1, summary.GetProperty("metricsVersion").GetInt32());
         Assert.NotEqual(JsonValueKind.Null, summary.GetProperty("createdAt").ValueKind);
         Assert.Contains("{period.from}", summary.GetProperty("headline").GetProperty("text").GetString(), StringComparison.Ordinal);
@@ -256,7 +281,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
 
         var row = Assert.Single(await host.SummariesAsync(userId));
         Assert.Equal(32, row.Fingerprint.Length);
-        Assert.Equal((short)2, row.PromptVersion);
+        Assert.Equal((short)3, row.PromptVersion);
         Assert.Equal("gpt-test", row.ModelDeployment);
         Assert.Equal(1234, row.InputTokens);
         Assert.Equal(321, row.OutputTokens);

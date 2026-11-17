@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Stores the caller's UI language (en or pl). */
+        put: operations["updateMyLanguage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/run-types": {
         parameters: {
             query?: never;
@@ -134,7 +151,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Searches places by name (provider-neutral). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent. */
+        /** Searches places by name (provider-neutral). Place names follow the Accept-Language header, reduced to en or pl (default en). 503 feature-unavailable when no geocoding provider is configured; 429 with code geocode-budget when the daily provider budget is spent. */
         get: operations["searchPlaces"];
         put?: never;
         post?: never;
@@ -207,7 +224,7 @@ export interface paths {
         };
         /**
          * The stored, example or automatic narrative of a period, if any, and whether a new one can be generated. Never calls the model.
-         * @description Same from/to/compare rules as the report, plus lang (en). State is none, fresh or stale (a run, the prompt or the model changed since it was written). generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.
+         * @description Same from/to/compare rules as the report, plus lang (en default, or pl; the languages of the prompt manifest). State is none, fresh or stale (a run, the prompt or the model changed since it was written). generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.
          */
         get: operations["getInsightsSummary"];
         put?: never;
@@ -489,7 +506,7 @@ export interface paths {
         put?: never;
         /**
          * Generates (or regenerates) the AI-suggested trainings up to an active goal, at most 16 weeks ahead.
-         * @description The body is optional. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. 400 errors.goalId: the goal is not Active or is less than two days away. 422 insufficient-history: fewer than 3 completed runs in the last 84 days. 409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), 409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model, plans switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After). 502 plan-failed carries reason (invalidOutput, timeout, provider). The response is never cached.
+         * @description The body is optional; lang (en default, or pl) is the language of the plan texts and is stored as plan.language. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. 400 errors.lang: unsupported language. 400 errors.goalId: the goal is not Active or is less than two days away. 422 insufficient-history: fewer than 3 completed runs in the last 84 days. 409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), 409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). 429 ai-quota carries scope (account or global), limit and resetsAt (with Retry-After for the account scope of a user); 429 rate-limited is the burst limiter. 503 feature-unavailable: no model, plans switched off, or the model endpoint cannot be authenticated. 503 ai-busy (Retry-After). 502 plan-failed carries reason (invalidOutput, timeout, provider). The response is never cached.
          */
         post: operations["generateTrainingPlan"];
         delete?: never;
@@ -727,6 +744,7 @@ export interface components {
         };
         GenerateTrainingPlanRequest: {
             replaceOtherGoals?: null | boolean;
+            lang?: null | string;
         };
         /** @enum {unknown} */
         GenerationAvailabilityDto: "available" | "notConfigured" | "quotaExhausted" | "notNeeded";
@@ -790,6 +808,7 @@ export interface components {
             model: null | string;
             /** Format: date */
             horizonEnd: string;
+            language: string;
             horizonCapped: boolean;
             outdated: boolean;
             /** Format: int32 */
@@ -1009,6 +1028,7 @@ export interface components {
             timeZoneId: string;
             timeZoneIsDefault: boolean;
             unitSystem: components["schemas"]["UnitSystem"];
+            language: null | string;
             /** Format: date */
             today: string;
             /** Format: date-time */
@@ -1595,6 +1615,9 @@ export interface components {
             timeZoneId: string;
             unitSystem: components["schemas"]["UnitSystem"];
         };
+        UpdateMyLanguageRequest: {
+            language: string;
+        };
         UpdateRaceInterestsRequest: {
             kinds: components["schemas"]["RaceKind"][];
             regionCodes: string[];
@@ -1677,7 +1700,9 @@ export interface operations {
     };
     createGuestSession: {
         parameters: {
-            query?: never;
+            query?: {
+                lang?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1691,6 +1716,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GuestSessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
             /** @description Payload Too Large */
@@ -1799,6 +1833,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateMyLanguage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyLanguageRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {

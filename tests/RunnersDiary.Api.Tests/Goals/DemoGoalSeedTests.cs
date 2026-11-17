@@ -116,10 +116,12 @@ public sealed class DemoGoalSeedTests(ContainersApiFactory factory)
         {
             var json = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "seed", "demo", "training-plan.json"), Ct);
             await File.WriteAllTextAsync(Path.Combine(directory, "training-plan.json"), json.Replace("\"phase\": \"build\"", "\"phase\": \"bogus\"", StringComparison.Ordinal), Ct);
-            var badPlan = new DemoTrainingPlan(Options.Create(new GuestOptions { DemoDataPath = directory }));
+            var guestOptions = Options.Create(new GuestOptions { DemoDataPath = directory });
+            var localizer = new DemoTextLocalizer(guestOptions);
+            var badPlan = new DemoTrainingPlan(guestOptions, localizer);
             var loader = factory.Services.GetRequiredService<DemoDatasetLoader>();
             var seeder = new DemoDataSeeder(
-                loader, badPlan, factory.Services.GetRequiredService<IBlobStore>(), factory.Services.GetRequiredService<IServiceScopeFactory>(),
+                loader, badPlan, localizer, factory.Services.GetRequiredService<IBlobStore>(), factory.Services.GetRequiredService<IServiceScopeFactory>(),
                 TimeProvider.System, NullLogger<DemoDataSeeder>.Instance);
 
             var dataset = loader.Get();

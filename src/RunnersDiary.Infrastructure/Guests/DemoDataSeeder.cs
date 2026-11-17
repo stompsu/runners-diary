@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RunnersDiary.Domain.Common;
 using RunnersDiary.Domain.Demo;
+using RunnersDiary.Domain.Localization;
 using RunnersDiary.Domain.Races;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.Time;
@@ -26,6 +27,7 @@ namespace RunnersDiary.Infrastructure.Guests;
 public sealed partial class DemoDataSeeder(
     DemoDatasetLoader loader,
     DemoTrainingPlan plan,
+    DemoTextLocalizer localizer,
     IBlobStore blobs,
     IServiceScopeFactory scopes,
     TimeProvider clock,
@@ -67,7 +69,12 @@ public sealed partial class DemoDataSeeder(
         var tracks = new List<GpxTrack>();
         var uploads = new List<(string BlobName, ReadOnlyMemory<byte> Content, string ContentType)>();
 
-        var demoRuns = DemoScheduleExpander.Expand(dataset.Template, today);
+        // The guest's language was stored before seeding (ADR 0042 §3): the demo texts follow it; an unmapped text stays English and is reported once below.
+        var language = SupportedLanguages.OrDefault(guest.Language);
+        var missing = new List<string>();
+        var demoRuns = DemoScheduleExpander.Expand(dataset.Template, today)
+            .Select(r => localizer.Localize(r, language, missing))
+            .ToList();
         foreach (var demo in demoRuns)
         {
             var run = Run.Create(guest.Id, demo.Values, now);
@@ -92,11 +99,16 @@ public sealed partial class DemoDataSeeder(
         DemoPlanRows? demoPlan = null;
         try
         {
-            demoPlan = plan.Build(guest.Id, demoRuns, today, now);
+            demoPlan = plan.Build(guest.Id, demoRuns, today, now, language, missing);
         }
         catch (Exception ex) when (ex is DomainRuleException or IOException)
         {
             LogDemoPlanSkipped(ex.GetType().Name, (ex as DomainRuleException)?.Message.Length ?? 0);
+        }
+
+        if (missing.Count > 0)
+        {
+            LogUntranslated(language, missing.Distinct(StringComparer.Ordinal).Count());
         }
 
         try
@@ -126,6 +138,9 @@ public sealed partial class DemoDataSeeder(
 
         LogSeeded(guest.Id, runs.Count, tracks.Count);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Seeding a '{Language}' guest: {Count} demo texts have no translation and stay English (seed/demo/i18n/{Language}.json).")]
+    private partial void LogUntranslated(string language, int count);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Seeded guest {UserId} with {RunCount} runs and {TrackCount} tracks.")]
     private partial void LogSeeded(Guid userId, int runCount, int trackCount);

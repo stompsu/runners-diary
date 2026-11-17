@@ -3,6 +3,7 @@ import { getSession, registerEntraController, signOut, startEntraSession, startG
 import { parseProblem } from '@/lib/api/problem'
 import { faults } from '@/test/fakeApi'
 import { getFakeApi } from '@/test/fake'
+import { setLanguage } from '@/i18n/language'
 import { fetchClient, isAnonymousEndpoint } from './client'
 
 function lastRequest(): Request {
@@ -143,5 +144,19 @@ describe('auth middleware: error shape', () => {
     getFakeApi().addFault(faults.network({ path: '/api/client-config' }))
 
     await expect(fetchClient.GET('/api/client-config')).rejects.toBeInstanceOf(TypeError)
+  })
+})
+
+describe('Accept-Language', () => {
+  it('carries the UI language on authenticated and anonymous calls', async () => {
+    signInGuest()
+    await fetchClient.GET('/api/me')
+    expect(lastRequest().headers.get('Accept-Language')).toBe('en')
+
+    await setLanguage('pl')
+    await fetchClient.GET('/api/me')
+    expect(lastRequest().headers.get('Accept-Language')).toBe('pl')
+    await fetchClient.GET('/api/client-config')
+    expect(lastRequest().headers.get('Accept-Language')).toBe('pl')
   })
 })

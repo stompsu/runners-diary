@@ -7,6 +7,7 @@ import { DEFAULT_MAP_CENTER } from '../mapConfig'
 import { circlePolygon, ringBounds } from '../geo/circlePolygon'
 import { createEndpointElement, createHighlightElement, createRaceElement } from '../markers'
 import type { MapProviderProps } from '../types'
+import { azureMapsLanguage } from './azureLanguage'
 import { markAzureMapsUnavailable } from './azureSession'
 import { getMapsToken } from './mapsToken'
 import '@/i18n/lazyBundles'
@@ -39,7 +40,8 @@ export default function AzureMapsMap({
   azureMapsDomain,
   onStateChange,
 }: MapProviderProps) {
-  const { t } = useTranslation('maps')
+  const { t, i18n } = useTranslation('maps')
+  const language = azureMapsLanguage(i18n.language)
   const containerRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<atlas.Map | null>(null)
   const onPickRef = useRef(onPick)
@@ -57,7 +59,7 @@ export default function AzureMapsMap({
     markerRef.current = marker
   })
 
-  // Create the map once per domain.
+  // Create the map once per domain and language (a language switch is rare; rebuilding is simpler than patching the style).
   useEffect(() => {
     const container = containerRef.current
     if (!container || !azureMapsDomain) return
@@ -84,6 +86,8 @@ export default function AzureMapsMap({
         center: start ? [start.longitude, start.latitude] : [...DEFAULT_MAP_CENTER],
         zoom: start ? PLACE_ZOOM : 11,
         style: 'road',
+        // Map labels follow the UI language (ADR 0042 section 7); the SDK falls back to local names where a label has no translation.
+        language,
         // No usage telemetry from the SDK, and no logo or feedback link slots that would eat the small map.
         disableTelemetry: true,
         showFeedbackLink: false,
@@ -111,7 +115,7 @@ export default function AzureMapsMap({
       setMap(null)
       instance.dispose()
     }
-  }, [azureMapsDomain])
+  }, [azureMapsDomain, language])
 
   // The line: a source with the line and a casing + line layer.
   useEffect(() => {

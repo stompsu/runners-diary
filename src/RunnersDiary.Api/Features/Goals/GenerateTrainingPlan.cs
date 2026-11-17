@@ -13,6 +13,9 @@ public sealed record GenerateTrainingPlanRequest
 {
     /// <summary>True replaces the suggestions of the caller's other goals; without it, another goal's pending suggestions answer 409 <c>plan-other-goal-active</c>.</summary>
     public bool? ReplaceOtherGoals { get; init; }
+
+    /// <summary>Language of the plan texts: <c>en</c> (default) or <c>pl</c> (the languages of the plan prompt manifest); anything else answers 400 <c>errors.lang</c>.</summary>
+    public string? Lang { get; init; }
 }
 
 /// <summary>The stored plan: the goal with its new plan metadata and the new suggestion set.</summary>
@@ -40,10 +43,10 @@ public static class GenerateTrainingPlan
             .WithName("generateTrainingPlan")
             .WithSummary("Generates (or regenerates) the AI-suggested trainings up to an active goal, at most 16 weeks ahead.")
             .WithDescription(
-                "The body is optional. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, " +
+                "The body is optional; lang (en default, or pl) is the language of the plan texts and is stored as plan.language. The model suggests sessions inside bounds computed from the caller's own history (weekly and long-run caps, phases, " +
                 "taper, sessions per week, hard-day rules); every number is validated before anything is stored. Regenerating replaces the goal's pending " +
                 "and dismissed suggestions; runs (also accepted suggestions) are never changed. Can take up to about three minutes. " +
-                "400 errors.goalId: the goal is not Active or is less than two days away. " +
+                "400 errors.lang: unsupported language. 400 errors.goalId: the goal is not Active or is less than two days away. " +
                 "422 insufficient-history: fewer than 3 completed runs in the last 84 days. " +
                 "409 plan-other-goal-active (goalId: the goal holding pending suggestions; send replaceOtherGoals true to replace them), " +
                 "409 plan-in-progress, 409 concurrency-conflict (the goal changed meanwhile). " +
@@ -65,14 +68,21 @@ public static class GenerateTrainingPlan
         Guid goalId,
         GenerateTrainingPlanRequest? request,
         [FromServices] TrainingPlanService service,
+        [FromServices] PlanPromptCatalog prompts,
         [FromServices] TimeProvider clock,
         HttpContext context,
         CancellationToken cancellationToken)
     {
         GoalsEndpoints.NoStore(context);
 
+        var language = request?.Lang ?? TrainingPlanService.DefaultLanguage;
+        if (!prompts.Languages.Contains(language, StringComparer.Ordinal))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["lang"] = [$"Must be one of: {string.Join(", ", prompts.Languages)}."] });
+        }
+
         // A client that goes away cancels the model call (a ledger row is still written); the framework answers nothing to it.
-        var outcome = await service.GenerateAsync(goalId, request?.ReplaceOtherGoals == true, cancellationToken);
+        var outcome = await service.GenerateAsync(goalId, request?.ReplaceOtherGoals == true, language, cancellationToken);
         return outcome.Status switch
         {
             PlanGenerateStatus.Ok => TypedResults.Ok(new TrainingPlanResponse

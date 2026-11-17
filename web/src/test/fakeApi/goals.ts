@@ -353,10 +353,16 @@ async function generatePlan(
   const body = await readBody()
   if (body instanceof Response) return body
   let replaceOtherGoals = false
+  // Like the API: `lang` is en or pl (case-sensitive); absent is en, not the profile language.
+  let lang = 'en'
   if (body !== undefined) {
-    if (!isObject(body) || Object.keys(body).some((key) => key !== 'replaceOtherGoals'))
+    if (!isObject(body) || Object.keys(body).some((key) => key !== 'replaceOtherGoals' && key !== 'lang'))
       return validation({ body: ['The request body is invalid.'] })
     replaceOtherGoals = body.replaceOtherGoals === true
+    if (body.lang !== undefined && body.lang !== null) {
+      if (body.lang !== 'en' && body.lang !== 'pl') return validation({ lang: ['Language is not supported.'] })
+      lang = body.lang
+    }
   }
   if (goal.status !== 'Active' || diffDays(ctx.today, goal.targetDate) < 2)
     return validation({ goalId: ['The goal must be active and at least 2 days away.'] })
@@ -390,8 +396,12 @@ async function generatePlan(
       source: 'Model',
       generatedAt: ctx.nowIso,
       generationId,
-      notes: 'Build gradually and keep the easy days easy.',
+      notes:
+        lang === 'pl'
+          ? 'Zwiększaj obciążenie stopniowo i pilnuj, by łatwe dni były łatwe.'
+          : 'Build gradually and keep the easy days easy.',
       promptVersion: 2,
+      language: lang,
       model: 'fake-model',
       horizonEnd: plan.horizonEnd,
       horizonCapped: plan.capped,

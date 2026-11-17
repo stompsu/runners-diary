@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { QueryError } from '@/features/errors/QueryError'
+import { aiLanguage, toLanguage } from '@/i18n/language'
 import { dayLabel } from '@/lib/dates/plainDate'
 import { otherGoalWithPending } from './goalFormat'
 import { goalProblem, isAbort, planProblemMessage, type GoalProblem } from './goalProblems'
@@ -67,6 +68,9 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
   const plan = goal.plan
   const other = otherGoalWithPending(goals, goal.id)
   const isGuest = me.data?.kind === 'Guest'
+  const lang = aiLanguage(i18n.language)
+  const planLanguage = plan ? toLanguage(plan.language) : null
+  const languageHint = planLanguage !== null && planLanguage !== lang ? planLanguage : null
 
   async function start(replaceOtherGoals: boolean) {
     const mine = ++attempt.current
@@ -80,7 +84,8 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
     try {
       const response = await generate.mutateAsync({
         params: { path: { goalId: goal.id } },
-        body: replaceOtherGoals ? { replaceOtherGoals: true } : undefined,
+        // `lang` is always sent: without it the server generates in English, not in the profile language.
+        body: replaceOtherGoals ? { replaceOtherGoals: true, lang } : { lang },
         signal: abort.signal,
       })
       if (attempt.current !== mine) return
@@ -197,6 +202,11 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
             <p>
               <span className="font-medium">{t('plan.notes')}: </span>
               {plan.notes}
+            </p>
+          ) : null}
+          {languageHint ? (
+            <p className="break-words text-muted-foreground" data-testid="plan-language-hint">
+              {t(`plan.languageHint.${languageHint}`)} {t('plan.languageHintAction')}
             </p>
           ) : null}
           {plan.outdated ? (

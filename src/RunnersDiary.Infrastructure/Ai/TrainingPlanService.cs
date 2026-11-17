@@ -82,9 +82,11 @@ public sealed partial class TrainingPlanService(
     /// <summary>The goal must be at least this many days ahead: one plannable day between today and the goal day.</summary>
     public const int MinDaysAhead = 2;
 
-    public const string Language = "en";
+    /// <summary>The language of a plan when the request names none.</summary>
+    public const string DefaultLanguage = "en";
 
-    public async Task<PlanGenerateOutcome> GenerateAsync(Guid goalId, bool replaceOtherGoals, CancellationToken cancellationToken)
+    /// <summary>Generates the plan; <paramref name="language"/> (a tag the plan prompt manifest lists, validated by the caller) is the language of the texts and is stored on the goal.</summary>
+    public async Task<PlanGenerateOutcome> GenerateAsync(Guid goalId, bool replaceOtherGoals, string language, CancellationToken cancellationToken)
     {
         // 1. The goal (404, then 400).
         var (_, today) = await CallerClock.GetAsync(db, currentUser, clock, cancellationToken);
@@ -125,7 +127,7 @@ public sealed partial class TrainingPlanService(
         }
 
         // 5. The deterministic inputs; 6-9. guard, quotas, slot, attempts (the generator and the shared runner).
-        var inputs = await BuildInputsAsync(goal, today, facts, history, cancellationToken);
+        var inputs = await BuildInputsAsync(goal, today, facts, history, language, cancellationToken);
         var run = await generator.GenerateAsync(new PlanGenerationRequest(currentUser.UserId, currentUser.IsGuest, inputs.Sheet), cancellationToken);
         switch (run.Status)
         {
@@ -146,7 +148,7 @@ public sealed partial class TrainingPlanService(
         // 10. Commit. The model's work is paid for: a client that went away does not discard it.
         var record = new GoalPlanRecord(
             Guid.CreateVersion7(), run.CreatedAt, run.Plan!.Notes, checked((short)run.PromptVersion), run.ModelDeployment!, run.ModelId,
-            inputs.Envelope.PlanEnd, inputs.Envelope.HorizonCapped);
+            inputs.Envelope.PlanEnd, inputs.Envelope.HorizonCapped, language);
         var committed = await CommitAsync(goal, inputs, run.Plan, record, replaceOtherGoals, CancellationToken.None);
         if (committed.Status != PlanGenerateStatus.Ok)
         {
@@ -160,7 +162,7 @@ public sealed partial class TrainingPlanService(
     private sealed record PlanInputs(GoalSpec Spec, DateOnly Today, PlanEnvelope Envelope, PlanFactSheet Sheet);
 
     private async Task<PlanInputs> BuildInputsAsync(
-        Goal goal, DateOnly today, List<RunFact> facts, TrainingHistory history, CancellationToken cancellationToken)
+        Goal goal, DateOnly today, List<RunFact> facts, TrainingHistory history, string language, CancellationToken cancellationToken)
     {
         var spec = new GoalSpec(goal.Type, goal.DistanceMeters, goal.ElevationGainMeters, goal.TargetDate, goal.TargetDurationSeconds, goal.Surface);
         var races = await reader.ReadRacesAsync(today, cancellationToken);
@@ -176,7 +178,7 @@ public sealed partial class TrainingPlanService(
         // The M5 metrics over the last 365 days (weekly load, ACWR, races), from the same projections: the 112 days of facts cover the ten
         // history weeks and their ACWR lead-in.
         var report = InsightsReportBuilder.Build(new InsightsPeriod(today.AddDays(-364), today), ComparisonKind.None, today, facts, facts, races, null);
-        var sheet = PlanFactSheetBuilder.Build(spec, estimate, today, report, history, commitments, dismissed, envelope, Language);
+        var sheet = PlanFactSheetBuilder.Build(spec, estimate, today, report, history, commitments, dismissed, envelope, language);
         return new PlanInputs(spec, today, envelope, sheet);
     }
 

@@ -1,0 +1,193 @@
+{
+  "fields": {
+    "distance": "Dystans (km)",
+    "duration": "Czas trwania (h:mm:ss)",
+    "durationHint": "Godziny, minuty i sekundy, np. 1:05:30 lub 45:10",
+    "durationPlaceholder": "h:mm:ss",
+    "pace": "Tempo",
+    "paceUnknown": "Podaj dystans i czas",
+    "elevationGain": "Przewyższenie (m)",
+    "elevationLoss": "Utrata wysokości (m)",
+    "date": "Data",
+    "startTime": "Godzina startu (opcjonalnie)",
+    "timeZone": "Strefa czasowa",
+    "status": "Status",
+    "type": "Rodzaj treningu",
+    "title": "Tytuł",
+    "notes": "Notatki",
+    "avgHeartRate": "Średnie tętno (bpm)",
+    "maxHeartRate": "Maksymalne tętno (bpm)",
+    "rpe": "Wysiłek (RPE)",
+    "rpeHint": "Od 1 (bardzo łatwo) do 10 (maksymalny wysiłek)",
+    "gear": "Sprzęt",
+    "weather": "Pogoda",
+    "surface": "Nawierzchnia",
+    "surfaceNone": "Nie ustawiono"
+  },
+  "actions": {
+    "view": "Pokaż szczegóły",
+    "edit": "Edytuj",
+    "delete": "Usuń",
+    "deleting": "Usuwanie…",
+    "add": "Dodaj trening",
+    "addForDay": "Dodaj trening tego dnia",
+    "markCompleted": "Oznacz jako wykonany",
+    "rate": "Oceń",
+    "changeRating": "Zmień ocenę",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "close": "Zamknij",
+    "changeZone": "Zmień strefę czasową",
+    "saveAndAddGpx": "Zapisz i dodaj GPX"
+  },
+  "status": {
+    "planned": "Zaplanowany",
+    "completed": "Wykonany"
+  },
+  "surface": {
+    "Road": "Asfalt",
+    "Trail": "Szlak",
+    "Track": "Stadion",
+    "Treadmill": "Bieżnia",
+    "Mixed": "Mieszana"
+  },
+  "day": {
+    "empty": "Brak treningów tego dnia."
+  },
+  "list": {
+    "title": "Treningi: {{month}}",
+    "empty": "Brak treningów w tym miesiącu.",
+    "week": "Tydzień {{week}}",
+    "completedTotals": "Wykonane: {{totals}}",
+    "plannedTotals": "Zaplanowane: {{distance}}"
+  },
+  "delete": {
+    "title": "Usunąć ten trening?",
+    "description": "Trening „{{run}}” zostanie usunięty. Tej operacji nie można cofnąć.",
+    "summary": "{{type}}, {{date}}"
+  },
+  "toast": {
+    "created": "Dodano trening.",
+    "saved": "Zapisano trening.",
+    "deleted": "Usunięto trening.",
+    "rated": "Zapisano ocenę.",
+    "gone": "Ten trening już nie istnieje.",
+    "reloaded": "Wczytano najnowszą wersję tego treningu."
+  },
+  "gone": {
+    "title": "Nie znaleziono treningu"
+  },
+  "details": {
+    "loading": "Wczytywanie treningu…",
+    "zone": "Strefa czasowa",
+    "fromRaceListing": "Z listy startów",
+    "fromPlan": "Z twojego planu na cel „{{goal}}”",
+    "fromPlanUnnamed": "Z twojego planu treningowego"
+  },
+  "form": {
+    "addTitle": "Dodaj trening",
+    "editTitle": "Edytuj trening",
+    "completeTitle": "Oznacz trening jako wykonany",
+    "when": "Kiedy",
+    "what": "Co",
+    "numbers": "Dane liczbowe",
+    "details": "Szczegóły",
+    "rating": "Ocena",
+    "typeGroup": {
+      "Race": "Starty",
+      "Training": "Treningi",
+      "Other": "Inne"
+    },
+    "prefillNotice": "Wartości z pliku: {{file}}. Sprawdź je i naciśnij Zapisz."
+  },
+  "race": {
+    "legend": "Start",
+    "name": "Nazwa zawodów",
+    "distanceCategory": "Dystans zawodów",
+    "categories": {
+      "FiveK": "5 km",
+      "TenK": "10 km",
+      "HalfMarathon": "Półmaraton",
+      "Marathon": "Maraton",
+      "Other": "Inny dystans"
+    },
+    "officialDistance": "Oficjalny dystans (km)",
+    "officialDistanceHint": "Dla innych dystansów i ultra",
+    "bib": "Numer startowy",
+    "categoryName": "Kategoria wiekowa",
+    "targetTime": "Czas docelowy (h:mm:ss)",
+    "resultTime": "Wynik (h:mm:ss)",
+    "overallPlace": "Miejsce w klasyfikacji generalnej",
+    "categoryPlace": "Miejsce w kategorii",
+    "resultsUrl": "Link do wyników",
+    "openResults": "Otwórz wyniki"
+  },
+  "rating": {
+    "label": "Jak poszło?",
+    "comment": "Komentarz",
+    "starsOption_one": "{{count}} gwiazdka",
+    "starsOption_few": "{{count}} gwiazdki",
+    "starsOption_many": "{{count}} gwiazdek",
+    "starsOption_other": "{{count}} gwiazdki",
+    "selected_one": "{{count}} z 5 gwiazdek",
+    "selected_few": "{{count}} z 5 gwiazdek",
+    "selected_many": "{{count}} z 5 gwiazdek",
+    "selected_other": "{{count}} z 5 gwiazdek",
+    "none": "Brak oceny",
+    "clear": "Wyczyść ocenę"
+  },
+  "rate": {
+    "title": "Oceń ten trening",
+    "conflict": "Ten trening został zmieniony w innym miejscu. Wczytano najnowszą wersję, a twoja ocena została zachowana. Zapisz ponownie, aby ją zastosować."
+  },
+  "conflict": {
+    "explanation": "Twoje zmiany nadal tu są. Możesz wczytać najnowszą wersję (to odrzuci twoje zmiany) albo nadpisać ją swoją wersją.",
+    "reload": "Wczytaj najnowszą",
+    "overwrite": "Zapisz moją mimo to"
+  },
+  "validation": {
+    "distance": "Podaj dystans w km, na przykład 10,5.",
+    "duration": "Podaj czas jako h:mm:ss lub mm:ss, na przykład 1:05:30.",
+    "elevation": "Podaj metry, 0 lub więcej.",
+    "heartRate": "Tętno musi mieścić się w zakresie od 30 do 250.",
+    "place": "Podaj liczbę całkowitą, 1 lub większą.",
+    "resultsUrl": "Podaj link zaczynający się od http:// lub https://.",
+    "raceNameRequired": "Podaj nazwę zawodów.",
+    "raceNameLength": "Nazwa zawodów może mieć najwyżej 150 znaków.",
+    "bibLength": "Numer startowy może mieć najwyżej 20 znaków.",
+    "categoryNameLength": "Kategoria może mieć najwyżej 50 znaków.",
+    "dateInvalid": "Podaj prawidłową datę.",
+    "dateRange": "Data musi mieścić się między rokiem 1950 a 2100.",
+    "startTime": "Podaj godzinę jako gg:mm.",
+    "timeZone": "Wybierz prawidłową strefę czasową.",
+    "titleLength": "Tytuł może mieć najwyżej 120 znaków.",
+    "notesLength": "Notatki mogą mieć najwyżej 4000 znaków.",
+    "gearLength": "Opis sprzętu może mieć najwyżej 100 znaków.",
+    "weatherLength": "Opis pogody może mieć najwyżej 200 znaków.",
+    "commentLength": "Komentarz może mieć najwyżej 500 znaków.",
+    "rpe": "Wysiłek musi być liczbą całkowitą od 1 do 10.",
+    "runType": "Wybierz rodzaj treningu.",
+    "ratingCompletedOnly": "Oceniać można tylko wykonane treningi.",
+    "ratingRequired": "Najpierw wybierz liczbę gwiazdek.",
+    "raceTypeOnly": "Szczegóły startu są dostępne tylko dla rodzajów treningu będących zawodami.",
+    "resultCompletedOnly": "Wynik można wpisać tylko dla wykonanych treningów.",
+    "restDayNoMetrics": "Dzień odpoczynku nie ma dystansu, czasu ani wysiłku.",
+    "restDayNoRace": "Dzień odpoczynku nie może być startem.",
+    "restDayNoRating": "Dnia odpoczynku nie można ocenić.",
+    "maxBelowAvg": "Maksymalne tętno nie może być niższe od średniego.",
+    "latitude": "Szerokość geograficzna musi mieścić się w zakresie od -90 do 90.",
+    "longitude": "Długość geograficzna musi mieścić się w zakresie od -180 do 180.",
+    "locationNameLength": "Nazwa miejsca może mieć najwyżej 200 znaków."
+  },
+  "location": {
+    "legend": "Lokalizacja",
+    "coordinates": "Współrzędne",
+    "name": "Nazwa miejsca",
+    "nameHint": "Na przykład okolica startu lub miejsce zawodów.",
+    "none": "Nie ustawiono lokalizacji.",
+    "pick": "Wybierz na mapie",
+    "change": "Zmień na mapie",
+    "clear": "Wyczyść lokalizację"
+  }
+}

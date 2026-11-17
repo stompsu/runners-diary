@@ -78,7 +78,7 @@ export function trackSuggestions(run: RunDto, track: TrackDto, rules: RunTypeRul
       current: run.distanceMeters == null ? null : formatDistance(run.distanceMeters, locale, 3),
       proposed: formatDistance(summary.distanceMeters, locale, 3),
       checked: run.distanceMeters == null,
-      patch: { distanceKm: distance },
+      patch: { distanceKm: formatKmInput(summary.distanceMeters, locale) },
     })
   }
 

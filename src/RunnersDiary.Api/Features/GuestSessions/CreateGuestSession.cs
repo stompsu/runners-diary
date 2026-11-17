@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using RunnersDiary.Api.Auth;
 using RunnersDiary.Api.Http;
 using RunnersDiary.Api.RateLimiting;
+using RunnersDiary.Domain.Localization;
 using RunnersDiary.Infrastructure.Guests;
 
 namespace RunnersDiary.Api.Features.GuestSessions;
@@ -20,7 +21,7 @@ public sealed record GuestSessionResponse
 
 /// <summary>
 /// <c>POST /api/guest-sessions</c>: the only anonymous write. Creates a guest account with its own demo diary and returns its token.
-/// Guarded by the per-IP <c>guest-create</c> limiter, the active-guest cap and the seeding concurrency limit (ADR 0011).
+/// Optional <c>?lang=en|pl</c> seeds the demo diary in that language (default English; anything else is a 400). Guarded by the per-IP <c>guest-create</c> limiter, the active-guest cap and the seeding concurrency limit (ADR 0011).
 /// </summary>
 public static class CreateGuestSession
 {
@@ -32,6 +33,7 @@ public static class CreateGuestSession
             .AllowAnonymous()
             .RequireRateLimiting(RateLimitingSetup.GuestCreatePolicy)
             .Produces<GuestSessionResponse>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
             .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
@@ -41,8 +43,15 @@ public static class CreateGuestSession
         [FromServices] GuestAccountService guests,
         [FromServices] GuestTokenIssuer tokens,
         [FromServices] GuestCreateGlobalLimiter globalLimiter,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? lang = null)
     {
+        // Allowlisted after the per-IP guest-create policy but before the global limiter and any database work (ADR 0042 §3); the value is never echoed.
+        if (lang is not null && !SupportedLanguages.IsSupported(lang))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["lang"] = [$"Must be one of: {string.Join(", ", SupportedLanguages.All)}."] });
+        }
+
         // After the per-client policy (so one client cannot drain this budget) and before any database work.
         if (globalLimiter.TryAcquire() is { } wait)
         {
@@ -50,7 +59,7 @@ public static class CreateGuestSession
             return RateLimitingSetup.RateLimitedProblem();
         }
 
-        var result = await guests.CreateAsync(cancellationToken);
+        var result = await guests.CreateAsync(cancellationToken, lang);
         if (result.Account is not { } account)
         {
             http.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(result.RetryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);

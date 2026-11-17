@@ -1,0 +1,163 @@
+{
+  "viewer": {
+    "mapLabel": "Mapa trasy",
+    "profileLoading": "Wczytywanie profilu wysokości…",
+    "title": "Ślad GPX",
+    "gone": "Ten ślad już nie istnieje.",
+    "fileMissing": "Brakuje pliku tego śladu. Wróć do szczegółów treningu i usuń go lub zastąp.",
+    "unreadable": "Nie udało się odczytać danych śladu. Podsumowanie nadal jest dostępne w szczegółach treningu."
+  },
+  "profile": {
+    "title": "Profil wysokości",
+    "label": "Profil wysokości. Strzałkami przesuwasz się wzdłuż trasy; Home i End przenoszą na początek i na koniec.",
+    "readout": "{{distance}} · {{elevation}}",
+    "noElevation": "Ten ślad nie zawiera danych o wysokości.",
+    "xAxis": "Dystans (km)",
+    "yAxis": "Wysokość (m)"
+  },
+  "summary": {
+    "title": "Podsumowanie śladu",
+    "distance": "Dystans",
+    "elapsedTime": "Czas całkowity",
+    "movingTime": "Czas w ruchu",
+    "pace": "Średnie tempo",
+    "elevationGain": "Przewyższenie",
+    "elevationLoss": "Utrata wysokości",
+    "minElevation": "Najniższy punkt",
+    "maxElevation": "Najwyższy punkt",
+    "points": "Punkty śladu",
+    "none": "Niedostępne"
+  },
+  "warnings": {
+    "title": "Uwagi o tym pliku",
+    "timestampsIgnored": "Znaczniki czasu w pliku były bezużyteczne, więc czas i tempo są niedostępne.",
+    "noElevation": "Plik nie zawiera danych o wysokości, więc nie ma profilu wysokości, przewyższenia ani utraty wysokości.",
+    "multipleSegments": "Plik zawiera kilka segmentów; przerwy między nimi nie są wliczane do dystansu.",
+    "routeConverted": "Plik zawiera zaplanowaną trasę, a nie zarejestrowany ślad."
+  },
+  "splits": {
+    "title": "Odcinki",
+    "show": "Pokaż tabelę odcinków",
+    "caption": "Odcinki kilometrowe",
+    "distance": "Km",
+    "time": "Czas",
+    "pace": "Tempo",
+    "elevation": "Zmiana wysokości",
+    "none": "Brak odcinków dla tego śladu."
+  },
+  "kind": {
+    "PlannedCourse": "Zaplanowana trasa",
+    "RecordedTrack": "Zarejestrowany ślad"
+  },
+  "section": {
+    "title": "Pliki GPX",
+    "empty": "Nie ma jeszcze pliku GPX. Dodaj zaplanowaną trasę przed treningiem lub zarejestrowany ślad po nim.",
+    "notProcessed": "Ten plik nie został przetworzony, więc nie można go pokazać na mapie. Zastąp go nowym plikiem.",
+    "failed": "Nie udało się przetworzyć tego pliku. Zastąp go nowym plikiem.",
+    "fileMissing": "Brakuje pliku. Usuń ten wpis lub zastąp go nowym plikiem."
+  },
+  "actions": {
+    "view": "Pokaż",
+    "viewNamed": "Pokaż: {{kind}}",
+    "download": "Pobierz",
+    "downloadNamed": "Pobierz: {{kind}}",
+    "useValues": "Użyj wartości z GPX",
+    "useValuesNamed": "Użyj wartości z GPX (źródło: {{kind}})",
+    "replace": "Zastąp",
+    "replaceNamed": "Zastąp: {{kind}}",
+    "delete": "Usuń",
+    "deleteNamed": "Usuń: {{kind}}",
+    "deleting": "Usuwanie…",
+    "add": "Dodaj plik GPX",
+    "upload": "Prześlij",
+    "replaceFile": "Zastąp plik",
+    "cancel": "Anuluj",
+    "close": "Zamknij"
+  },
+  "toast": {
+    "uploaded": "Dodano plik GPX.",
+    "deleted": "Usunięto plik GPX.",
+    "gone": "Ten plik GPX już nie istnieje."
+  },
+  "delete": {
+    "title": "Usunąć ten plik GPX?",
+    "description": "Plik GPX „{{file}}” ({{kind}}) zostanie usunięty. Sam trening pozostanie. Tej operacji nie można cofnąć."
+  },
+  "upload": {
+    "title": "Dodaj plik GPX",
+    "description": "Plik jest sprawdzany i mierzony na serwerze. W treningu nic się nie zmieni, dopóki nie sprawdzisz wartości i nie zapiszesz.",
+    "kind": "Czym jest ten plik?",
+    "kindHint": {
+      "PlannedCourse": "Trasa, którą zamierzasz pokonać. Na mapie jest rysowana linią przerywaną.",
+      "RecordedTrack": "To, co zapisał twój zegarek. Jego dystans, czas i przewyższenie mogą uzupełnić trening."
+    },
+    "replaceNotice": "Ten trening ma już plik tego rodzaju („{{file}}”). Przesłanie nowego go zastąpi.",
+    "file": "Plik GPX",
+    "hint": "Plik .gpx do {{size}} MB.",
+    "uploading": "Przesyłanie…",
+    "progress": "Przesyłanie i przetwarzanie pliku. Duże pliki mogą potrwać kilka sekund."
+  },
+  "replace": {
+    "title": "Zastąpić istniejący plik?",
+    "description": "Plik „{{file}}” ({{kind}}) zostanie zastąpiony nowym plikiem i nie będzie można go przywrócić.",
+    "descriptionUnknown": "Ten trening ma już plik GPX typu: {{kind}}. Zostanie on zastąpiony nowym plikiem i nie będzie można go przywrócić."
+  },
+  "prefill": {
+    "title": "Użyj wartości z pliku GPX",
+    "description": "Sprawdź, co proponuje plik „{{file}}” dla tego treningu.",
+    "notSaved": "Zaznacz, czego chcesz użyć. Wartości otworzą się w formularzu edycji, a nic nie zostanie zapisane, dopóki nie naciśniesz tam Zapisz.",
+    "apply": "Zastosuj w formularzu treningu",
+    "restDay": "Dni odpoczynku nie mają dystansu, czasu ani przewyższenia, więc nie ma czego uzupełniać.",
+    "nothing": "Trening ma już wartości z tego pliku.",
+    "current": "Teraz",
+    "empty": "puste",
+    "fromTrack": "GPX",
+    "completeHint": "Trening już się odbył: ustaw jego status na Wykonany.",
+    "durationChoice": "Którego czasu użyć",
+    "duration": {
+      "elapsed": "Czas całkowity {{time}}",
+      "moving": "Czas w ruchu {{time}}"
+    },
+    "dateMismatch": "Data śladu: {{trackDate}}, data treningu: {{runDate}}. Sprawdź, czy to właściwy plik, zanim użyjesz daty i godziny startu.",
+    "rows": {
+      "complete": "Oznacz jako wykonany",
+      "startTime": "Data i godzina startu",
+      "distance": "Dystans",
+      "duration": "Czas trwania",
+      "elevationGain": "Przewyższenie",
+      "elevationLoss": "Utrata wysokości",
+      "location": "Lokalizacja (początek śladu)"
+    }
+  },
+  "problem": {
+    "invalidGpx": {
+      "malformedXml": "Plik nie jest prawidłowym XML. Może być uszkodzony lub ucięty.",
+      "dtdProhibited": "Plik zawiera deklarację typu dokumentu, która jest niedozwolona ze względów bezpieczeństwa.",
+      "unsupportedFormat": "To nie jest plik GPX. Obsługiwane są tylko zwykłe pliki .gpx, bez archiwów i kompresji.",
+      "notGpx": "Plik jest w formacie XML, ale nie zawiera śladu ani trasy GPX.",
+      "tooLarge": "Plik jest zbyt duży.",
+      "tooManyPoints": "Plik ma zbyt wiele punktów śladu.",
+      "tooFewPoints": "Plik musi zawierać co najmniej dwa punkty śladu.",
+      "invalidCoordinate": "Plik zawiera nieprawidłową pozycję.",
+      "tooComplex": "Plik jest zbyt głęboko zagnieżdżony, aby go przetworzyć.",
+      "wrongExtension": "Wybierz plik z rozszerzeniem .gpx.",
+      "unknown": "Nie udało się użyć tego pliku jako śladu GPX."
+    },
+    "exists": "Ten trening ma już plik tego rodzaju.",
+    "limit": "Osiągnięto maksymalną liczbę plików GPX. Usuń jeden, aby dodać kolejny.",
+    "restDay": "Dni odpoczynku nie mają plików GPX.",
+    "busy": "Serwer jest zajęty przetwarzaniem innych plików. Spróbuj ponownie za chwilę.",
+    "busyWait": "Serwer jest zajęty przetwarzaniem innych plików. Spróbuj ponownie za {{seconds}} s.",
+    "storage": "Magazyn plików jest teraz niedostępny. Spróbuj ponownie.",
+    "storageWait": "Magazyn plików jest teraz niedostępny. Spróbuj ponownie za {{seconds}} s.",
+    "featureUnavailable": "Ta funkcja jest teraz niedostępna.",
+    "unsupportedMedia": "Serwer nie rozpoznał przesłanych danych. Spróbuj ponownie.",
+    "tooLarge": "Plik jest zbyt duży. Limit to {{size}} MB.",
+    "tooLargeGeneric": "Plik jest zbyt duży.",
+    "gone": "Ten trening lub plik już nie istnieje."
+  },
+  "kindLower": {
+    "PlannedCourse": "zaplanowana trasa",
+    "RecordedTrack": "zarejestrowany ślad"
+  }
+}

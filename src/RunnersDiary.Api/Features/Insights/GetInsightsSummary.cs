@@ -13,7 +13,7 @@ public static class GetInsightsSummary
             .WithTags("Insights")
             .WithSummary("The stored, example or automatic narrative of a period, if any, and whether a new one can be generated. Never calls the model.")
             .WithDescription(
-                "Same from/to/compare rules as the report, plus lang (en). State is none, fresh or stale (a run, the prompt or the model changed since it was written). " +
+                "Same from/to/compare rules as the report, plus lang (en default, or pl; the languages of the prompt manifest). State is none, fresh or stale (a run, the prompt or the model changed since it was written). " +
                 "generation.availability says whether Generate works: available, notConfigured, quotaExhausted or notNeeded. The response is never cached.")
             .Produces<InsightsSummaryResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem();

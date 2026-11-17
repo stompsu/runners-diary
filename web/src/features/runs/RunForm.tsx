@@ -33,6 +33,7 @@ import {
 } from './runFormTypes'
 import { writeProblemMessage } from './runProblemMessage'
 import { fetchRun, useCreateRun, useInvalidateRuns, useUpdateRun } from './runQueries'
+import { genericFieldMessage } from '@/lib/api/fieldMessage'
 import { mapRunFieldErrors } from './serverErrorMapping'
 
 const RACE_RESULT_FIELDS = new Set(['race.resultTime', 'race.overallPlace', 'race.categoryPlace'])
@@ -181,7 +182,7 @@ export function RunForm({
     setConflict(false)
     switch (apiProblem.kind) {
       case 'validation': {
-        const mapped = mapRunFieldErrors(apiProblem.fieldErrors)
+        const mapped = mapRunFieldErrors(apiProblem.fieldErrors, genericFieldMessage())
         // A server error on a field this form is not showing right now (race section of a non-race type, ...)
         // would be invisible: it goes to the summary with the others.
         const current = getValues()

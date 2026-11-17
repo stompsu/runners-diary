@@ -113,7 +113,7 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
         var body = await GenerateOkAsync(user, Id(goal));
 
         var plan = body.GetProperty("goal").GetProperty("plan");
-        Assert.Equal(("Model", 2, "scripted-model", false, false), (plan.GetProperty("source").GetString(), plan.GetProperty("promptVersion").GetInt32(),
+        Assert.Equal(("Model", 3, "scripted-model", false, false), (plan.GetProperty("source").GetString(), plan.GetProperty("promptVersion").GetInt32(),
             plan.GetProperty("model").GetString(), plan.GetProperty("outdated").GetBoolean(), plan.GetProperty("horizonCapped").GetBoolean()));
         Assert.Equal(Ahead(59), plan.GetProperty("horizonEnd").GetString());
         Assert.Equal(RuleBasedNotes, plan.GetProperty("notes").GetString());
@@ -137,7 +137,7 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
         Assert.Equal(suggestions.Count, (await user.GetGoalJsonAsync(Id(goal))).GetProperty("plan").GetProperty("pendingCount").GetInt32());
 
         var row = Assert.Single(await LedgerAsync(user));
-        Assert.Equal((AiFeature.Plan, AiGenerationOutcome.Succeeded, (byte)1, 9_000, 3_500, (short)2), (row.Feature, row.Outcome, row.Attempts, row.InputTokens, row.OutputTokens, row.PromptVersion));
+        Assert.Equal((AiFeature.Plan, AiGenerationOutcome.Succeeded, (byte)1, 9_000, 3_500, (short)3), (row.Feature, row.Outcome, row.Attempts, row.InputTokens, row.OutputTokens, row.PromptVersion));
 
         // Metrics only reach the model: no goal title or note, no run title.
         var sent = ScriptedChatClient.AllText(Assert.Single(client.Requests));
@@ -166,6 +166,62 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
 
         var empty = await user.Client.PostAsync(U($"/api/goals/{Id(goal)}/plan"), content: null, Ct);
         Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
+    }
+
+    [Fact]
+    public async Task Lang_pl_stores_and_returns_the_plan_language_and_the_texts_are_Polish()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid().ReplyValid();
+        using var host = Host(client);
+        var user = await UserAsync(host, "plan-pl");
+        var goal = await user.CreateGoalAsync();
+
+        var body = await GenerateOkAsync(user, Id(goal), new { lang = "pl" });
+
+        Assert.Equal("pl", body.GetProperty("goal").GetProperty("plan").GetProperty("language").GetString());
+        Assert.NotEqual(RuleBasedNotes, body.GetProperty("goal").GetProperty("plan").GetProperty("notes").GetString());
+        Assert.Contains("\"language\":\"pl\"", ScriptedChatClient.AllText(Assert.Single(client.Requests)).Replace(" ", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Equal("pl", (await user.GetGoalJsonAsync(Id(goal))).GetProperty("plan").GetProperty("language").GetString());
+
+        // A regeneration without lang is English again (the default), and the stored language follows.
+        var again = await GenerateOkAsync(user, Id(goal));
+        Assert.Equal("en", again.GetProperty("goal").GetProperty("plan").GetProperty("language").GetString());
+        Assert.Equal(RuleBasedNotes, again.GetProperty("goal").GetProperty("plan").GetProperty("notes").GetString());
+    }
+
+    [Fact]
+    public async Task Without_lang_the_plan_language_is_en()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid();
+        using var host = Host(client);
+        var user = await UserAsync(host, "plan-en");
+        var goal = await user.CreateGoalAsync();
+
+        var body = await GenerateOkAsync(user, Id(goal));
+
+        Assert.Equal("en", body.GetProperty("goal").GetProperty("plan").GetProperty("language").GetString());
+    }
+
+    [Theory]
+    [InlineData("de")]
+    [InlineData("")]
+    [InlineData("PL")]
+    public async Task An_unsupported_lang_is_a_400_with_the_lang_key_and_no_model_call(string lang)
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid();
+        using var host = Host(client);
+        var user = await UserAsync(host, "plan-badlang");
+        var goal = await user.CreateGoalAsync();
+
+        var response = await GenerateAsync(user, Id(goal), new { lang });
+
+        var problem = await response.ProblemAsync(HttpStatusCode.BadRequest);
+        Assert.True(problem.GetProperty("errors").TryGetProperty("lang", out _), problem.ToString());
+        Assert.Equal(0, client.CallCount);
+        Assert.Empty(await LedgerAsync(user));
     }
 
     [Fact]

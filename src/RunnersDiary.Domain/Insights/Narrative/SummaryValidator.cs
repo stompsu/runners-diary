@@ -1,7 +1,7 @@
-using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 
 namespace RunnersDiary.Domain.Insights.Narrative;
 
@@ -16,6 +16,12 @@ public enum ValidationRuleCode
     RaceWeekPeak,
     EstimatedLoad,
     Markup,
+
+    /// <summary>Polish only: a gendered second-person past or conditional verb (M10 G-L1 follow-up, <see cref="Languages.PolishGenderedForms"/>).</summary>
+    GenderedForm,
+
+    /// <summary>Polish only: English text in a Polish draft (M10 G-L1 follow-up, <see cref="Languages.PolishWrongLanguage"/>).</summary>
+    WrongLanguage,
 }
 
 public static class ValidationRuleCodes
@@ -30,6 +36,8 @@ public static class ValidationRuleCodes
         ValidationRuleCode.RaceWeekPeak => "raceWeekPeak",
         ValidationRuleCode.EstimatedLoad => "estimatedLoad",
         ValidationRuleCode.Markup => "markup",
+        ValidationRuleCode.GenderedForm => "genderedForm",
+        ValidationRuleCode.WrongLanguage => "wrongLanguage",
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown rule code."),
     };
 }
@@ -50,9 +58,31 @@ public sealed record SummaryValidationResult(IReadOnlyList<SummaryViolation> Vio
     public IReadOnlyList<ValidationRuleCode> Codes => [.. Violations.Select(v => v.Rule).Distinct().Order()];
 }
 
-/// <summary>The versioned parts of the rules that live in the prompt manifest (ADR 0026 §3, §6).</summary>
+/// <summary>
+/// The versioned parts of the rules that live in the prompt manifest (ADR 0026 §3, §6), plus the request language (ADR 0043 §3).
+/// <see cref="DenyList"/> is the English list (v1/v2: the flat list; v3: <c>denyList.en</c>).
+/// </summary>
 public sealed record SummaryValidationPolicy(double EstimatedLoadThreshold, IReadOnlyList<string> DenyList)
 {
+    /// <summary>
+    /// The language the narrative is written in (<see cref="NarrativeLanguages"/>): it picks the number words of <c>literalNumber</c> and the
+    /// deny matching of <c>forbiddenTopic</c>. Default English, which is exactly the v1/v2 behaviour.
+    /// </summary>
+    public string Language { get; init; } = NarrativeLanguages.English;
+
+    /// <summary>
+    /// Extra deny entries per non-English language, applied with <see cref="DenyList"/> (en ∪ language) and diacritic folding when
+    /// <see cref="Language"/> is that language. Defaults to <see cref="NarrativeLanguages.DefaultLanguageDenyLists"/>; a v3 manifest sets its own.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> LanguageDenyLists { get; init; } = NarrativeLanguages.DefaultLanguageDenyLists;
+
+    /// <summary>This policy for a narrative in <paramref name="language"/> (en/pl).</summary>
+    public SummaryValidationPolicy ForLanguage(string language)
+    {
+        NarrativeLanguages.EnsureSupported(language);
+        return this with { Language = language };
+    }
+
     /// <summary>
     /// Mirrors the manifest's v1 list. <c>strain*</c> forbids the bare word in prose (the injury sense: "a strain", "strained"); a strain
     /// metric could only ever be cited as a <c>{key}</c> placeholder, and placeholders are removed before this scan.
@@ -71,8 +101,10 @@ public sealed record SummaryValidationPolicy(double EstimatedLoadThreshold, IRea
 /// is stored or returned, and on templates and demo fixtures.
 /// <para>
 /// <c>literalNumber</c> flags, outside placeholders: any Unicode digit or number character (incl. <c>Ⅻ</c>), <c>%</c> <c>‰</c> <c>°</c>;
-/// cardinal words from "two" up (<see cref="NumberWords"/>); ordinal words "first" to "twentieth", the tens ordinals, "hundredth",
-/// "thousandth", and "twice"/"thrice" (<see cref="OrdinalWords"/>), case-insensitive as whole words ("third week", "First,");
+/// for English, cardinal words from "two" up; ordinal words "first" to "twentieth", the tens ordinals, "hundredth",
+/// "thousandth", and "twice"/"thrice" (<see cref="EnglishNumberWords"/>), case-insensitive as whole words ("third week", "First,");
+/// for Polish, the exact forms of <see cref="PolishNumberWords"/> and the English words that are not Polish words, on folded words
+/// (<see cref="NarrativeLanguages"/>, ADR 0043 §3);
 /// and ASCII Roman numerals as standalone tokens: a run of letters bounded by non-letters, <b>at least two letters, all upper case</b>,
 /// and a well-formed numeral (<c>II</c>, <c>IV</c>, <c>XII</c>). So "I" (the pronoun), single capitals and lower-case words such as
 /// "mix", "civil" or "did" never match; an all-capitals word that happens to be a valid numeral ("MIX", "XC") does, which the
@@ -87,22 +119,6 @@ public static class SummaryValidator
     public const int MaxWatchOuts = 3;
     public const int MaxDataNotes = 2;
     public const int MaxItems = 9;
-
-    /// <summary>English cardinals from "two" upward (and their plurals). "one" and "half" stay allowed ("one week", "half marathon").</summary>
-    private static readonly FrozenSet<string> NumberWords = new[]
-    {
-        "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
-        "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
-        "hundred", "hundreds", "thousand", "thousands", "million", "millions", "billion", "billions", "dozen", "dozens", "tens",
-    }.ToFrozenSet(StringComparer.Ordinal);
-
-    /// <summary>Ordinal and multiplicative number words: a position or a ratio is a number the model must not make up.</summary>
-    private static readonly FrozenSet<string> OrdinalWords = new[]
-    {
-        "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
-        "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth", "thirtieth",
-        "fortieth", "fiftieth", "sixtieth", "seventieth", "eightieth", "ninetieth", "hundredth", "thousandth", "twice", "thrice",
-    }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>A well-formed Roman numeral (1–3999), upper case; the caller requires at least two letters.</summary>
     private static readonly Regex RomanNumeral = new(
@@ -128,7 +144,7 @@ public static class SummaryValidator
 
         var texts = draft.Texts().ToList();
         var cited = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        var deny = DenyPattern.ParseAll(policy.DenyList);
+        var deny = DenyMatcher.Create(policy.Language, policy.DenyList, policy.LanguageDenyLists);
 
         foreach (var (location, text) in texts)
         {
@@ -145,12 +161,13 @@ public static class SummaryValidator
                 violations.Add(new SummaryViolation(ValidationRuleCode.UnknownKey, location, FactKey.IsValid(key) ? key : null));
             }
 
-            if (HasLiteralNumber(scan.Prose))
+            var words = policy.Language == NarrativeLanguages.English ? scan.Words : NarrativeLanguages.Words(scan.Prose, policy.Language);
+            if (HasLiteralNumber(scan.Prose, words, policy.Language))
             {
                 violations.Add(new SummaryViolation(ValidationRuleCode.LiteralNumber, location));
             }
 
-            if (deny.Any(p => p.Matches(scan.Words)))
+            if (deny.Matches(words))
             {
                 violations.Add(new SummaryViolation(ValidationRuleCode.ForbiddenTopic, location));
             }
@@ -160,6 +177,11 @@ public static class SummaryValidator
                 violations.Add(new SummaryViolation(ValidationRuleCode.Markup, location));
             }
 
+            if (NarrativeLanguages.HasGenderedForm(scan.Prose, policy.Language))
+            {
+                violations.Add(new SummaryViolation(ValidationRuleCode.GenderedForm, location));
+            }
+
             var isListItem = location.StartsWith("wentWell.", StringComparison.Ordinal)
                 || location.StartsWith("watchOuts.", StringComparison.Ordinal)
                 || location.StartsWith("dataNotes.", StringComparison.Ordinal);
@@ -167,6 +189,11 @@ public static class SummaryValidator
             {
                 violations.Add(new SummaryViolation(ValidationRuleCode.MissingCitation, location));
             }
+        }
+
+        foreach (var index in NarrativeLanguages.WrongLanguageFields([.. texts.Select(t => t.Text)], policy.Language))
+        {
+            violations.Add(new SummaryViolation(ValidationRuleCode.WrongLanguage, texts[index].Location));
         }
 
         CheckRaceWeekPeak(draft, sheet, cited, violations);
@@ -286,7 +313,7 @@ public static class SummaryValidator
         }
     }
 
-    private static bool HasLiteralNumber(string prose)
+    private static bool HasLiteralNumber(string prose, IReadOnlyList<string> words, string language)
     {
         foreach (var c in prose)
         {
@@ -298,7 +325,7 @@ public static class SummaryValidator
             }
         }
 
-        return Placeholders.Words(prose).Any(w => NumberWords.Contains(w) || OrdinalWords.Contains(w)) || HasRomanNumeral(prose);
+        return NarrativeLanguages.HasNumberWord(words, language) || HasRomanNumeral(prose);
     }
 
     /// <summary>A standalone, all-capitals, well-formed Roman numeral of at least two letters (see the class remarks).</summary>
@@ -340,42 +367,6 @@ public static class SummaryValidator
             || text.Contains("://", StringComparison.Ordinal)
             || text.Contains("www.", StringComparison.OrdinalIgnoreCase)
             || text.TrimStart().StartsWith('#');
-    }
-
-    /// <summary>A deny-list entry: a word, a word prefix (<c>injur*</c>) or a phrase of words (<c>risk of</c>), case-insensitive.</summary>
-    internal sealed record DenyPattern(string[] Words, bool Prefix)
-    {
-        public static List<DenyPattern> ParseAll(IReadOnlyList<string> entries) =>
-        [
-            .. entries.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e =>
-            {
-                var trimmed = e.Trim().ToLowerInvariant();
-                var prefix = trimmed.EndsWith('*');
-                return new DenyPattern(trimmed.TrimEnd('*').Split(' ', StringSplitOptions.RemoveEmptyEntries), prefix);
-            }),
-        ];
-
-        public bool Matches(IReadOnlyList<string> words)
-        {
-            for (var start = 0; start + Words.Length <= words.Count; start++)
-            {
-                var match = true;
-                for (var i = 0; i < Words.Length && match; i++)
-                {
-                    var last = i == Words.Length - 1;
-                    match = last && Prefix
-                        ? words[start + i].StartsWith(Words[i], StringComparison.Ordinal)
-                        : words[start + i] == Words[i];
-                }
-
-                if (match)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
     }
 }
 

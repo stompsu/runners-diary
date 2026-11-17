@@ -17,5 +17,13 @@
     "degraded": "API degraded",
     "unhealthy": "API unavailable"
   },
-  "close": "Close"
+  "close": "Close",
+  "language": {
+    "failed": "Could not switch the language. Try again.",
+    "label": "Language",
+    "names": {
+      "en": "English",
+      "pl": "Polski"
+    }
+  }
 }

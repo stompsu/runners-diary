@@ -6,7 +6,7 @@ import { useClientConfig } from '@/auth/useClientConfig'
 import { Button } from '@/components/ui/button'
 import { diaryPath, type DiaryMonth } from '@/features/diary/diaryMonth'
 import type { PlainDate } from '@/lib/dates/plainDate'
-import { monthLabel } from '@/lib/dates/plainDate'
+import { capitalizeFirst, monthLabel } from '@/lib/dates/plainDate'
 import { ProposalsToggle } from './ProposalsToggle'
 import { SuggestionsToggle } from './SuggestionsToggle'
 
@@ -45,7 +45,7 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
   return (
     <header className="mb-4 flex flex-col gap-3">
       <h1 id="diary-title" className="text-2xl font-semibold">
-        {t('title', { month: label })}
+        {t('title', { month: capitalizeFirst(label, i18n.language) })}
       </h1>
       <output className="sr-only" data-testid="month-announcement">
         {announcement}
@@ -70,7 +70,7 @@ export function MonthHeader({ month, previous, next, addDate, onToday, onSelectM
               className="h-11 sm:h-9"
               aria-label={t('picker.trigger', { month: monthLabel(month.year, month.month, i18n.language) })}
             >
-              {monthLabel(month.year, month.month, i18n.language)}
+              {capitalizeFirst(monthLabel(month.year, month.month, i18n.language), i18n.language)}
               <ChevronDown aria-hidden="true" />
             </Button>
           }

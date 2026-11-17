@@ -1,11 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import { useClientConfig } from '@/auth/useClientConfig'
+import { useLanguageSync } from '@/auth/useLanguage'
 import { useTimeZoneSync } from '@/auth/useTimeZoneSync'
 import { Toaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
 import { ApiStatus } from './ApiStatus'
 import { DemoBanner } from './DemoBanner'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import { UserMenu } from './UserMenu'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -17,6 +19,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function AppShell() {
   const { t } = useTranslation()
   useTimeZoneSync()
+  useLanguageSync()
   // Settings only hold race interests so far (M8): hidden while race proposals are switched off.
   const config = useClientConfig().data
   const racesEnabled = config?.races?.enabled === true
@@ -50,6 +53,7 @@ export function AppShell() {
             ) : null}
           </nav>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <ApiStatus />
             <UserMenu />
           </div>

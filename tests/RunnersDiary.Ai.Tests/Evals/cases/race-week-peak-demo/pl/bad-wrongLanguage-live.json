@@ -1,0 +1,13 @@
+{
+  "headline": "So far, you kept the load ratio in the {acwr.asOf.band} range at {acwr.asOf.value} as of {period.asOf}.",
+  "wentWell": [
+    { "text": "You completed {race.1.category} on {race.1.date} in {race.1.resultTime}, and it was a personal best. That was your {race.1.type} start." },
+    { "text": "You also finished {race.2.type} on {race.2.date} in {race.2.resultTime}. That adds another completed start to the period." },
+    { "text": "You tapered in the week of {week.4.start} before your {race.1.category}, then returned to a steadier rhythm later. Your easy pace also improved from {pace.first.pace} in the week of {pace.first.week} to {pace.last.pace} in the week of {pace.last.week}." }
+  ],
+  "watchOuts": [
+    { "text": "Your load rose sharply in the week of {week.1.start}: {week.1.load} with a load ratio of {week.1.acwrAtEnd}. Ease back or build more gradually after jumps like that." }
+  ],
+  "suggestion": { "text": "Keep the next block steady with easy runs and gradual load changes, especially after the early jump in the week of {week.1.start}." },
+  "dataNotes": []
+}

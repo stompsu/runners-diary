@@ -1,0 +1,9 @@
+{
+  "headline": "Po okresie trzech spokojnych tygodni obciążenie wzrosło do {week.4.load}.",
+  "wentWell": [
+    { "text": "Liczba treningów: {totals.runCount}, łączny dystans: {totals.distance}." }
+  ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

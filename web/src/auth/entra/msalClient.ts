@@ -5,6 +5,7 @@ import {
   type Configuration,
   type IPublicClientApplication,
 } from '@azure/msal-browser'
+import i18n from '@/i18n'
 import type { EntraController } from '../session'
 
 /** MSAL error codes meaning "could not reach the service": transient, so the session must survive them. */
@@ -78,7 +79,8 @@ export function createEntraController(app: MsalApp, config: EntraConfig): EntraC
     },
     async login() {
       // No `state`: the redirect lands back on /signin?returnTo=..., which validates and applies returnTo itself.
-      await app.loginRedirect({ scopes: [config.apiScope] })
+      // `ui_locales` asks the hosted sign-in pages for the UI language (ADR 0042 §7); the tenant needs its own Polish customisation.
+      await app.loginRedirect({ scopes: [config.apiScope], extraQueryParameters: { ui_locales: i18n.language } })
     },
     async logout() {
       const account = currentAccount(app)

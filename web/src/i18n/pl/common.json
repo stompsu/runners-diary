@@ -1,0 +1,29 @@
+{
+  "app": {
+    "name": "Runners Diary",
+    "skipToContent": "Przejdź do treści"
+  },
+  "nav": {
+    "label": "Główna nawigacja",
+    "diary": "Dziennik",
+    "insights": "Analiza",
+    "settings": "Ustawienia",
+    "goals": "Cele"
+  },
+  "apiStatus": {
+    "label": "Status API",
+    "checking": "Sprawdzanie API…",
+    "healthy": "API działa",
+    "degraded": "API działa z ograniczeniami",
+    "unhealthy": "API niedostępne"
+  },
+  "close": "Zamknij",
+  "language": {
+    "failed": "Nie udało się zmienić języka. Spróbuj ponownie.",
+    "label": "Język",
+    "names": {
+      "en": "English",
+      "pl": "Polski"
+    }
+  }
+}

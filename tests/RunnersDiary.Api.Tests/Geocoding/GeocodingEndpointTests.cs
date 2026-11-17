@@ -71,6 +71,31 @@ public sealed class GeocodingEndpointTests(ContainersApiFactory factory)
     }
 
     [Theory]
+    [InlineData(null, "en")]
+    [InlineData("pl", "pl")]
+    [InlineData("pl-PL,pl;q=0.9,en;q=0.8", "pl")]
+    [InlineData("en;q=0.5, pl;q=0.9", "pl")]
+    [InlineData("de-DE,de;q=0.9", "en")]
+    [InlineData("pl;q=0", "en")]
+    public async Task The_accept_language_header_is_reduced_to_en_or_pl_before_it_reaches_the_provider(string? header, string expected)
+    {
+        factory.SkipIfDockerUnavailable();
+        await using var fake = WithFake();
+        var user = fake.EntraUser("geolang" + expected);
+        using var request = new HttpRequestMessage(HttpMethod.Get, Search("?q=Gliwice"));
+        if (header is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Accept-Language", header);
+        }
+
+        var response = await user.Client.SendAsync(request, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(expected, FakeGeocoder.LastLanguage);
+        Assert.Contains("Accept-Language", response.Headers.Vary);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("?q=a")]
     [InlineData("?q=%20%20a%20")]

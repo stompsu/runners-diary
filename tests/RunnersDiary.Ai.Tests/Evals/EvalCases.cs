@@ -14,18 +14,23 @@ public sealed record KeyProhibition(string Section, IReadOnlyList<string> Keys);
 
 /// <summary>
 /// One evaluation case (ADR 0026 §7): a report built with <see cref="InsightsReportBuilder"/> from a small fact list, so it always
-/// follows metrics v1. Template cases never reach the model; the others have a committed good draft and adversarial drafts.
+/// follows metrics v1. Template cases never reach the model; the others have a committed good draft and adversarial drafts, per language
+/// (ADR 0043 §5: English in <c>cases/&lt;case&gt;/</c>, Polish in <c>cases/&lt;case&gt;/pl/</c>).
 /// </summary>
 public sealed record EvalCase(
     string Name,
     InsightsReport Report,
     SummaryTemplateKind? ExpectedTemplate,
     IReadOnlyList<KeyRequirement> Required,
-    IReadOnlyList<KeyProhibition> Forbidden)
+    IReadOnlyList<KeyProhibition> Forbidden,
+    string Language = "en")
 {
-    public FactSheet Sheet { get; } = FactSheetBuilder.Build(Report, "en");
+    public FactSheet Sheet { get; } = FactSheetBuilder.Build(Report, Language);
 
-    public override string ToString() => Name;
+    /// <summary>The same case for another language (a new sheet; <c>with</c> would copy the old one).</summary>
+    public EvalCase InLanguage(string language) => new(Name, Report, ExpectedTemplate, Required, Forbidden, language);
+
+    public override string ToString() => Language == "en" ? Name : $"{Name} ({Language})";
 }
 
 public static class EvalCases
@@ -53,11 +58,31 @@ public static class EvalCases
         BuildWhollyFuture(),
     ];
 
+    /// <summary>The languages of the eval cases (the prompt manifest's <c>languages</c>).</summary>
+    public static readonly IReadOnlyList<string> Languages = ["en", "pl"];
+
     public static EvalCase Get(string name) => All.Single(c => c.Name == name);
+
+    public static EvalCase Get(string name, string language) => language == "en" ? Get(name) : Get(name).InLanguage(language);
 
     public static TheoryData<string> Names() => [.. All.Select(c => c.Name)];
 
     public static TheoryData<string> ModelNames() => [.. All.Where(c => c.ExpectedTemplate is null).Select(c => c.Name)];
+
+    /// <summary>Every model case in every language (the live eval of gate G-L1).</summary>
+    public static TheoryData<string, string> ModelNamesByLanguage()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var language in Languages)
+        {
+            foreach (var c in All.Where(c => c.ExpectedTemplate is null))
+            {
+                data.Add(c.Name, language);
+            }
+        }
+
+        return data;
+    }
 
     /// <summary>March 2026: steady weeks, then the week of 16 March at 1.8× (ACWR high), no race.</summary>
     private static EvalCase BuildLoadSpike()

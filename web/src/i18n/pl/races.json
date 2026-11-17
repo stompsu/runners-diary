@@ -1,0 +1,284 @@
+{
+  "nav": {
+    "settings": "Ustawienia"
+  },
+  "interests": {
+    "title": "Zainteresowania startami",
+    "intro": "Wybierz, które nadchodzące starty mają być sugerowane. Pasujące starty z publicznych kalendarzy pojawią się w twoim dzienniku.",
+    "unavailable": "Propozycje startów są teraz niedostępne.",
+    "saveForm": "Zainteresowania startami",
+    "save": "Zapisz zainteresowania",
+    "saving": "Zapisywanie…",
+    "discard": "Odrzuć zmiany",
+    "saved": "Zapisano zainteresowania startami",
+    "notConfigured": "Nie zapisano jeszcze żadnych zainteresowań. To sugerowane ustawienia domyślne; zapisz je, aby zacząć widzieć propozycje.",
+    "what": {
+      "legend": "Co",
+      "kinds": "Rodzaje biegów",
+      "kindsHint": "Wybierz co najmniej jeden.",
+      "ultraHint": "Ultra obejmuje też każdy bieg dłuższy niż maraton."
+    },
+    "where": {
+      "legend": "Gdzie",
+      "hint": "Województwa i miejsce z promieniem liczą się łącznie: start pasuje, jeśli spełnia któryś z warunków. Bez żadnego z nich pasują starty z całej Polski.",
+      "regions": "Województwa",
+      "regionLabel": "{{pl}}",
+      "selectAll": "Zaznacz wszystkie",
+      "clear": "Wyczyść",
+      "selectedCount": "Wybrano {{count}} z {{total}} województw",
+      "nearPlace": "W pobliżu miejsca",
+      "placeHint": "Wybierz miejsce na mapie, a potem ustaw, jak daleko od niego może być start.",
+      "radius": "Promień (km)",
+      "radiusHint": "Od 5 do 300 km.",
+      "radiusNeedsPlace": "Najpierw wybierz miejsce.",
+      "radiusSlider": "Suwak promienia (km)",
+      "mapLabel": "Podgląd obszaru wyszukiwania na mapie"
+    },
+    "distance": {
+      "legend": "Dystans",
+      "hint": "Start pasuje, jeśli jeden z jego dystansów mieści się w tym zakresie. Zostaw pole puste, aby nie ograniczać.",
+      "min": "Od (km)",
+      "max": "Do (km)",
+      "presets": "Gotowe zakresy",
+      "preset": {
+        "fiveK": "5 km",
+        "tenK": "10 km",
+        "half": "Półmaraton",
+        "marathon": "Maraton",
+        "ultra": "Ultra"
+      }
+    },
+    "when": {
+      "legend": "Kiedy",
+      "horizon": "Z wyprzedzeniem",
+      "horizonOption_one": "{{count}} dzień",
+      "horizonOption_few": "{{count}} dni",
+      "horizonOption_many": "{{count}} dni",
+      "horizonOption_other": "{{count}} dnia"
+    },
+    "keywords": {
+      "legend": "Słowa kluczowe",
+      "label": "Słowa kluczowe (opcjonalnie)",
+      "hint": "Do 5 słów; start musi zawierać wszystkie w nazwie lub miejscu."
+    },
+    "show": {
+      "legend": "Dziennik",
+      "label": "Pokaż propozycje w dzienniku",
+      "hint": "Propozycje pojawiają się w kalendarzu jako kropkowane znaczniki flagi."
+    },
+    "sources": {
+      "legend": "Źródła",
+      "opensNewTab": "(otwiera się w nowej karcie)"
+    },
+    "validation": {
+      "kindsRequired": "Wybierz co najmniej jeden rodzaj biegu.",
+      "regionUnknown": "Nieznane województwo.",
+      "latitude": "Szerokość geograficzna musi mieścić się między -90 a 90.",
+      "longitude": "Długość geograficzna musi mieścić się między -180 a 180.",
+      "centerNameLength": "Nazwa miejsca może mieć najwyżej 200 znaków.",
+      "radiusRequired": "Podaj promień dla wybranego miejsca.",
+      "radiusRange": "Podaj promień od 5 do 300 km.",
+      "distanceRange": "Podaj dystans od 1 do 250 km.",
+      "distanceOrder": "Najdłuższy dystans nie może być krótszy niż najkrótszy.",
+      "horizonRange": "Wybierz od 7 do 365 dni.",
+      "keywordsLength": "Słowa kluczowe mogą mieć najwyżej 100 znaków.",
+      "keywordsTerms": "Użyj najwyżej 5 słów kluczowych.",
+      "keywordsTermLength": "Każde słowo kluczowe musi mieć od 2 do 30 znaków."
+    }
+  },
+  "kinds": {
+    "Road": "Uliczny",
+    "Trail": "Trailowy",
+    "Mountain": "Górski",
+    "Ultra": "Ultra",
+    "CrossCountry": "Przełajowy",
+    "Ocr": "Bieg z przeszkodami",
+    "Other": "Inny"
+  },
+  "regions": {
+    "PL-02": {
+      "en": "Lower Silesian",
+      "pl": "Dolnośląskie"
+    },
+    "PL-04": {
+      "en": "Kuyavian-Pomeranian",
+      "pl": "Kujawsko-pomorskie"
+    },
+    "PL-06": {
+      "en": "Lublin",
+      "pl": "Lubelskie"
+    },
+    "PL-08": {
+      "en": "Lubusz",
+      "pl": "Lubuskie"
+    },
+    "PL-10": {
+      "en": "Łódź",
+      "pl": "Łódzkie"
+    },
+    "PL-12": {
+      "en": "Lesser Poland",
+      "pl": "Małopolskie"
+    },
+    "PL-14": {
+      "en": "Masovian",
+      "pl": "Mazowieckie"
+    },
+    "PL-16": {
+      "en": "Opole",
+      "pl": "Opolskie"
+    },
+    "PL-18": {
+      "en": "Subcarpathian",
+      "pl": "Podkarpackie"
+    },
+    "PL-20": {
+      "en": "Podlaskie",
+      "pl": "Podlaskie"
+    },
+    "PL-22": {
+      "en": "Pomeranian",
+      "pl": "Pomorskie"
+    },
+    "PL-24": {
+      "en": "Silesian",
+      "pl": "Śląskie"
+    },
+    "PL-26": {
+      "en": "Holy Cross",
+      "pl": "Świętokrzyskie"
+    },
+    "PL-28": {
+      "en": "Warmian-Masurian",
+      "pl": "Warmińsko-mazurskie"
+    },
+    "PL-30": {
+      "en": "Greater Poland",
+      "pl": "Wielkopolskie"
+    },
+    "PL-32": {
+      "en": "West Pomeranian",
+      "pl": "Zachodniopomorskie"
+    }
+  },
+  "attribution": {
+    "source": "Źródło: {{name}}",
+    "disclaimer": "Dane o startach pochodzą z publicznych kalendarzy; zawsze sprawdź stronę organizatora."
+  },
+  "proposals": {
+    "title": "Propozycje startów – {{month}}",
+    "empty": "Brak propozycji startów w tym miesiącu.",
+    "loading": "Wczytywanie propozycji startów…",
+    "notConfigured": "Najpierw wybierz, jakie starty sugerować.",
+    "setup": "Skonfiguruj propozycje startów",
+    "window": "Propozycje obejmują okres: {{range}}.",
+    "outsideWindow": "Ten miesiąc jest poza twoim oknem wyprzedzenia, więc nie pokazano propozycji.",
+    "truncated": "Wyświetlono tylko pierwsze starty. Zawęź zainteresowania, aby zobaczyć resztę.",
+    "updated": "Lista startów zaktualizowana: {{date}}",
+    "stale": "Lista startów nie była odświeżana od ponad 3 tygodni, więc niektóre szczegóły mogą być nieaktualne.",
+    "showDismissed": "Pokaż odrzucone",
+    "new": "Nowe",
+    "noDistance": "Brak informacji o dystansie",
+    "daySection": "Propozycje startów",
+    "state": {
+      "Interested": "Interesuje mnie",
+      "Dismissed": "Nie interesuje mnie",
+      "SignedUp": "Mam zapis",
+      "dateChanged": "Zmieniona data"
+    },
+    "actions": {
+      "details": "Szczegóły",
+      "interested": "Interesuje mnie",
+      "notInterested": "Nie interesuje mnie",
+      "undo": "Cofnij",
+      "viewRun": "Pokaż mój zaplanowany trening"
+    },
+    "toast": {
+      "dismissed": "Ukryto w twoich propozycjach: {{name}}",
+      "stateLimit": "Osiągnięto maksymalną liczbę oznaczonych startów.",
+      "stateFailed": "Nie udało się zapisać zmiany. Spróbuj ponownie."
+    }
+  },
+  "details": {
+    "loading": "Wczytywanie startu…",
+    "goneTitle": "Nie znaleziono startu",
+    "goneBody": "Tego startu nie ma już na liście.",
+    "facts": {
+      "date": "Data",
+      "place": "Miejsce",
+      "kind": "Rodzaj",
+      "distances": "Dystanse",
+      "elevation": "Przewyższenie",
+      "price": "Opłata startowa",
+      "organizer": "Organizator",
+      "deadline": "Termin zapisów"
+    },
+    "deadline": {
+      "closesIn_one": "{{date}} (zamknięcie za {{count}} dzień)",
+      "closesIn_few": "{{date}} (zamknięcie za {{count}} dni)",
+      "closesIn_many": "{{date}} (zamknięcie za {{count}} dni)",
+      "closesIn_other": "{{date}} (zamknięcie za {{count}} dnia)",
+      "closesToday": "{{date}} (zamknięcie dziś)",
+      "closed": "{{date}} (zamknięte)"
+    },
+    "map": {
+      "label": "Pozycja startu na mapie",
+      "marker": "Start: {{name}}",
+      "none": "Brak pozycji na mapie ze źródła",
+      "coordinates": "Współrzędne: {{coordinates}}"
+    },
+    "actions": {
+      "signupPage": "Otwórz stronę zapisów",
+      "eventSite": "Strona wydarzenia",
+      "signedUp": "Mam zapis",
+      "interested": "Interesuje mnie",
+      "notInterested": "Nie interesuje mnie",
+      "undo": "Cofnij",
+      "viewRun": "Pokaż mój zaplanowany trening",
+      "close": "Zamknij",
+      "opensNewTab": "(otwiera się w nowej karcie)"
+    },
+    "signupUnavailable": {
+      "noUrl": "Źródło nie podało linku do zapisów.",
+      "removed": "Tego startu nie ma już na liście.",
+      "past": "Ten start już się odbył.",
+      "duplicate": "To zduplikowany wpis."
+    },
+    "signedUpNote": "Masz zaplanowany trening na ten start."
+  },
+  "signup": {
+    "title": "Mam zapis",
+    "intro": "To doda zaplanowany start do twojego dziennika w dniu: {{date}}.",
+    "distance": "Dystans",
+    "distanceSingle": "Dystans: {{distance}}",
+    "startTime": "Godzina startu (opcjonalnie)",
+    "targetTime": "Czas docelowy (opcjonalnie, h:mm:ss)",
+    "submit": "Dodaj do dziennika",
+    "submitting": "Dodawanie…",
+    "cancel": "Anuluj",
+    "success": "Zaplanowany start dodano do dziennika",
+    "alreadyLinked": "Ten start jest już w twoim dzienniku.",
+    "past": "Ten start już się odbył.",
+    "gone": "Ten start nie jest już dostępny.",
+    "validation": {
+      "distanceRequired": "Wybierz dystans.",
+      "startTime": "Podaj godzinę w formacie 09:30.",
+      "targetTime": "Podaj czas w formacie 1:45:00."
+    },
+    "targetTimePlaceholder": "1:45:00"
+  },
+  "banners": {
+    "dateChangedSignedUp": "Lista startów podaje datę: {{newDate}}; twój zaplanowany trening jest w dniu: {{oldDate}}.",
+    "moveRun": "Przenieś mój trening na: {{date}}",
+    "moving": "Przenoszenie…",
+    "moved": "Twój trening przeniesiono na: {{date}}",
+    "conflict": "Twój trening został zmieniony w innym miejscu po jego otwarciu.",
+    "reload": "Wczytaj ponownie",
+    "dateChangedInterested": "Lista podaje teraz datę: {{newDate}} (przy oznaczaniu startu była: {{oldDate}}).",
+    "dateChangedInterestedNoOld": "Data na liście zmieniła się na: {{newDate}} od czasu oznaczenia startu.",
+    "ok": "OK",
+    "removed": "Źródło już nie wymienia tego startu. Sprawdź stronę organizatora, zanim zaplanujesz coś wokół niego.",
+    "duplicate": "Ten start jest na liście dwa razy.",
+    "openCanonical": "Otwórz główny wpis"
+  }
+}

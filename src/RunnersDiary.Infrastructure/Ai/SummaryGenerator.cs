@@ -74,6 +74,8 @@ public sealed partial class SummaryGenerator(
             return new GenerationResult(GenerationStatus.Failed, Failure: GenerationFailure.Provider);
         }
 
+        // The rules of the request language (ADR 0043 §3): Polish number words and the en ∪ pl deny list for a Polish summary.
+        var policy = agent.Prompt.Policy.ForLanguage(request.Sheet.Language);
         IReadOnlyList<SummaryViolation>? rejected = null;
         var run = await _runner.RunAsync<ValidatedSummary>(
             new AiRunRequest(AiFeature.Summary, request.UserId, request.IsGuest),
@@ -81,7 +83,7 @@ public sealed partial class SummaryGenerator(
             async ct =>
             {
                 var attempt = await agent.RunAsync(factSheetJson, request.Sheet.Language, rejected, ct);
-                var (draft, result) = SummaryValidator.Validate(attempt.Text, request.Sheet, agent.Prompt.Policy);
+                var (draft, result) = SummaryValidator.Validate(attempt.Text, request.Sheet, policy);
                 if (result.IsValid)
                 {
                     return new AiAttemptResult<ValidatedSummary>(

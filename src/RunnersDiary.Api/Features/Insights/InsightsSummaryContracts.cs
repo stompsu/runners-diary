@@ -123,7 +123,7 @@ public sealed record GenerateSummaryRequest
     /// <summary>none, previous (default) or previousYear; case-sensitive.</summary>
     public string? Compare { get; init; }
 
-    /// <summary>Language of the summary; only "en" (default) in this version.</summary>
+    /// <summary>Language of the summary; "en" (default) or "pl" (the languages of the prompt manifest); each language is stored and cached separately.</summary>
     public string? Lang { get; init; }
 
     /// <summary>True to replace a fresh stored summary with a new generation (uses quota); false (default) returns a fresh one as is.</summary>

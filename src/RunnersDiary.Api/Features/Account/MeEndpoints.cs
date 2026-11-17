@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RunnersDiary.Domain.Localization;
 using RunnersDiary.Domain.Time;
 using RunnersDiary.Domain.Users;
 using RunnersDiary.Infrastructure.Identity;
@@ -21,6 +22,9 @@ public sealed record MeResponse
     public required bool TimeZoneIsDefault { get; init; }
 
     public required UnitSystem UnitSystem { get; init; }
+
+    /// <summary>UI language tag (<c>en</c> or <c>pl</c>); null = never chosen (ADR 0042 §3). Set with <c>PUT /api/me/language</c>.</summary>
+    public required string? Language { get; init; }
 
     /// <summary>Today's date in the user's zone (the calendar's default month).</summary>
     public required DateOnly Today { get; init; }
@@ -52,6 +56,20 @@ public sealed record UpdateMeRequest : IValidatableObject
     }
 }
 
+/// <summary><c>PUT /api/me/language</c> body: one of <c>en</c>, <c>pl</c>.</summary>
+public sealed record UpdateMyLanguageRequest : IValidatableObject
+{
+    public required string Language { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!SupportedLanguages.IsSupported(Language))
+        {
+            yield return new ValidationResult($"Must be one of: {string.Join(", ", SupportedLanguages.All)}.", ["language"]);
+        }
+    }
+}
+
 public static class MeEndpoints
 {
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder endpoints)
@@ -68,6 +86,14 @@ public static class MeEndpoints
             .WithTags("Me")
             .WithSummary("Updates the caller's profile (display name, time zone, units).")
             .Produces<MeResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        endpoints.MapPut("/me/language", UpdateLanguageAsync)
+            .WithName("updateMyLanguage")
+            .WithTags("Me")
+            .WithSummary("Stores the caller's UI language (en or pl).")
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status404NotFound);
         return endpoints;
@@ -103,6 +129,25 @@ public static class MeEndpoints
         return TypedResults.Ok(ToResponse(user, clock));
     }
 
+    private static async Task<IResult> UpdateLanguageAsync(
+        UpdateMyLanguageRequest request,
+        [FromServices] ICurrentUser currentUser,
+        [FromServices] RunnersDiaryDbContext db,
+        CancellationToken cancellationToken)
+    {
+        // The id comes from the claims only; the query is also filtered by the user's own row (Users has no global filter).
+        var userId = currentUser.UserId;
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        user.SetLanguage(request.Language);
+        await db.SaveChangesAsync(cancellationToken);
+        return TypedResults.NoContent();
+    }
+
     private static Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult NotFound() => TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "User not found.");
 
     private static MeResponse ToResponse(User user, TimeProvider clock) => new()
@@ -113,6 +158,7 @@ public static class MeEndpoints
         TimeZoneId = user.TimeZoneId,
         TimeZoneIsDefault = user.TimeZoneIsDefault,
         UnitSystem = user.UnitSystem,
+        Language = user.Language,
         Today = UserToday.Get(clock, user.TimeZoneId),
         GuestExpiresAt = user.ExpiresAt,
     };

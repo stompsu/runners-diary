@@ -1,6 +1,6 @@
 # Runners Diary – Data model
 
-Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; merged and deployed 2026-11-14): see [Added in M8](#added-in-m8-race-proposals).** **M9 (adaptive training plan) adds migrations `20261116122838_TrainingGoals` (tables `Goals`, `TrainingSuggestions`, columns `Runs.GoalId`, `AiGenerations.Feature`) and `20261116130010_AiGenerationsFeatureIndex` (index rebuild); implemented 2026-11-16 on `m9-adaptive-training-plan`, reviewed, awaiting approval; not deployed: see [Added in M9](#added-in-m9-adaptive-training-plan).**
+Living document, owned by the `architect` agent. Status: **M2 implemented (migration `InitialSchema`); M4 added migration `GpxTrackProcessing`; M5 (Insights) had no schema change (all merged); M6 added migration `20261104070212_AiSummaries` (tables `AiSummaries`, `AiGenerations`; merged); M7 Part A adds migration `20261104153828_GeocodeUsage` (table `GeocodeUsage`; implemented, awaiting approval)**. **M8 (race proposals) adds migration `20261113165157_RaceCatalogue` (tables `Races`, `RaceDistances`, `RaceInterestProfiles`, `RaceProposalStates`, column `Runs.CatalogRaceId`; merged and deployed 2026-11-14): see [Added in M8](#added-in-m8-race-proposals).** **M9 (adaptive training plan) adds migrations `20261116122838_TrainingGoals` (tables `Goals`, `TrainingSuggestions`, columns `Runs.GoalId`, `AiGenerations.Feature`) and `20261116130010_AiGenerationsFeatureIndex` (index rebuild); merged and deployed 2026-11-16: see [Added in M9](#added-in-m9-adaptive-training-plan).** **M10 (Polish localisation) adds migration `20261117084304_Localisation` (columns `Users.Language`, `Goals.PlanLanguage`; implemented 2026-11-17 on `m10-polish-localisation`, awaiting PR and gate G-L2): see [Added in M10](#added-in-m10-polish-localisation).**
 Decisions: [ADR 0008](adr/0008-run-date-and-time-storage.md) (date/time), [0010](adr/0010-current-user-and-data-scoping.md) (scoping), [0011](adr/0011-guest-accounts-lifecycle.md) (guests), [0013](adr/0013-persistence-model-and-migrations.md) (mapping, migrations).
 
 Conventions: SI units (metres, seconds, metres of elevation); enums stored as `tinyint` and exposed as strings in the API; audit timestamps `datetime2(0)` UTC; GUID keys are `Guid.CreateVersion7()` assigned in the domain factories (time-ordered, known before `SaveChanges`; EF `ValueGeneratedNever`); every user-owned row carries `UserId` and is filtered by the `Owner` query filter.
@@ -32,6 +32,7 @@ GeocodeUsage   (M7; system counter per UTC day: no user id, no Owner filter)
 | `UnitSystem` | `tinyint` | no | `Metric = 0` (only option in the UI for now), `Imperial = 1` reserved. |
 | `CreatedAt` | `datetime2(0)` | no | UTC. |
 | `ExpiresAt` | `datetime2(0)` | yes | Guests only: `CreatedAt + 24 h`; equals the guest JWT `exp`. |
+| `Language` | `varchar(8)` | yes | **M10.** UI language tag (`en`, `pl`); NULL = never chosen. See [Added in M10](#added-in-m10-polish-localisation). |
 
 Indexes: `UX_Users_External (ExternalTenantId, ExternalObjectId) WHERE ExternalObjectId IS NOT NULL` (unique, filtered) · `IX_Users_Guest_ExpiresAt (ExpiresAt) WHERE Kind = 1` (cleanup + active-guest count).
 Check `CK_Users_Kind`: `Kind = 1` ⇔ `ExpiresAt IS NOT NULL` ⇔ external ids NULL (and `Kind = 0` ⇔ both external ids set).
@@ -416,6 +417,7 @@ User-owned: `IUserOwned`, **`Owner` filter**, owner of a new row = the current u
 | `PlanModelDeployment` | `varchar(64)` | yes | `demo` for the seeded plan. |
 | `PlanModelId` | `varchar(100)` | yes | Provider-reported, truncated. |
 | `PlanHorizonEnd` | `date` | yes | Last plannable day of the generation. |
+| `PlanLanguage` | `varchar(8)` | yes | **M10.** Language of `PlanNotes` and the suggestion descriptions; NULL = English (plans before M10). See [Added in M10](#added-in-m10-polish-localisation). |
 | `PlanHorizonCapped` | `bit` | no | No SQL default (EF always writes it; the previous release never writes `Goals`). |
 | `PlanOutdated` | `bit` | no | No SQL default. Set when a plan-relevant field of a goal **with a plan** changes (ADR 0039 §1) and on goals whose suggestions were replaced by `replaceOtherGoals`; cleared by a new plan. |
 | `CreatedAt` / `UpdatedAt` | `datetime2(0)` | no | UTC. |
@@ -473,6 +475,21 @@ Index change (migration `AiGenerationsFeatureIndex`): **`IX_AiGenerations_Create
 ### Guest deletion (M9)
 
 `Goals` cascade from `Users`, `TrainingSuggestions` from `Goals`; guest cleanup needed **no code change** (the mutual NO ACTION links are verified, above). Demo seeding adds 1 goal and 20 suggestions per guest (weeks +6…+10), regardless of `Goals:Enabled`; if the demo plan does not validate at seed time the guest is seeded without them.
+
+## Added in M10 (Polish localisation)
+
+**Implemented 2026-11-17 on `m10-polish-localisation`; reviewed (no schema change from the review or the G-L1 follow-ups); awaiting the PR and gate G-L2 (the migration job applies it).**
+- [M10 plan](plans/M10-polish-localisation.md) §3.2 and §10; ADRs [0042](adr/0042-ui-localisation-and-language-preference.md) §3 and [0043](adr/0043-ai-outputs-in-polish.md) §1.
+- One migration, **`20261117084304_Localisation`**, additive: two nullable columns, no default, no index, no check constraint. Compatible with the previous release (ADR 0032 expand rule): older images never read or write them, so an image rollback stays safe.
+
+| Table | Column | SQL type | Null | Written by | Notes |
+|---|---|---|---|---|---|
+| `Users` | `Language` | `varchar(8)` | yes | `User.SetLanguage` via `PUT /api/me/language`; guest creation with `?lang` (before seeding) | Value validated against `SupportedLanguages` (`en`, `pl`) in the API and the domain; NULL = never chosen (the SPA keeps its local choice). Returned as `MeResponse.language`. |
+| `Goals` | `PlanLanguage` | `varchar(8)` | yes | `Goal.RecordPlan(…, language)` on plan generation and the guest demo plan | NULL = English (plans before M10); the API maps it with `SupportedLanguages.OrDefault` to `GoalDto.plan.language`. A regeneration overwrites it. |
+
+- **Not a column:** the language of an AI summary was already part of the `AiSummaries` key (M6: user + period + compare + language), so a Polish summary is its own row; nothing changed there. Suggestion descriptions carry no language of their own (the goal's `PlanLanguage` covers the whole generation).
+- **Seed content (not schema):** `seed/demo/i18n/pl.json` maps the English demo texts (run notes, gear, weather, rating comments, goal title, plan notes and session descriptions; run titles optional) to Polish; applied at guest seeding when the guest's language is `pl`. Seeded texts are the guest's data and are not re-seeded on a language switch.
+- **Guest deletion:** unchanged (both columns live on rows that already cascade).
 
 ## Deferred (by milestone)
 

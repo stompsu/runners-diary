@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "language": "pl",
+  "templates": {
+    "empty": [
+      {
+        "when": [{ "key": "period.isPartial", "op": "eq", "value": true }],
+        "summary": {
+          "headline": "Na razie brak wykonanych treningów w okresie od {period.from} do {period.to}.",
+          "wentWell": [],
+          "watchOuts": [],
+          "suggestion": { "text": "Oznaczaj treningi jako wykonane, aby otrzymać podsumowanie tego okresu." },
+          "dataNotes": []
+        }
+      },
+      {
+        "summary": {
+          "headline": "Brak wykonanych treningów w okresie od {period.from} do {period.to}.",
+          "wentWell": [],
+          "watchOuts": [],
+          "suggestion": { "text": "Oznaczaj treningi jako wykonane, aby otrzymać podsumowanie tego okresu." },
+          "dataNotes": []
+        }
+      }
+    ],
+    "plannedOnly": {
+      "headline": "Ten okres zaczyna się {period.from}, więc nie ma jeszcze czego podsumować.",
+      "wentWell": [],
+      "watchOuts": [],
+      "suggestion": null,
+      "dataNotes": [
+        { "text": "Zaplanowane treningi w tym okresie: {planned.runCount}, łączny dystans: {planned.distance}." }
+      ]
+    },
+    "fewSessions": [
+      {
+        "when": [
+          { "key": "period.isPartial", "op": "eq", "value": true },
+          { "key": "dq.completedSessions", "op": "eq", "value": 1 }
+        ],
+        "summary": {
+          "headline": "Na razie tylko jeden trening w okresie od {period.from} do {period.to}.",
+          "wentWell": [{ "text": "Masz za sobą {dq.completedSessions} wykonany trening, dystans: {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "Podsumowanie stanie się przydatne, gdy zapiszesz kilka kolejnych treningów." },
+          "dataNotes": []
+        }
+      },
+      {
+        "when": [{ "key": "period.isPartial", "op": "eq", "value": true }],
+        "summary": {
+          "headline": "Na razie tylko kilka treningów w okresie od {period.from} do {period.to}.",
+          "wentWell": [{ "text": "Masz za sobą {dq.completedSessions} wykonane treningi, łączny dystans: {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "Podsumowanie stanie się przydatne, gdy zapiszesz kilka kolejnych treningów." },
+          "dataNotes": []
+        }
+      },
+      {
+        "when": [{ "key": "dq.completedSessions", "op": "eq", "value": 1 }],
+        "summary": {
+          "headline": "Tylko jeden trening w okresie od {period.from} do {period.to}.",
+          "wentWell": [{ "text": "W tym okresie: {dq.completedSessions} wykonany trening, dystans: {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "Podsumowanie jest przydatne, gdy w okresie jest więcej treningów." },
+          "dataNotes": []
+        }
+      },
+      {
+        "summary": {
+          "headline": "Tylko kilka treningów w okresie od {period.from} do {period.to}.",
+          "wentWell": [{ "text": "W tym okresie: {dq.completedSessions} wykonane treningi, łączny dystans: {totals.distance}." }],
+          "watchOuts": [],
+          "suggestion": { "text": "Podsumowanie jest przydatne, gdy w okresie jest więcej treningów." },
+          "dataNotes": []
+        }
+      }
+    ]
+  }
+}

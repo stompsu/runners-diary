@@ -66,8 +66,10 @@
     "none": "No planned runs in this period.",
     "summary_one": "{{count}} planned run: {{distance}}, {{time}}.",
     "summary_other": "{{count}} planned runs: {{distance}}, {{time}}.",
-    "upcoming": "{{count}} upcoming",
-    "missed": "{{count}} missed (planned before today and not completed)"
+    "upcoming_one": "{{count}} upcoming run",
+    "upcoming_other": "{{count}} upcoming runs",
+    "missed_one": "{{count}} missed run (planned before today and not completed)",
+    "missed_other": "{{count}} missed runs (planned before today and not completed)"
   },
   "acwr": {
     "title": "Load change vs your recent norm",
@@ -113,9 +115,12 @@
   },
   "quality": {
     "title": "About these numbers",
-    "estimated": "{{share}} of the training load comes from {{count}} sessions without a logged effort (RPE); a typical effort for the run type was used. Log RPE for more accurate load.",
-    "noDuration": "{{count}} sessions have no duration and count as zero load.",
-    "noDistance": "{{count}} runs have no distance and are left out of distance and pace."
+    "estimated_one": "{{share}} of the training load comes from {{count}} session without a logged effort (RPE); a typical effort for the run type was used. Log RPE for more accurate load.",
+    "estimated_other": "{{share}} of the training load comes from {{count}} sessions without a logged effort (RPE); a typical effort for the run type was used. Log RPE for more accurate load.",
+    "noDuration_one": "{{count}} session has no duration and counts as zero load.",
+    "noDuration_other": "{{count}} sessions have no duration and count as zero load.",
+    "noDistance_one": "{{count}} run has no distance and is left out of distance and pace.",
+    "noDistance_other": "{{count}} runs have no distance and are left out of distance and pace."
   },
   "chart": {
     "showData": "Show data",
@@ -180,7 +185,8 @@
     "summaryFlat": "Easy-run pace stayed about the same.",
     "notEnough": "Not enough weeks with easy runs for a trend; it needs at least 4.",
     "none": "No easy runs in this period. The trend uses runs of the type Easy run on roads and tracks; trail runs and very short runs are left out.",
-    "excluded": "{{count}} easy runs were left out (trail surface, under 1 km or an unusual pace).",
+    "excluded_one": "{{count}} easy run was left out (trail surface, under 1 km or an unusual pace).",
+    "excluded_other": "{{count}} easy runs were left out (trail surface, under 1 km or an unusual pace).",
     "week": "Week of",
     "runs": "Runs",
     "distance": "Distance",

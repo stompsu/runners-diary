@@ -1,0 +1,9 @@
+{
+  "headline": "Tapering przed {week.6.raceType} w tygodniu od {week.5.start}.",
+  "wentWell": [
+    { "text": "Start z {race.1.category} z wynikiem {race.1.resultTime}." }
+  ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

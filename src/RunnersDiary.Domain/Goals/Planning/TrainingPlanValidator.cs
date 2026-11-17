@@ -1,6 +1,7 @@
 using System.Globalization;
 using RunnersDiary.Domain.Calendar;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 using RunnersDiary.Domain.Runs;
 using RunnersDiary.Domain.RunTypes;
 
@@ -43,7 +44,7 @@ public static class TrainingPlanValidator
 
         var envelope = sheet.Envelope;
         var violations = new List<PlanViolation>();
-        var deny = SummaryValidator.DenyPattern.ParseAll(policy.DenyList);
+        var deny = DenyMatcher.Create(policy.Language, policy.DenyList, policy.LanguageDenyLists);
 
         var notes = draft.Notes.Trim();
         if (draft.Notes.Length > NotesMaxLength)
@@ -79,6 +80,8 @@ public static class TrainingPlanValidator
 
             candidates.Add(session);
         }
+
+        CheckLanguage(draft, policy.Language, violations);
 
         // Item level: a session on a blocked day is dropped and counted (never a retry).
         var (collisionKept, dropped) = DropCollisions(candidates, sheet.Commitments);
@@ -162,7 +165,7 @@ public static class TrainingPlanValidator
         && (min < MinPaceShareOfReference * r || (s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && min < r));
 
     private static PlannedSession? Convert(
-        DraftSession s, string location, bool trailGoal, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations, List<PlanRepair> repairs)
+        DraftSession s, string location, bool trailGoal, DenyMatcher deny, List<PlanViolation> violations, List<PlanRepair> repairs)
     {
         var before = violations.Count;
         var paceMax = s.PaceMaxSecondsPerKm;
@@ -269,7 +272,7 @@ public static class TrainingPlanValidator
             date, type.Id, s.DistanceMeters, s.DurationSeconds, intensity, s.PaceMinSecondsPerKm, paceMax, s.Description.Trim(), phase);
     }
 
-    private static void CheckText(string text, string location, List<SummaryValidator.DenyPattern> deny, List<PlanViolation> violations)
+    private static void CheckText(string text, string location, DenyMatcher deny, List<PlanViolation> violations)
     {
         if (string.IsNullOrEmpty(text))
         {
@@ -281,10 +284,29 @@ public static class TrainingPlanValidator
             violations.Add(new PlanViolation(PlanRuleCode.Markup, location));
         }
 
-        var words = Placeholders.Words(text);
-        if (deny.Any(p => p.Matches(words)))
+        if (deny.Matches(NarrativeLanguages.Words(text, deny.Language)))
         {
             violations.Add(new PlanViolation(PlanRuleCode.ForbiddenTopic, location));
+        }
+
+        if (NarrativeLanguages.HasGenderedForm(text, deny.Language))
+        {
+            violations.Add(new PlanViolation(PlanRuleCode.GenderedForm, location));
+        }
+    }
+
+    /// <summary>The Polish <c>wrongLanguage</c> rule over the notes and every session description (one draft, see <see cref="PolishWrongLanguage"/>).</summary>
+    private static void CheckLanguage(TrainingPlanDraft draft, string language, List<PlanViolation> violations)
+    {
+        var fields = new List<(string Location, string Text)> { ("notes", draft.Notes ?? string.Empty) };
+        for (var i = 0; i < draft.Sessions.Count; i++)
+        {
+            fields.Add(($"sessions[{i.ToString(CultureInfo.InvariantCulture)}].description", draft.Sessions[i].Description ?? string.Empty));
+        }
+
+        foreach (var index in NarrativeLanguages.WrongLanguageFields([.. fields.Select(f => f.Text)], language))
+        {
+            violations.Add(new PlanViolation(PlanRuleCode.WrongLanguage, fields[index].Location));
         }
     }
 

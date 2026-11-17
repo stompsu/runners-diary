@@ -171,3 +171,12 @@ export function weekdayLabels(locale: string, width: 'short' | 'long' | 'narrow'
   // 2024-01-01 was a Monday.
   return Array.from({ length: 7 }, (_, i) => labelFormat({ weekday: width }, locale, addDays('2024-01-01', i)))
 }
+
+/**
+ * Upper-cases the first letter for headings: Polish `Intl` output is lower case ("listopad 2026"). Running text keeps
+ * the lower case. Uses the first code point, so it is safe for any script.
+ */
+export function capitalizeFirst(text: string, locale: string): string {
+  const first = String.fromCodePoint(text.codePointAt(0) ?? 0x20)
+  return text === '' ? text : first.toLocaleUpperCase(locale) + text.slice(first.length)
+}

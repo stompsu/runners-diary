@@ -62,7 +62,7 @@ describe('fake insights summary', () => {
   it('validates the query and the body like the API (unknown members are rejected)', async () => {
     const { get, post } = setup()
     expect((await get('from=2026-13-01&to=2026-11-08')).response.status).toBe(400)
-    expect((await get('from=2026-08-17&to=2026-11-08&lang=pl')).body.errors).toHaveProperty('lang')
+    expect((await get('from=2026-08-17&to=2026-11-08&lang=de')).body.errors).toHaveProperty('lang')
     expect((await post({ ...BODY, extra: 1 })).response.status).toBe(400)
     expect((await post({ ...BODY, from: 'x' })).response.status).toBe(400)
   })

@@ -100,11 +100,11 @@ public sealed class InsightsSummaryServiceTests
         Assert.Equal(SummaryState.Fresh, first.View!.State);
         Assert.Equal(SummarySource.Model, first.View.Summary!.Source);
         Assert.Equal("gpt-5.4-mini-2026-03-17", first.View.Summary.Model);
-        Assert.Equal(2, first.View.Summary.PromptVersion);
+        Assert.Equal(3, first.View.Summary.PromptVersion);
         Assert.Equal(1, first.View.Generation.Used);
 
         var stored = Assert.Single(s.Store.Rows.Values);
-        Assert.Equal((1, 2, 2, "gpt-test", 5000, 600), (stored.MetricsVersion, stored.FactSheetVersion, stored.PromptVersion, stored.ModelDeployment, stored.InputTokens, stored.OutputTokens));
+        Assert.Equal((1, 2, 3, "gpt-test", 5000, 600), (stored.MetricsVersion, stored.FactSheetVersion, stored.PromptVersion, stored.ModelDeployment, stored.InputTokens, stored.OutputTokens));
 
         var get = await s.Get(March);
         Assert.Equal(SummaryState.Fresh, get.State);
@@ -287,5 +287,63 @@ public sealed class InsightsSummaryServiceTests
         Assert.Equal((GenerateStatus.Failed, GenerationFailure.InvalidOutput), (outcome.Status, outcome.Failure!.Value));
         Assert.Empty(s.Store.Rows);
         Assert.Single(s.Harness.Generations.Rows);
+    }
+
+    // ---- Polish (M10 C2, ADR 0043) -------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task A_polish_guest_gets_the_polish_demo_fixture_and_an_english_one_the_english_fixture()
+    {
+        var today = D("2026-11-04");
+        var (facts, races) = DemoFacts.Facts(today);
+        var guest = new Scenario(guest: true, facts: facts, races: races, today: today, configure: o => o.Provider = AiProvider.None);
+        var (from, to, compare) = DemoPresets.Range(DemoPresets.TwelveWeeksPrevious, today)!.Value;
+
+        var polish = await guest.Get(new SummaryKey(from, to, compare, "pl"));
+        var english = await guest.Get(new SummaryKey(from, to, compare, "en"));
+
+        Assert.Equal((SummarySource.Demo, SummaryState.Fresh), (polish.Summary!.Source, polish.State));
+        Assert.StartsWith("Równy blok treningowy", polish.Summary.Content.Headline.Text, StringComparison.Ordinal);
+        Assert.StartsWith("A steady block", english.Summary!.Content.Headline.Text, StringComparison.Ordinal);
+        Assert.Equal(english.Summary.Content.Values["totals.distance"], polish.Summary.Content.Values["totals.distance"]);
+        Assert.Equal(0, guest.Scripted.CallCount);
+    }
+
+    [Fact]
+    public async Task A_polish_template_period_gets_the_polish_template_without_the_model()
+    {
+        var log = new Training();
+        log.Run(D("2026-02-02"), "easy", 8000, 2880, 3);
+        var s = new Scenario(facts: log.Facts, today: D("2026-03-10"));
+
+        var view = await s.Get(new SummaryKey(D("2026-02-01"), D("2026-02-28"), ComparisonKind.Previous, "pl"));
+
+        Assert.Equal(SummarySource.Template, view.Summary!.Source);
+        Assert.Equal("Tylko jeden trening w okresie od {period.from} do {period.to}.", view.Summary.Content.Headline.Text);
+        Assert.Equal("W tym okresie: {dq.completedSessions} wykonany trening, dystans: {totals.distance}.", Assert.Single(view.Summary.Content.WentWell).Text);
+        Assert.Equal(0, s.Scripted.CallCount);
+    }
+
+    /// <summary>ADR 0043 §1: <c>en</c> and <c>pl</c> of the same period are separate cache rows and separate generations; the Polish rules apply to <c>pl</c>.</summary>
+    [Fact]
+    public async Task English_and_polish_summaries_of_a_period_are_cached_separately_and_validated_with_their_own_rules()
+    {
+        var s = new Scenario();
+        var polishKey = March with { Language = "pl" };
+        s.Scripted
+            .Reply(Good)
+            .Reply(File.ReadAllText(Path.Combine(EvalFiles.CaseDirectory(EvalCases.LoadSpike, "pl"), "bad-literalNumber-cardinal.json")))
+            .Reply(EvalFiles.GoodDraft(EvalCases.LoadSpike, "pl"));
+
+        Assert.Equal(GenerateStatus.Ok, (await s.Post(March, regenerate: false)).Status);
+        var polish = await s.Post(polishKey, regenerate: false);
+
+        Assert.Equal(GenerateStatus.Ok, polish.Status);
+        Assert.Equal(3, s.Scripted.CallCount); // the Polish number word "dwa" was rejected once
+        Assert.Contains("Language: pl", s.Scripted.Requests[1].Messages[0].Text, StringComparison.Ordinal);
+        Assert.Equal(2, s.Store.Rows.Count);
+        Assert.StartsWith("Równy miesiąc", (await s.Get(polishKey)).Summary!.Content.Headline.Text, StringComparison.Ordinal);
+        Assert.StartsWith("A consistent month", (await s.Get(March)).Summary!.Content.Headline.Text, StringComparison.Ordinal);
+        Assert.Equal(2, s.Harness.Generations.Rows.Count);
     }
 }

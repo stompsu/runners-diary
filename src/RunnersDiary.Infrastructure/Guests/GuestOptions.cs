@@ -17,6 +17,12 @@ public sealed class GuestOptions
     /// <summary>Directory holding <c>runs.json</c> and <c>gpx/</c>; relative paths are resolved against the application base directory.</summary>
     public string DemoDataPath { get; set; } = "seed/demo";
 
+    /// <summary>
+    /// When true, the startup check fails the host if a supported non-English language has demo seed texts without an entry in
+    /// <c>seed/demo/i18n/&lt;lang&gt;.json</c> (ADR 0042 §7). On since M10 step B4 (the Polish map is complete); when off, missing entries are only logged as a warning.
+    /// </summary>
+    public bool RequireCompleteDemoTranslations { get; set; } = true;
+
     public CleanupOptions Cleanup { get; set; } = new();
 
     public sealed class CleanupOptions

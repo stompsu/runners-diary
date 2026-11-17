@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RunnersDiary.Domain.Goals.Planning;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 
 namespace RunnersDiary.Infrastructure.Ai;
 
@@ -165,6 +166,16 @@ public sealed class TrainingPlanAgent
         if (details.Count > 0)
         {
             text.Append(". Numbers to fix: ").AppendJoin("; ", details);
+        }
+
+        if (violations.Any(v => v.Rule == PlanRuleCode.GenderedForm))
+        {
+            text.Append(". ").Append(PolishGenderedForms.RetryHint);
+        }
+
+        if (violations.Any(v => v.Rule == PlanRuleCode.WrongLanguage))
+        {
+            text.Append(". ").Append(PolishWrongLanguage.RetryHint);
         }
 
         text.Append(". Write a new JSON object that follows every rule in the instructions and stays inside the envelope.");

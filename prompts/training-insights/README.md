@@ -5,12 +5,20 @@ Versioned inputs of the M6 AI summary (ADR 0026, 0028). Everything except this R
 
 | File | What |
 |---|---|
-| `manifest.json` | `current` prompt version; per version: file, SHA-256, `estimatedLoadThreshold`, `denyList` (validator rules); supported `languages`. |
+| `manifest.json` | `current` prompt version; per version: file, SHA-256, `estimatedLoadThreshold`, `denyList` (validator rules); supported `languages` (`en`, `pl` since v3). |
 | `v<N>.md` | The agent instructions. Front matter `version: N`. **Immutable once released.** |
 | `templates/<lang>.json` | Deterministic texts for empty, wholly future and < 3-session periods (no model call, no quota). A template is one draft or a list of variants `{ "when": [predicates], "summary": draft }` (same predicates as demo fixtures); the first variant whose predicates hold wins and the last must have no `when`. Used for "so far"/"yet" only when `period.isPartial` and for "session" vs "sessions" by `dq.completedSessions`. |
 | `demo/<lang>/<preset>.v<N>.json` | Hand-written example summaries for guest demo presets, guarded by `requires` predicates on the fact sheet. |
 
 All texts use the placeholder format: numbers, dates and categories only as `{fact.key}` (ADR 0026 §2).
+
+**Deny lists per language (v3, ADR 0043 §3):** `"denyList": { "en": [...], "pl": [...] }`. A flat array (v1, v2) is the English list. A Polish
+text is checked against en ∪ pl with diacritics folded, so the `pl` entries are ASCII (`sciegn*` matches "ścięgno"); `pl` must stay equal to
+`NarrativeLanguages.DefaultPolishDenyList` (a test compares them). Every manifest language needs validator rules (`NarrativeLanguages`) and,
+for the current version, a deny list; loading fails otherwise.
+
+**Polish texts** (templates, demo fixtures, prompt examples) follow `docs/i18n.md`: informal "ty", gender-neutral (no past tense about the
+runner), and a placeholder only where the nominative fits (after a colon, in parentheses or quotes), never a counted noun after a count.
 
 ## Change the prompt (add v2)
 
@@ -21,7 +29,7 @@ All texts use the placeholder format: numbers, dates and categories only as `{fa
 
 ## Add a language
 
-Add `templates/<lang>.json` (all three templates), the demo fixtures under `demo/<lang>/`, the language to `manifest.json` `languages`, and a line in the next prompt version. The API accepts `lang` values from the manifest only.
+Add `templates/<lang>.json` (all three templates), the demo fixtures under `demo/<lang>/`, the language to `manifest.json` `languages`, and a line in the next prompt version. The API accepts `lang` values from the manifest only. The validators need rules for the language (`Domain/Insights/Narrative/Languages/`), and the eval cases need drafts in `tests/RunnersDiary.Ai.Tests/Evals/cases/<case>/<lang>/` (Polish: M10 C2).
 
 ## Add or change a demo fixture
 

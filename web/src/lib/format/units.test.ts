@@ -90,3 +90,36 @@ describe('formatPaceValue', () => {
     expect(formatPaceValue(300)).toBe('5:00 /km')
   })
 })
+
+describe('Polish number formatting and the localised km input (AC6)', () => {
+  const flat = (text: string) => text.replace(/\s/g, ' ')
+
+  it('formats displayed values with a decimal comma', () => {
+    expect(flat(formatDistance(12_500, 'pl'))).toBe('12,5 km')
+    expect(flat(formatDistance(12_345, 'pl', 1))).toBe('12,3 km')
+    expect(flat(formatElevation(120, 'pl'))).toBe('120 m')
+  })
+
+  it('separates thousands from 10 000 only (Polish minimum grouping), with a space', () => {
+    expect(flat(formatElevation(1234, 'pl'))).toBe('1234 m')
+    expect(flat(formatElevation(12_345, 'pl'))).toBe('12 345 m')
+  })
+
+  it('writes the km input with the language separator, and parseKm reads both back', () => {
+    expect(formatKmInput(12_500, 'pl')).toBe('12,5')
+    expect(formatKmInput(12_500, 'en')).toBe('12.5')
+    expect(formatKmInput(12_500)).toBe('12.5')
+    expect(formatKmInput(10_234.567, 'pl')).toBe('10,235')
+    expect(formatKmInput(10_000, 'pl')).toBe('10')
+    expect(formatKmInput(1_234_567, 'pl')).toBe('1234,567')
+    for (const locale of ['en', 'pl']) {
+      expect(kmToMeters(parseKm(formatKmInput(12_345, locale))!)).toBe(12_345)
+    }
+    expect(parseKm('12,5')).toBe(12.5)
+  })
+
+  it('keeps pace and unit symbols language-neutral', () => {
+    expect(formatPace(330, 1000)).toBe('5:30 /km')
+    expect(formatPaceValue(351.3)).toBe('5:51 /km')
+  })
+})

@@ -50,7 +50,32 @@ function text(value: string, keys: string[] = []) {
 }
 
 /** A model summary exercising every kind of value the client formats (the keys follow the fact-sheet grammar). */
-export function sampleSummaryContent(source: SummaryContent['source'], createdAt: string | null): SummaryContent {
+export function sampleSummaryContent(
+  source: SummaryContent['source'],
+  createdAt: string | null,
+  lang: string = 'en',
+): SummaryContent {
+  const content = sampleEnglishContent(source, createdAt)
+  if (lang !== 'pl') return content
+  // Same slots and values, Polish prose (enough for a test to tell the language).
+  return {
+    ...content,
+    headline: text('Spokojny blok z większym dystansem niż wcześniej i rekordem życiowym na {race.1.category}.', [
+      'race.1.category',
+    ]),
+    wentWell: [
+      text(
+        'Przebiegnięto {totals.distance} w {totals.runCount} treningach, {comparison.delta.distance.percent} względem poprzedniego okresu.',
+        ['totals.distance', 'totals.runCount', 'comparison.delta.distance.percent'],
+      ),
+    ],
+    watchOuts: [],
+    suggestion: text('Łatwe dni trzymaj łatwymi i zwiększaj obciążenie tygodniowe stopniowo.'),
+    dataNotes: [],
+  }
+}
+
+function sampleEnglishContent(source: SummaryContent['source'], createdAt: string | null): SummaryContent {
   const model = source === 'model'
   return {
     source,
@@ -167,13 +192,13 @@ export function createSummaryService(deps: {
     if (!q.from || !parse(q.from)) errors.from = ['From must be a valid date (YYYY-MM-DD).']
     if (!q.to || !parse(q.to)) errors.to = ['To must be a valid date (YYYY-MM-DD).']
     if (!COMPARE.includes(q.compare)) errors.compare = ['Compare must be none, previous or previousYear.']
-    if (q.lang !== 'en') errors.lang = ['Language must be en.']
+    if (q.lang !== 'en' && q.lang !== 'pl') errors.lang = ['Language must be en or pl.']
     if (q.from && q.to && !errors.from && !errors.to && q.to < q.from) errors.to = ['To must not be before from.']
     return Object.keys(errors).length > 0 ? errors : null
   }
 
-  const keyOf = (account: Account, q: { from: string | null; to: string | null; compare: string }) =>
-    `${account.id}|${q.from}|${q.to}|${q.compare}`
+  const keyOf = (account: Account, q: { from: string | null; to: string | null; compare: string; lang: string }) =>
+    `${account.id}|${q.from}|${q.to}|${q.compare}|${q.lang}`
 
   function response(account: Account, q: ReturnType<typeof query>): InsightsSummaryDto {
     const period = { from: q.from!, to: q.to!, compare: q.compare, lang: q.lang }
@@ -183,16 +208,16 @@ export function createSummaryService(deps: {
       return {
         period,
         state: fresh ? 'fresh' : 'stale',
-        summary: sampleSummaryContent('model', entry.createdAt),
+        summary: sampleSummaryContent('model', entry.createdAt, q.lang),
         generation: generation(account),
       }
     }
     const created = new Date(deps.now() - 3_600_000).toISOString()
     const base: Pick<InsightsSummaryDto, 'state' | 'summary'> =
       scenario === 'fresh' || scenario === 'stale'
-        ? { state: scenario, summary: sampleSummaryContent('model', created) }
+        ? { state: scenario, summary: sampleSummaryContent('model', created, q.lang) }
         : scenario === 'demo' || scenario === 'notConfigured'
-          ? { state: 'fresh', summary: sampleSummaryContent('demo', null) }
+          ? { state: 'fresh', summary: sampleSummaryContent('demo', null, q.lang) }
           : scenario === 'template'
             ? { state: 'fresh', summary: templateContent() }
             : { state: 'none', summary: null }
