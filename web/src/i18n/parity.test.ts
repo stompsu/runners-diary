@@ -20,7 +20,8 @@ const pl = load(import.meta.glob('./pl/*.json', { eager: true, import: 'default'
 const SAME_AS_ENGLISH: readonly RegExp[] = [
   /^common:app\.name$/, // brand
   /^common:language\.names\./, // each language in its own name
-  /^[a-z]+:.*\.(acwr|rpe|ultra|fartlek)$/i, // terms used as is in Polish
+  /^[a-z]+:(.*\.)?(acwr|rpe|ultra|fartlek|status)$/i, // terms and loanwords used as is in Polish
+  /^runs:fields\.durationPlaceholder$/, // the h:mm:ss format code
 ]
 
 const PLURAL_EN = ['one', 'other']
@@ -131,7 +132,8 @@ describe('translation files', () => {
     it('has no value identical to English outside the allowlist', () => {
       const enFlat = flatten(en.get(ns)!)
       const same = [...flatten(pl.get(ns)!)]
-        .filter(([path, value]) => enFlat.get(path) === value)
+        // A value that is only placeholders and punctuation ("{{type}}, {{status}}") has nothing to translate.
+        .filter(([path, value]) => enFlat.get(path) === value && /\p{L}/u.test(value.replace(/\{\{[^}]*\}\}/g, '')))
         .map(([path]) => `${ns}:${path}`)
         .filter((key) => !SAME_AS_ENGLISH.some((pattern) => pattern.test(key)))
       expect(same).toEqual([])

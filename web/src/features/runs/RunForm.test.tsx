@@ -3,8 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { getFakeApi, resetFakeApi } from '@/test/fake'
 import { faults, typeId } from '@/test/fakeApi'
-import i18n from '@/i18n'
-import enErrors from '@/i18n/en/errors.json'
 import { setLanguage } from '@/i18n/language'
 import { renderRoute } from '@/test/render'
 import { deleteElsewhere, editElsewhere, recordRequests, respondOnce, storedRuns } from '@/test/requests'
@@ -482,14 +480,6 @@ describe('Server errors (AC11)', () => {
     await user.type(distance, '5')
     const save = within(dialog).getByRole('button', { name: 'Save' })
     await act(() => setLanguage('pl'))
-    // The Polish `errors` file is a Part B deliverable: a stand-in carrying only the key under test.
-    i18n.addResourceBundle(
-      'pl',
-      'errors',
-      { ...enErrors, problem: { ...enErrors.problem, fieldInvalid: 'Ta wartość jest nieprawidłowa.' } },
-      true,
-      true,
-    )
     respondOnce('POST', '/api/runs', 400, { errors: { distanceMeters: ['Distance must be greater than 0.'] } })
 
     await user.click(save)
@@ -497,7 +487,6 @@ describe('Server errors (AC11)', () => {
     await waitFor(() => expect(distance).toHaveAttribute('aria-invalid', 'true'))
     expect(distance).toHaveAccessibleDescription('Ta wartość jest nieprawidłowa.')
     expect(dialog).not.toHaveTextContent('Distance must be greater than 0.')
-    i18n.removeResourceBundle('pl', 'errors')
   })
 
   it('focuses the first field with a server error when there is no summary', async () => {

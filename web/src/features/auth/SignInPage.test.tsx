@@ -6,7 +6,6 @@ import { getSession } from '@/auth/session'
 import { getFakeApi } from '@/test/fake'
 import { faults } from '@/test/fakeApi'
 import { setLanguage } from '@/i18n/language'
-import { ignoreMissingKeys } from '@/test/missingKeys'
 import { renderRoute } from '@/test/render'
 
 const guestButton = () => screen.findByRole('button', { name: 'Try as guest' })
@@ -231,9 +230,8 @@ describe('SignInPage', () => {
       const urls = guestRequestUrls()
       renderRoute('/signin', { session: 'none' })
       await act(() => setLanguage('pl'))
-      ignoreMissingKeys() // the auth namespace has no Polish file until step B1
 
-      await user.click(await screen.findByRole('button', { name: /tryAsGuest/ }))
+      await user.click(await screen.findByRole('button', { name: 'Wypróbuj jako gość' }))
 
       await waitFor(() => expect(urls).toHaveLength(1))
       expect(new URL(urls[0]!).searchParams.get('lang')).toBe('pl')

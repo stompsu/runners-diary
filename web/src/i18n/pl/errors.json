@@ -1,0 +1,24 @@
+{
+  "notFoundTitle": "Nie znaleziono strony",
+  "notFoundBody": "Strona, której szukasz, nie istnieje.",
+  "goToDiary": "Przejdź do dziennika",
+  "unexpectedTitle": "Coś poszło nie tak",
+  "unexpectedBody": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie.",
+  "problem": {
+    "validation": "Niektóre wartości są nieprawidłowe. Sprawdź zaznaczone pola.",
+    "concurrency": "Ten trening został zmieniony w innym miejscu po jego otwarciu.",
+    "runLimit": "Osiągnięto maksymalną liczbę treningów.",
+    "rateLimited": "Zbyt wiele żądań. Odczekaj chwilę i spróbuj ponownie.",
+    "rateLimitedWait": "Zbyt wiele żądań. Spróbuj ponownie za {{seconds}} s.",
+    "guestCapacity": "Wersja demo jest teraz pełna. Spróbuj ponownie później.",
+    "guestCapacityWait": "Wersja demo jest teraz pełna. Spróbuj ponownie za {{seconds}} s.",
+    "notFound": "Ten element już nie istnieje.",
+    "unauthorized": "Sesja wygasła. Zaloguj się ponownie.",
+    "payloadTooLarge": "Żądanie jest zbyt duże.",
+    "unavailable": "Serwer jest teraz niedostępny. Spróbuj ponownie.",
+    "unknown": "Coś poszło nie tak. Spróbuj ponownie.",
+    "fieldInvalid": "Ta wartość jest nieprawidłowa."
+  },
+  "retry": "Spróbuj ponownie",
+  "loadFailedTitle": "Nie udało się wczytać tej strony"
+}

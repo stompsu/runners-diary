@@ -1,0 +1,82 @@
+{
+  "title": "Dziennik – {{month}}",
+  "today": "Dziś",
+  "showingMonth": "Wyświetlany miesiąc: {{month}}",
+  "previousMonth": "Poprzedni miesiąc",
+  "nextMonth": "Następny miesiąc",
+  "monthList": "Lista miesiąca",
+  "picker": {
+    "title": "Wybierz miesiąc i rok",
+    "year": "Rok {{year}}",
+    "previousYear": "Poprzedni rok",
+    "nextYear": "Następny rok",
+    "months": "Miesiące",
+    "trigger": "{{month}}, wybierz miesiąc i rok"
+  },
+  "grid": {
+    "label": "Kalendarz: {{month}}"
+  },
+  "weekColumn": "Tydz.",
+  "week": "Tydzień {{week}}",
+  "weekShort": "T{{week}}",
+  "weekTotals": "Podsumowanie tygodnia",
+  "totals": {
+    "distance": "Dystans",
+    "time": "Czas",
+    "elevation": "Przewyższenie"
+  },
+  "plannedDistance": "Plan: {{distance}}",
+  "more": "+{{count}}",
+  "cell": {
+    "empty": "{{date}}, brak treningów",
+    "runs_one": "{{date}}, {{count}} trening: {{runs}}",
+    "runs_few": "{{date}}, {{count}} treningi: {{runs}}",
+    "runs_many": "{{date}}, {{count}} treningów: {{runs}}",
+    "runs_other": "{{date}}, {{count}} treningu: {{runs}}",
+    "run": "{{type}}, {{status}}",
+    "runWithDistance": "{{type}}, {{status}}, {{distance}}",
+    "bubble": "{{type}}, {{status}}",
+    "proposals_one": "{{count}} propozycja startu: {{proposals}}",
+    "proposals_few": "{{count}} propozycje startu: {{proposals}}",
+    "proposals_many": "{{count}} propozycji startu: {{proposals}}",
+    "proposals_other": "{{count}} propozycji startu: {{proposals}}",
+    "proposalInterested": "zaznaczone zainteresowanie",
+    "suggestions_one": "{{count}} sugerowany trening: {{suggestions}}",
+    "suggestions_few": "{{count}} sugerowane treningi: {{suggestions}}",
+    "suggestions_many": "{{count}} sugerowanych treningów: {{suggestions}}",
+    "suggestions_other": "{{count}} sugerowanego treningu: {{suggestions}}",
+    "suggestion": "{{type}}",
+    "suggestionWithDistance": "{{type}}, {{distance}}",
+    "goal": "cel: {{title}}",
+    "fromPlan": "z planu"
+  },
+  "status": {
+    "planned": "Zaplanowany",
+    "completed": "Wykonany"
+  },
+  "race": "Start",
+  "loading": "Wczytywanie kalendarza…",
+  "proposalsList": "Propozycje startów",
+  "proposalBubble": "Propozycja startu: {{name}}",
+  "legend": {
+    "title": "Legenda",
+    "completed": "Wykonany",
+    "planned": "Zaplanowany",
+    "race": "Start",
+    "proposal": "Propozycja startu",
+    "suggested": "Sugestia (kreskowanie, iskierki)",
+    "goal": "Cel (meta)",
+    "fromPlan": "Z planu",
+    "suggestedBadge": "Sugestia"
+  },
+  "proposalsToggle": {
+    "label": "Pokaż propozycje startów",
+    "setup": "Skonfiguruj propozycje startów",
+    "failed": "Nie udało się zapisać ustawienia. Spróbuj ponownie."
+  },
+  "suggestionBubble": "Sugerowany trening: {{type}}",
+  "goalMarker": "Cel: {{title}}",
+  "suggestionsToggle": {
+    "label": "Pokaż sugestie"
+  }
+}
