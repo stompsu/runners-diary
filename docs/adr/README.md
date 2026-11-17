@@ -50,3 +50,5 @@ Statuses (amendments, supersessions) are kept current in the index of [`architec
 | 0039 | [Training goals: model, rules, and the realistic-target estimate](0039-training-goals-and-realistic-target-estimate.md) | M9 |
 | 0040 | [Training plan generation: envelope, fact sheet, agent, validation, quotas, failures](0040-training-plan-generation.md) | M9 |
 | 0041 | [Training suggestions: storage, accept/dismiss/regenerate, calendar display](0041-training-suggestions-storage-and-calendar.md) | M9 |
+| 0042 | [UI localisation: languages, resolution and persistence, bundles, formatting, translated content](0042-ui-localisation-and-language-preference.md) | M10 |
+| 0043 | [AI outputs in Polish: request language, prompt v3, per-language validation, templates and fixtures](0043-ai-outputs-in-polish.md) | M10 |

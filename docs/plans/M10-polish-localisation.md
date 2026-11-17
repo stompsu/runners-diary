@@ -1,0 +1,277 @@
+# M10 – Polish localisation: plan
+
+**Status:** Approved 2026-11-17 (outline and all §9 defaults approved by the user: "Approve with defaults"). Implementation in progress on `m10-polish-localisation`.
+**Builds on:**
+- M1/M3: i18next with typed keys (`web/src/i18n`), `Intl`-based plain-date and unit formatters (ADR 0017), the run form's server-error mapping (ADR 0018), bundle budget, fake API, Playwright `chromium` + `phone-la`.
+- M2: `Users` profile, `GET`/`PUT /api/me`, guest creation and `DemoDataSeeder`.
+- M6/M9: the AI pipelines (summary `lang` + per-language templates and demo fixtures; plan fact sheet `language`), prompt manifests, validators, fake model, live eval.
+
+**Related ADRs:** [0003](../adr/0003-frontend-stack-and-ui-kit.md) · [0011](../adr/0011-guest-accounts-lifecycle.md) · [0017](../adr/0017-client-dates-without-a-date-library.md) · [0018](../adr/0018-run-forms-and-server-errors.md) · [0019](../adr/0019-frontend-test-strategy.md) · [0026](../adr/0026-training-insights-agent-and-grounding.md) · [0028](../adr/0028-summary-cache-quotas-and-demo-summaries.md) · [0029](../adr/0029-web-tier-nginx-container.md) · [0040](../adr/0040-training-plan-generation.md).
+**New (accepted with the plan):**
+- [0042](../adr/0042-ui-localisation-and-language-preference.md): languages, resolution, persistence, bundles, switcher, formatting, translated content, CI checks;
+- [0043](../adr/0043-ai-outputs-in-polish.md): AI language = UI language, prompt v3, per-language validator rules, templates and demo fixtures, evals.
+- Living guide with tone rules and the **glossary draft**: [`docs/i18n.md`](../i18n.md).
+
+M10 has three offline parts (A: mechanism, B: translations, C: AI in Polish) and user-confirmed gates (§5.2). **No new Azure resource, no new env flag, no new npm/NuGet package.**
+
+## 1. Goal & acceptance criteria
+
+**Goal:** the whole app is available in **Polish (`pl`)** next to English. The language comes from the browser on the first visit, can be switched in the header at any time, and is remembered per account (users and guests) and per browser. Dates, numbers and plurals follow Polish rules. A Polish guest gets a Polish demo diary. AI summaries and plan suggestions are written in the UI language.
+
+**Out of scope:** other languages (the mechanism is generic); imperial units; translating user-entered data (titles, notes) and the race catalogue (already Polish); localised server problem texts; e-mail; re-translating already generated AI texts.
+
+| # | Criterion | How verified |
+|---|---|---|
+| AC1 | **Resolution, no flash:** `rd.lang` → `navigator.languages` (first released match) → `en`; `<html lang>` and the eager bundle are set **before the first render**. A signed-in profile language that differs wins once and updates `rd.lang`. | Vitest (resolver matrix) + Playwright (`pl-PL` context shows Polish shell while `/api/me` is delayed) |
+| AC2 | **Switcher** in the header (every page, users and guests) and on the sign-in page. Options are "English"/"Polski" with `lang` attributes. Keyboard and screen-reader usable. Switching re-renders without reload, updates `<html lang>` and `rd.lang`, and calls `PUT /api/me/language` when there is a session. | Vitest + Playwright + axe |
+| AC3 | **API:** migration `Localisation` (additive): `Users.Language`, `Goals.PlanLanguage`. `MeResponse.language`; `PUT /api/me/language` (Auth, 204, 400 for unsupported values, only the caller's row); `POST /api/guest-sessions?lang=` (400 for unsupported values; the guest is seeded in it). Inventory test and 401 sweep updated; OpenAPI + `schema.d.ts` regenerated. | Api.Tests (Testcontainers) + api-contract CI |
+| AC4 | **Bundles:** the Polish eager namespaces are a lazy chunk (`i18n-pl-eager`, in `LAZY_ONLY`), and English users never load it. The initial load grows by ≤ 2 kB gzip. Lazy namespaces carry `en` + `pl`. | CI `bundle-budget` |
+| AC5 | **Translations complete:** `web/src/i18n/pl/*.json` for all 11 namespaces. The parity test is green: same keys, same interpolation variables, `pl` plural groups `_one/_few/_many/_other` wherever `en` has `_one/_other`, no empty values, no "same as English" outside the allowlist. **Every namespace reviewed by the user.** | Vitest + user review (§5.1 B-steps) |
+| AC6 | **Formatting in `pl`:** month/day headings capitalised ("Listopad 2026"); decimal comma in displayed values **and** in form inputs; thousands separator from 10 000; ISO Monday-first weeks unchanged; plural forms correct for 0, 1, 2, 5, 12, 22, 25; label-sorted lists use `Intl.Collator`. | Vitest incl. `test:tz` (LA, Kiritimati) |
+| AC7 | **Content:** a guest created in `pl` gets Polish demo notes, demo goal title and demo plan texts (seed map complete, startup check). Proper names untouched. Unmapped server field errors show a localised generic message in `pl`. The geocoder forwards the UI language. MSAL sends `ui_locales`. | Api.Tests + Vitest |
+| AC8 | **AI summary in `pl` (fake model):** `lang=pl` accepted; Polish templates and demo fixture valid at startup; validator applies Polish number words and the en ∪ pl deny list with diacritic folding; `en` and `pl` cached separately; English behaviour unchanged. | Domain.Tests + Ai.Tests + Api.Tests |
+| AC9 | **AI plan in `pl` (fake model):** `lang` on generate; stored `plan.language`; demo plan in the guest's language; the SPA shows a "generated in English, regenerate?" hint when languages differ. | Ai.Tests + Api.Tests + Vitest |
+| AC10 | **Layout:** in `pl`, no horizontal scroll at 360 px on Diary, Day panel, run form, Insights, Goals, race panels and the header; truncated cell labels keep full accessible names; axe (serious/critical) clean in `pl`. | Playwright `desktop-pl` + `phone-pl` |
+| AC11 | `dotnet build` warning-free; all CI jobs green; the full-stack suite has one Polish guest journey. G-L1 live eval passed (§5.2). | CI + gate log |
+
+## 2. Files / projects by owning agent
+
+### 2.1 frontend-react
+```
+web/src/main.tsx                                  # await initLanguage() before createRoot().render()
+web/src/i18n/index.ts                             # init with the resolved language; supported/released lists; test-only missingKeyHandler
+web/src/i18n/language.ts (new)                    # resolveInitialLanguage, ensureLanguage, setLanguage, applyProfileLanguage, <html lang>
+web/src/i18n/i18n-pl-eager.ts (new)               # registers pl common/auth/calendar/runs/runTypes/errors (dynamic import target)
+web/src/i18n/lazyBundles.ts                       # + pl for maps/tracks/insights/races/goals
+web/src/i18n/pl/*.json (new, 11 files)            # Part B
+web/src/i18n/en/{common,errors,goals}.json        # language.* keys, problem.fieldInvalid, plan.languageHint
+web/src/components/layout/{AppShell.tsx, LanguageSwitcher.tsx (new)}
+web/src/features/auth/SignInPage.tsx              # switcher; POST /api/guest-sessions?lang=
+web/src/auth/useLanguageSync.ts (new)             # apply me.language once per session
+web/src/auth/entra/msalClient.ts                  # extraQueryParameters.ui_locales
+web/src/api/client.ts                             # Accept-Language: <ui language> on /api calls
+web/src/lib/dates/plainDate.ts                    # capitalizeFirst(text, locale)
+web/src/lib/format/units.ts                       # formatKmInput(meters, locale) with the locale decimal separator
+web/src/features/calendar/MonthHeader.tsx, runs/DayPanel.tsx, …   # capitalised headings
+web/src/features/runs/RunForm.tsx, goals/GoalFormPage.tsx, races/RaceSignupForm.tsx  # generic field message for non-en
+web/src/features/insights/summary/summaryQueries.ts   # lang = AI language (Part C)
+web/src/features/goals/{goalQueries.ts, PlanSection.tsx}  # lang on generate, language hint (Part C)
+web/scripts/bundle-budget.mjs                     # LAZY_ONLY += 'i18n-pl-eager'
+web/src/api/generated/schema.d.ts                 # regenerated
+```
+
+### 2.2 backend-dotnet
+```
+src/RunnersDiary.Domain/Localization/SupportedLanguages.cs (new)   # ["en","pl"], IsSupported
+src/RunnersDiary.Domain/Users/User.cs                              # Language (nullable), SetLanguage
+src/RunnersDiary.Domain/Goals/Goal.cs                              # RecordPlan(..., language) → PlanLanguage
+src/RunnersDiary.Infrastructure/Persistence/Configurations/{User,Goal}Configuration.cs
+src/RunnersDiary.Infrastructure/Persistence/Migrations/<ts>_Localisation.cs
+src/RunnersDiary.Infrastructure/Guests/{DemoDataSeeder.cs, DemoTextLocalizer.cs (new)}  # seed/demo/i18n/<lang>.json map, startup check
+src/RunnersDiary.Infrastructure/Goals/DemoTrainingPlan.cs          # texts + fact sheet in the guest's language
+src/RunnersDiary.Api/Features/Me/{MeContracts.cs, GetMe.cs, UpdateMyLanguage.cs (new)}
+src/RunnersDiary.Api/Features/GuestSessions/CreateGuestSession.cs  # ?lang
+src/RunnersDiary.Api/Features/Goals/GoalContracts.cs               # plan.language
+src/RunnersDiary.Api/openapi/runnersdiary-api.json                 # regenerated
+seed/demo/i18n/pl.json (new)                                       # Part B content
+```
+
+### 2.3 ai-insights
+```
+src/RunnersDiary.Domain/Insights/Narrative/Languages/{EnglishNumberWords.cs, PolishNumberWords.cs} (new)
+src/RunnersDiary.Domain/Insights/Narrative/SummaryValidator.cs     # policy.Language; folding for pl deny matching
+src/RunnersDiary.Domain/Goals/Planning/{TrainingPlanValidator.cs, PlanValidationPolicy.cs}
+src/RunnersDiary.Infrastructure/Ai/{PromptCatalog.cs, PlanPromptCatalog.cs}   # denyList per language (v3), languages
+src/RunnersDiary.Infrastructure/Ai/{TrainingPlanService.cs, RuleBasedFakeChatClient.cs}  # lang; Polish fake drafts
+src/RunnersDiary.Api/Features/Goals/GenerateTrainingPlan.cs        # lang validation (400 errors.lang)
+prompts/training-insights/{v3.md, manifest.json, templates/pl.json, demo/pl/12w-previous.v1.json, README.md}
+prompts/training-plan/{v3.md, manifest.json, README.md}
+tests/RunnersDiary.Ai.Tests/**                                     # pl validator, templates, fixtures, fake, eval cases
+```
+
+### 2.4 maps-gpx
+```
+src/RunnersDiary.Infrastructure/Maps/AzureMapsGeocoder.cs  # Accept-Language (en|pl) from the caller
+src/RunnersDiary.Api/Features/Geocoding/*                  # pass the reduced Accept-Language through
+web/src/components/map/azure/AzureMapsMap.tsx              # map option language
+```
+
+### 2.5 azure-infra
+None. No Bicep, nginx or workflow change. The CSP is unaffected because no inline script is added.
+
+### 2.6 qa-tester
+```
+web/src/i18n/parity.test.ts (new)          # ADR 0042 §9
+web/src/i18n/language.test.ts (new)        # resolver matrix, profile override, html lang
+web/src/lib/**/*.test.ts                   # pl cases (run under test:tz)
+web/playwright.config.ts                   # projects desktop-pl (*.pl.spec.ts, locale pl-PL, Europe/Warsaw), phone-pl (*.pl.phone.spec.ts, 360×640)
+web/e2e/{language.pl.spec.ts, smoke.pl.spec.ts, layout.pl.phone.spec.ts} (new)
+web/e2e-fullstack/polish-guest.spec.ts (new)
+web/src/test/fakeApi/*                     # me.language, PUT /api/me/language, guest ?lang, summary/plan lang=pl
+tests/RunnersDiary.Api.Tests/**            # §8
+```
+
+### 2.7 reviewer (checklist)
+- `lang` and `language` values are allowlisted before they reach SQL, prompts or the seed map. `Accept-Language` is parsed, reduced to en/pl and never echoed.
+- `PUT /api/me/language` writes only the caller's row and is in the inventory and the 401 sweep.
+- No Polish string merged without the user's review. Interpolations follow the nominative rule.
+- Bundle: the Polish eager chunk stays lazy.
+- Validator: per-language sets are not unioned (except the deny list), and folding applies only to deny matching.
+
+### 2.8 architect
+After approval: "Added in M10" in `api-contract.md` and `data-model.md`, the architecture components, the i18n guide status, and the ADR statuses. Deviations go in §10. The main agent updates CLAUDE.md (status line; "Frontend" convention: every new key in `en` **and** `pl`).
+
+## 3. Contracts
+
+### 3.1 API (all additive)
+```ts
+MeResponse += { language: "en" | "pl" | null }             // null = never chosen
+// PUT /api/me/language  (operationId updateMyLanguage, Auth, general limiter)
+UpdateMyLanguageRequest = { language: "en" | "pl" }        // → 204; 400 errors.language; 401
+// POST /api/guest-sessions?lang=en|pl                     // optional; default en; other → 400 errors.lang
+// GET|POST /api/insights/summary  lang: "en" | "pl"       // existing parameter; allowed values from the manifest
+GenerateTrainingPlanRequest = { replaceOtherGoals?: boolean; lang?: "en" | "pl" }   // default en; 400 errors.lang
+GoalDto.plan += { language: "en" | "pl" }                  // PlanLanguage null (pre-M10 plans) → "en"
+```
+`Accept-Language` on `GET /api/geocoding/search` (`searchPlaces`) is read and reduced to `en`/`pl` (default `en`).
+
+### 3.2 Schema delta (migration `Localisation`, additive, nullable)
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `Users` | `Language` | `varchar(8) NULL` | Supported tag or null |
+| `Goals` | `PlanLanguage` | `varchar(8) NULL` | Set by `RecordPlan`; null = English (pre-M10) |
+
+Older images ignore both columns, so the image rollback stays safe.
+
+### 3.3 Seed translation map
+`seed/demo/i18n/pl.json`: `{ "version": 1, "texts": { "<exact English text>": "<Polish text>" } }`. It covers `runs.json` notes and titles plus the goal title, plan notes and descriptions in `training-plan.json`. Proper names are not keys. A test lists every seeded English text without an entry; the list must be empty once `pl` is released, and the startup check enforces the same.
+
+### 3.4 Prompt manifests (v3)
+```json
+"3": { "file": "v3.md", "sha256": "…", "denyList": { "en": [ …today's list… ], "pl": [ …ADR 0043 §3… ] } }
+"languages": ["en", "pl"]
+```
+v1/v2 entries are unchanged; a flat `denyList` is read as `{ "en": … }`.
+
+### 3.5 SPA language module (sketch)
+```ts
+export const SUPPORTED_LANGUAGES = ['en', 'pl'] as const
+export type Language = (typeof SUPPORTED_LANGUAGES)[number]
+export function releasedLanguages(): readonly Language[]          // pl: dev/test only until Part B step B5
+export function resolveInitialLanguage(stored: string | null, navigatorLanguages: readonly string[]): Language
+export function initLanguage(): Promise<void>                      // resolve → ensure bundle → changeLanguage → <html lang>
+export function setLanguage(lng: Language, opts: { persistToProfile: boolean }): Promise<void>
+export function applyProfileLanguage(profile: Language | null): Promise<void>
+export const AI_LANGUAGES: readonly Language[]                     // ['en'] until Part C, then ['en','pl']; else 'en' is sent
+```
+
+## 4. UI
+- Header: a compact select (globe icon + "EN"/"PL" on phones, full name from `sm` up) between the nav and `ApiStatus`/`UserMenu`. The header already wraps (`flex-wrap`).
+- Sign-in page: the same control above "Try as guest".
+- Goals page plan section: when `plan.language` ≠ the UI language, a muted line "This plan was generated in English." with the existing Regenerate button.
+- Calendar and bubble labels: existing truncation; Polish weekday short names ("pon.", "wt.", …) from `Intl`. The phone grid keeps `narrow` names with full accessible names.
+
+## 5. Implementation steps and confirmation gates
+
+### 5.1 Offline (branch `m10-polish-localisation`, one reviewable commit per step)
+
+**Part A – mechanism (no visible change in production: `pl` not released)**
+1. [ ] **backend-dotnet:** `SupportedLanguages`, migration `Localisation`, `MeResponse.language`, `PUT /api/me/language`, guest `?lang`, `DemoTextLocalizer` (missing entries fall back to English and are reported), OpenAPI regenerated, Api.Tests.
+2. [ ] **maps-gpx:** geocoder `Accept-Language`, Azure Maps display `language`.
+3. [ ] **frontend-react (+ qa-tester):** language module, `initLanguage` before render, switcher (header + sign-in), profile sync, `Accept-Language`, `ui_locales`, guest `?lang`, `capitalizeFirst`, localised km input, generic field message, `Intl.Collator` where labels are sorted, bundle budget, missing-key handler, parity test (strict for every existing `pl` file; requires all 11 once `pl` is released), fake API updates, `pl/common.json`.
+
+**Part B – translations (Claude drafts with the glossary; the user reviews each commit before the next one)**
+4. [ ] **B1 frontend-react:** `common`, `auth`, `errors`, `runTypes`, `calendar`, `runs` (eager; ~360 lines) + plural audit (every `count` string has a plural group; no number-in-sentence without one).
+5. [ ] **B2 frontend-react:** `maps`, `tracks`, `insights` (~540 lines).
+6. [ ] **B3 frontend-react:** `races`, `goals` (~520 lines).
+7. [ ] **B4 backend-dotnet:** `seed/demo/i18n/pl.json` (demo notes, goal, plan texts), map completeness test strict.
+8. [ ] **B5 frontend-react + qa-tester:** release `pl` (`RELEASED_LANGUAGES`), layout fixes found at 360 px, Playwright `desktop-pl`/`phone-pl`, full-stack Polish guest journey.
+
+**Part C – AI in Polish (ai-insights)**
+9. [ ] **C1:** Polish number words, per-language policies, folded deny matching; Domain.Tests (adversarial drafts per rule).
+10. [ ] **C2:** prompt v3 (both features), manifests, `templates/pl.json`, `demo/pl/12w-previous.v1.json` (user reviews the Polish), Polish fake drafts, eval cases (CI mode).
+11. [ ] **C3 (+ backend-dotnet, frontend-react):** plan `lang` + `PlanLanguage`, demo plan per language, SPA `AI_LANGUAGES` += `pl`, summary/plan `lang`, language hint; Api.Tests/Vitest.
+12. [ ] **reviewer**, then **architect** (docs, deviations). The main agent updates CLAUDE.md, commits, and stops for approval.
+
+If the user prefers, Part C can follow in a separate PR. Until then `AI_LANGUAGES = ['en']`, so a Polish UI shows English AI texts.
+
+### 5.2 User-confirmed gates (each needs the user's explicit "yes")
+
+| Gate | What | Cloud change |
+|---|---|---|
+| **G-L1** (costs ≈ $1–2) | Live eval **before merge**, with the user's `az login` and `RD_AI_LIVE_EVAL=1`: summary and plan cases × 3, in `en` and `pl`, prompt v3. Pass: every case ≥ 2/3 and ≥ 90 % per language; output tokens vs the 8,000 plan cap recorded; the user reads 3 Polish outputs per feature. On failure, fix and re-run, or merge with `pl` removed from `AI_LANGUAGES` and the manifests. | none (model calls only) |
+| **G-L2** | Merge, then approve `deploy.yml`: the migration job applies `Localisation` (additive), new images. Live check: a `pl-PL` browser shows Polish at the first paint; a guest demo in Polish; switch to English and back; a Polish AI summary (demo preset, then one generation); an English browser unchanged. | schema; images |
+
+**Rollback:** the normal automatic and manual image rollback; the nullable columns are harmless to older images. There is no kill switch: the language is code and content, costs nothing to run, and `AI_ENABLED=false` still stops all AI.
+
+## 6. Cost
+| Item | Estimate |
+|---|---|
+| Azure resources | None new |
+| Live eval (G-L1) | ≈ $1–2 (plan cases dominate; ≈ $0.35 per 21 plan runs in M9, Polish output ≈ 1.3–1.6× tokens) |
+| Production AI | Unchanged quotas and global budget. A Polish summary is its own cached generation; Polish plan outputs use more tokens (≈ +$0.01 per generation) |
+| SQL | Two nullable columns; negligible |
+
+## 7. Risks
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Translation volume (~1,400 lines + ~80 seed texts + AI fixtures) and **the user's review time** | Slow Part B; unnatural Polish | Split into 4 review commits; glossary first; the user approves the glossary before B1 |
+| **Gendered Polish and case agreement** in interpolations (UI and AI) | Awkward or wrong forms ("Zapisałeś się", "z Długie wybieganie") | Style rules in the guide; nominative-slot rule; prompt v3 section; human read in G-L1 |
+| **Plan output tokens in Polish** approach the 8,000 cap | Truncated JSON → 502 | G-L1 records tokens; raise `Ai:Plan:MaxOutputTokens` by configuration (ADR 0040), adjust the weight if needed |
+| Polish number-word list incomplete or too broad | A number in words slips through, or false rejections | Exact inflected forms, not stems; adversarial tests; eval rejection codes |
+| Layout overflow at 360 px (Polish ≈ +20–30 %) | Broken header, buttons or cells | `phone-pl` no-horizontal-scroll checks; shorten Polish instead of the layout |
+| ICU differences (Node vs Chromium; NBSP, `formatRange`) | Flaky tests | Assert with normalised whitespace; compare against `Intl` output computed in the test, not literals, where possible |
+| Future PRs forget Polish | English leaks into the Polish UI | Parity test fails CI; CLAUDE.md convention; reviewer checklist |
+| Mixed language: user data, seeded notes, older plans | Mild inconsistency | Documented; plan language hint; no automatic translation |
+| One-time language switch on a new device (profile ≠ browser) | A brief re-render after `/api/me` | Acceptable; `rd.lang` is updated, so it happens once per browser |
+
+## 8. Test plan outline (qa-tester)
+
+**Vitest:**
+- `parity.test.ts`: keys, variables, plural groups (`_one/_few/_many/_other`), non-empty, "same as English" allowlist, all 11 files present once released.
+- `language.test.ts`: `rd.lang` valid or invalid; `navigator.languages` `['pl-PL']`, `['de','pl']`, `['en-GB']`, `[]`; unreleased `pl` ignored in production mode; profile override; `<html lang>`; switch persists and calls `PUT` only with a session.
+- Formatting in `pl` (also under `test:tz`): `monthLabel`/`dayLabel`/`rangeLabel`/`weekdayLabels`, `capitalizeFirst`, distance/elevation/delta/percent, km input round-trip with a comma, plural renders for 0/1/2/5/12/22/25 on calendar cell names and goals strings.
+- Components rendered in `pl` with the missing-key handler: header + switcher, month grid, run form (server field error → generic message), summary card (`lang=pl` request), plan section (language hint), sign-in (guest `?lang=pl`).
+
+**Playwright (fake API):**
+- `language.pl.spec.ts` (`desktop-pl`): Polish at the first paint with `/api/me` delayed; switch to English and back, reload keeps the choice; `<html lang>`; axe on Diary, run form, Insights, Goals, race panels.
+- `smoke.pl.spec.ts`: add a run with "12,5" km, see "12,5 km" in the cell and week totals; Insights KPIs with Polish formatting; AI summary demo in Polish.
+- `layout.pl.phone.spec.ts` (`phone-pl`, 360×640): no horizontal scroll on the main pages and the header; Day panel; truncated bubble names keep full accessible names.
+
+**Full-stack (`polish-guest.spec.ts`, fake model):** `pl-PL` context → guest → Polish demo notes in the Day panel → Polish demo summary → generate a plan (fake, Polish) → switch to English → hint "generated in Polish" shown.
+
+**Api.Tests:** `PUT /api/me/language` (valid, invalid, isolation, 401), `MeResponse.language`, guest `?lang` (valid, invalid, seeded Polish notes, demo plan Polish), summary `lang=pl` accepted and cached separately, plan `lang` validation and `plan.language`, geocode `Accept-Language` reduction, inventory and 401 sweep.
+
+**Domain.Tests / Ai.Tests:** Polish number words (each family, several cases; "ten tydzień", "piątek", "jeden", "pół", "półmaraton" allowed), deny list with and without diacritics, en ∪ pl deny on `pl`, union not applied to number words; templates `pl` valid for 0/1/2 sessions; demo fixture `pl` valid; demo plan every-today test per language; fake Polish drafts pass the validators; manifest v3 hashes; eval cases (CI mode) per language.
+
+**Manual (G-L2):** VoiceOver reads Polish with the Polish voice (`<html lang>`); phone Safari header; one real Polish summary and plan read by the user.
+
+## 9. Open questions (recommended defaults in bold; the plan proceeds with them unless the user objects)
+
+1. **First visit:** **browser languages (first of en/pl), else English**, or always English until chosen.
+2. **Switcher location:** **header on every page + sign-in page**, or a new Settings → General section (Settings is hidden while races are off).
+3. **Persistence:** **profile field for every account (users and guests) + a `localStorage` cache, profile wins**, or `localStorage` only (no migration, no cross-device sync).
+4. **Tone:** **informal "ty", gender-neutral phrasing**, or formal "Pan/Pani".
+5. **Glossary:** **the draft in [`docs/i18n.md`](../i18n.md)**, which the user edits before B1. Three entries to check: Insights = "Analiza", a diary entry = "trening", Tempo run = "Bieg tempowy" (because "tempo" also means pace).
+6. **Who translates:** **Claude drafts, the user reviews each Part B/C commit**, or an external translator.
+7. **AI language:** **follows the UI language for summaries and plans**, or AI stays English.
+8. **Server field errors in `pl`:** **localised generic message**, or the English server text.
+9. **Guest demo language:** **seeded in the language at guest creation, no re-seed on switch**, or always English demo texts.
+10. **Older plans after a switch:** **keep them and show a "generated in English" hint with Regenerate**, or show nothing.
+11. **Delivery:** **one PR (A+B+C), live eval G-L1 before merge, one deploy G-L2**, or ship the UI (A+B) first and AI (C) later.
+12. **Kill switch:** **none** (normal deploy and rollback), or a runtime flag in `client-config`.
+
+**Rough size:** Part A medium (about one agent day); Part B large in content (~1,400 strings + ~80 seed texts) but mechanical, with the user's review (2–4 h over 4 commits) as the critical path; Part C medium. Overall smaller than M9; no cloud work beyond one deploy.
+
+## 10. Implementation notes & deviations
+
+(Filled in during and after the offline parts.)
+
+## Assumptions
+1. The user is a Polish speaker and will review the Polish texts. Claude's drafts are not merged unreviewed.
+2. `pl` and `en` only; tags without region (`pl` formats like `pl-PL`, `en` stays US-style as today).
+3. Monday-first ISO weeks and metric units are already right for Polish; no calendar logic changes.
+4. The running.life catalogue stays as imported (Polish names); race kinds and regions are already i18n keys.
+5. Entra (G8) is not live yet. `ui_locales` is wired now, and the tenant's Polish page customisation becomes a G8 checklist item for the user.
+6. Node 26 (Vitest) and Chromium ship full ICU with `pl` data.
+7. i18next stays on 26.x; an upgrade to ≥ 27.1 would only soften the missing-plural fallback, and the parity test makes it irrelevant.

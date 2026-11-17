@@ -163,3 +163,5 @@ GitHub Actions `ci.yml`: backend (build, Testcontainers tests), frontend (lint, 
 | 0039 | [Training goals: model, rules, and the realistic-target estimate](adr/0039-training-goals-and-realistic-target-estimate.md) | Accepted (M9; amended 2026-11-16) |
 | 0040 | [Training plan generation: envelope, fact sheet, agent, validation, quotas, failures](adr/0040-training-plan-generation.md) | Accepted (M9; amended 2026-11-16) |
 | 0041 | [Training suggestions: storage, accept/dismiss/regenerate, calendar display](adr/0041-training-suggestions-storage-and-calendar.md) | Accepted (M9; amended 2026-11-16) |
+| 0042 | [UI localisation: languages, resolution and persistence, bundles, formatting, translated content](adr/0042-ui-localisation-and-language-preference.md) | Proposed (M10 plan, 2026-11-17) |
+| 0043 | [AI outputs in Polish: request language, prompt v3, per-language validation, templates and fixtures](adr/0043-ai-outputs-in-polish.md) | Proposed (M10 plan, 2026-11-17) |
