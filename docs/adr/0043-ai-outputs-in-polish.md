@@ -1,6 +1,6 @@
 # 0043 – AI outputs in Polish: request language, prompt v3, per-language validation rules, templates and demo fixtures
 
-**Status:** Accepted 2026-11-17 (M10 plan approved with defaults)
+**Status:** Accepted 2026-11-17 (M10 plan approved with defaults; implemented in M10 2026-11-17; the §3 "As implemented" note records C1; amended 2026-11-17 after the review and the G-L1 live eval (new rules `genderedForm` and `wrongLanguage`), see the end; **§3 "only the request language's set, never the union" and §5 "an English draft for `pl` is not a validator rule" are refined by the amendment**)
 **Date:** 2026-11-17
 **Related:** [0026](0026-training-insights-agent-and-grounding.md) (fact sheet, placeholders, `literalNumber`, `forbiddenTopic`, templates), [0027](0027-ai-model-provider-foundry-and-local-dev.md), [0028](0028-summary-cache-quotas-and-demo-summaries.md) (cache key with language, demo fixtures), [0040](0040-training-plan-generation.md) (plan prompt, validator, fact sheet `language`), [0041](0041-training-suggestions-storage-and-calendar.md) (demo plan), [0042](0042-ui-localisation-and-language-preference.md), [M10 plan](../plans/M10-polish-localisation.md)
 
@@ -85,6 +85,18 @@ Several parts are English-only:
 - **Union of number-word lists across languages:** false positives ("ten" = "this").
 - **Plan language from the profile (`Users.Language`) instead of the request:** implicit, and differs from the summary contract. The SPA knows the UI language.
 - **Leave AI English in a Polish UI:** simplest, but a jarring mixed-language page. This is acceptable as an interim state only (M10 Part B ships before Part C if needed).
+
+## Amendment (2026-11-17, implementation, review and the G-L1 live eval)
+
+The decision stands. Refinements as built (details: [M10 plan §10](../plans/M10-polish-localisation.md#10-implementation-notes--deviations), steps 9–11, "Review fixes", "G-L1 follow-up"; gate numbers: plan §5.2 gate log):
+1. **Number words (§3).** Besides the C1 note in §3 (union with English except "ten"), every numeral combining form is a number word on its own, because folding turns "pięcio-kilometrowy" into two words; number nouns of 11–19 and the tens, and the hundreds/thousands ordinals were added (review L1). Ordinal idioms ("po pierwsze", "z drugiej strony") are not whitelisted; prompt v3 asks for "natomiast", "z kolei" instead (review L2).
+2. **Deny list `pl` (§3).** Added after the review (M1): `zlaman* przeciazeniow*`, `zlaman* nog*`, `naderw*`, `zapaln*`, `rehabilitac*`, `ortoped*`, `szpital*`, `dolegliwos*`. The built-in `DefaultPolishDenyList` and `denyList.pl` of both v3 manifests are equal (test). v3 was not deployed yet, so both v3 prompts were edited in place and re-hashed.
+3. **Request language (§1).** The plan `lang` defaults to `en`, not to the profile language; the SPA always sends the UI language (`aiLanguage()`), so Regenerate uses the current UI language. Summary quotas are not per language.
+4. **New rule `genderedForm` (Polish only; summary and plan validators).** The G-L1 human read found masculine second-person forms in 3 of 18 Polish summaries despite the prompt. A text is rejected for a word ending in `łeś`/`łaś` (past tense, with diacritics), a folded `lbys`/`labys` ending (conditional) or "powinieneś"/"powinnaś". Not covered (no word-level test without false positives; left to the prompt): the past tense without diacritics, gendered adjectives and participles, a past form after a separate "byś"/"żebyś"/"gdybyś".
+5. **New rule `wrongLanguage` (Polish only; summary and plan validators; refines §5).** The G-L1 re-run had one Polish summary written entirely in English that every rule accepted. A field is rejected when it holds ≥ 2 distinct English **function words** from a fixed stop list (outside `{placeholders}`, whole lower-case words; Polish homographs, loanwords and acronyms excluded); when the whole draft holds ≥ 3 distinct ones, every field with at least one is rejected too. The eval's language check stays as a stricter, eval-only metric. The **guest demo plan** ignores `wrongLanguage` (our reviewed texts; an untranslated seed entry stays English by design, ADR 0042 §7).
+6. **Retry notes.** When `genderedForm` or `wrongLanguage` is among the violations, the retry note appends a fixed hint (how to rephrase gender-neutrally; write every field in Polish). Fixed text only, never model text, so the injection and data-residency position of ADR 0026/0040 is unchanged. Both rule codes are appended to their enums.
+7. **G-L1 result (§5).** Passed and accepted by the user 2026-11-17: Polish summaries 51/54 (94 %) over three runs, every case ≥ 2/3; plans en 20/21, pl 21/21; summaries en 18/18; spend ≈ $1.42. Max plan output tokens: en 4,653, pl 5,228 of 8,000 (65 %), none truncated, so the 8,000 cap stays. Length limits stay global: none of the recorded Polish failures was a length violation (§3 last bullet; one malformed-JSON retry is the only `schema`-class failure, 1 in 54).
+8. **Known residuals.** The English deny entry `strain*` also rejects "strained" in plan prose (pre-existing, M9); count-before-noun and placeholder-as-word phrasings still occur in Polish; the extra retries slightly raise the chance of a failed generation. These are follow-ups for the next prompt version (plan §10 "Follow-ups").
 
 ## References
 

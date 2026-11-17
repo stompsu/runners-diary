@@ -1,6 +1,6 @@
 # 0042 – UI localisation: supported languages, language resolution and persistence, bundles, formatting, translated content
 
-**Status:** Accepted 2026-11-17 (M10 plan approved with defaults)
+**Status:** Accepted 2026-11-17 (M10 plan approved with defaults; implemented in M10 2026-11-17, `pl` released; amended 2026-11-17 after the implementation and the review, see the end; **§2 "the profile wins" is refined by the amendment**)
 **Date:** 2026-11-17
 **Related:** [0003](0003-frontend-stack-and-ui-kit.md) (i18next, "Polish added later"), [0011](0011-guest-accounts-lifecycle.md) (guest seeding), [0013](0013-persistence-model-and-migrations.md), [0015](0015-spa-runtime-configuration.md), [0017](0017-client-dates-without-a-date-library.md) (`Intl` labels), [0018](0018-run-forms-and-server-errors.md) (server errors in forms), [0019](0019-frontend-test-strategy.md), [0022](0022-map-provider-geocoding-and-azure-maps-tokens.md) / [0033](0033-production-maps-and-azure-maps.md) (geocoder), [0029](0029-web-tier-nginx-container.md) (CSP), [0043](0043-ai-outputs-in-polish.md) (AI language), [M10 plan](../plans/M10-polish-localisation.md), [i18n guide](../i18n.md)
 
@@ -111,6 +111,19 @@ A test-only i18next `missingKeyHandler` fails component tests that render `pl`. 
 - **Localising server messages via `Accept-Language`:** doubles the server's message catalogue for rare fallback texts.
 - **Switcher only in Settings:** hidden while races are off, and needs a route visit. The header is always visible.
 - **Lazy namespaces loaded per language with dynamic imports:** saves a few kB per lazy chunk for English users, at the cost of async registration in every lazy module. Can be revisited if chunk sizes matter.
+
+## Amendment (2026-11-17, implementation and review)
+
+The decision stands; `pl` is released (`RELEASED_LANGUAGES = ['en', 'pl']`). Refinements as built (details: [M10 plan §10](../plans/M10-polish-localisation.md#10-implementation-notes--deviations), steps 1–3, 7, 8 and "Review fixes"):
+1. **Profile vs explicit choice (§2, review L3).** The profile still wins over `rd.lang` and the browser, once per account and page load (`useLanguageSync`). An **explicit switch made in the current page load wins over a later `/api/me` read** (a module flag set before the bundle loads, cleared if the switch fails), so a slow or refetched profile never undoes the user's click. Another device's later choice applies on the next page load.
+2. **Module split (§3).** `setLanguage(lng)` in `i18n/language.ts` is local only (bundle, `changeLanguage`, `<html lang>`, `rd.lang`); the profile save is `useChangeLanguage()` in `auth/useLanguage.ts`, so the language module has no API-client dependency. A failed `PUT /api/me/language` keeps the local choice silently; a failed bundle load shows a `common:language.failed` toast (review L4).
+3. **Entry point (§2).** No top-level await in `main.tsx` (it changed Rolldown's chunking, about +7 kB gzip); `async function start()` renders after `initLanguage`, English on failure. Initial-load growth was +1.7 kB gzip (budget 2 kB).
+4. **Switcher (§5).** A native `<select>` with a globe icon in the header and at the top of the sign-in page. Below `sm` it shows an `aria-hidden` "EN"/"PL" over the transparent select text; accessible name and option names are unchanged.
+5. **API types (§3).** `language`/`lang` are plain strings in the OpenAPI document (not enums), validated against the supported list (400 `errors.language` / `errors.lang`, values never echoed). The guest `?lang` check runs after the per-IP `guest-create` policy and before the global limiter and any database work.
+6. **Seed map (§7).** Required entries: run notes, gear, weather, rating comments, goal title, plan notes and session descriptions; run titles (mostly race names) are optional. `Guests:RequireCompleteDemoTranslations` (default true) makes an incomplete or malformed map fail the host at startup; seeding with a missing entry falls back to English and logs a warning.
+7. **Accept-Language (§7).** Parsed by the pure `Domain/Localization/AcceptLanguage.Reduce` (bounded, honours `q`, region dropped, default `en`); the geocoding response carries `Vary: Accept-Language`. Azure Maps Get Geocoding takes the language in the `Accept-Language` header (no query parameter). The SPA sets the header on every `/api` call.
+8. **Collation (§6).** No SPA list is sorted by a translated label today, so no `Intl.Collator` was needed; the rule stands for future lists.
+9. **Polish e2e (§9).** Playwright `desktop-pl`/`phone-pl` run a dedicated `e2e/polish.spec.ts` (screens in Polish, no raw keys, no listed English words, no horizontal overflow at 360 px) instead of re-running the English specs; the strict missing-key check is the Vitest one. The full-stack suite has one Polish guest journey.
 
 ## References
 

@@ -1,6 +1,6 @@
 # Runners Diary – API contract
 
-Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**. **M8 (race proposals) adds the `/api/races` endpoints, `client-config.races`, `RunDto.catalogRaceId` and `--job race-import` (merged and deployed 2026-11-14): see [Added in M8](#added-in-m8-race-proposals).** **M9 (adaptive training plan) plans `/api/goals`, `/api/training-suggestions`, `client-config.goals`, `client-config.ai.planGeneration` and `RunDto.goalId` (plan approved 2026-11-16, not implemented): see [Added in M9](#added-in-m9-adaptive-training-plan).**
+Living document, owned by the `architect` agent. Status: **M2–M6 implemented (merged); M7 Part A adds `GET /api/maps/token`, the geocode daily budget (429 `code: geocode-budget`), `client-config.maps.azureMapsDomain` and the anonymous/authenticated split of `/api/health` (implemented, awaiting approval; nothing deployed)**. **M8 (race proposals) adds the `/api/races` endpoints, `client-config.races`, `RunDto.catalogRaceId` and `--job race-import` (merged and deployed 2026-11-14): see [Added in M8](#added-in-m8-race-proposals).** **M9 (adaptive training plan) adds `/api/goals`, `/api/training-suggestions`, `client-config.goals`, `client-config.ai.planGeneration` and `RunDto.goalId` (merged and deployed 2026-11-16): see [Added in M9](#added-in-m9-adaptive-training-plan).** **M10 (Polish localisation) adds `PUT /api/me/language`, `MeResponse.language`, guest `?lang`, plan `lang` + `GoalDto.plan.language`, summary `lang=pl` and `Accept-Language` on geocoding (implemented 2026-11-17, awaiting PR and G-L2): see [Added in M10](#added-in-m10-polish-localisation).**
 Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.Api/openapi/runnersdiary-api.json` → `web/src/api/generated/schema.d.ts` ([ADR 0002](adr/0002-openapi-typescript-client.md)). This page states intent; if they disagree, fix one of them in the same PR.
 
 ## Conventions
@@ -44,8 +44,8 @@ Source of truth at runtime is the committed OpenAPI document `src/RunnersDiary.A
 |---|---|---|---|---|
 | `GET /alive`, `GET /health` | — (not in OpenAPI) | Anon | 200/503 text | — |
 | `GET /api/health` | `getApiHealth` | Anon (token optional; M7: rate policy `health`, see *Added in M7*) | 200 `ApiHealthResponse` | 429 (M7), 503 |
-| `POST /api/guest-sessions` | `createGuestSession` | Anon, rate policy `guest-create` + global window | 201 `GuestSessionResponse` (`Cache-Control: no-store`) | 413, 429, 503 |
-| `GET /api/me` | `getMe` | Auth | 200 `MeResponse` | 401 |
+| `POST /api/guest-sessions` | `createGuestSession` | Anon, rate policy `guest-create` + global window | 201 `GuestSessionResponse` (`Cache-Control: no-store`) | 400 (M10 `?lang`), 413, 429, 503 |
+| `GET /api/me` | `getMe` | Auth | 200 `MeResponse` (M10: + `language`) | 401 |
 | `PUT /api/me` | `updateMe` | Auth | 200 `MeResponse` | 400, 401 |
 | `GET /api/run-types` | `listRunTypes` | Auth | 200 `RunTypeDto[]` | 401 |
 | `GET /api/runs?from&to` | `listRuns` | Auth | 200 `RunListResponse` | 400 (`to < from`, span > 92 days), 401 |
@@ -347,8 +347,8 @@ RaceResultDto = { runId: string; date: string; status: "Planned" | "Completed"; 
 | `GET /api/client-config` (changed) | `getClientConfig` | Anon (unchanged) | 200 + `ai` | — |
 
 **Parameters and body**
-- **GET query:** `from`, `to`, `compare` exactly as `getInsightsReport` (dates 1950–2100, `to ≥ from`, span ≤ 366 days; `compare` case-sensitive, default `previous`), plus `lang`: only `en` (the default), matched **case-sensitively** (`EN` → 400 `errors.lang`).
-- **POST body:** `GenerateSummaryRequest = { from: string; to: string; compare?: "none" | "previous" | "previousYear"; lang?: "en"; regenerate?: boolean }`.
+- **GET query:** `from`, `to`, `compare` exactly as `getInsightsReport` (dates 1950–2100, `to ≥ from`, span ≤ 366 days; `compare` case-sensitive, default `previous`), plus `lang`: only `en` (the default), matched **case-sensitively** (`EN` → 400 `errors.lang`). **M10:** also `pl` (the languages of the prompt manifest), see [Added in M10](#added-in-m10-polish-localisation).
+- **POST body:** `GenerateSummaryRequest = { from: string; to: string; compare?: "none" | "previous" | "previousYear"; lang?: "en"; regenerate?: boolean }` (M10: `lang?: "en" | "pl"`).
   - `from` and `to` are nullable in the schema and validated by hand: missing → `errors.from` / `errors.to` "Required.".
   - The other rules are as for GET. Unknown members → 400 (ADR 0012). `regenerate` defaults to `false`; a non-boolean value (e.g. `"yes"`) → 400.
 - No route parameter names a resource: both endpoints read the caller's own data only (`Owner` filter), so there is no 404.
@@ -683,6 +683,39 @@ Enum casing follows the API-wide rule (PascalCase for new domain enums, like `Ra
 | Attempts; per-attempt and total timeout | 2; 90 s; 190 s | `Ai:Plan:MaxAttempts`, `AttemptTimeout`, `TotalTimeout` | 502 `plan-failed` |
 | Suggestions per generation | ≤ 7 per plan week (≤ 112) | validator | 502 `plan-failed` |
 
+## Added in M10 (Polish localisation)
+
+**Implemented 2026-11-17 on `m10-polish-localisation`** (OpenAPI document and `web/src/api/generated/schema.d.ts` regenerated); reviewed; awaiting the PR and gate G-L2 (deploy). All changes are **additive**: old clients keep working, and an English caller sees no change.
+- Sources: [M10 plan](plans/M10-polish-localisation.md) §3.1 and §10 (deviations); ADRs [0042](adr/0042-ui-localisation-and-language-preference.md) (UI language, persistence, geocoder) and [0043](adr/0043-ai-outputs-in-polish.md) (AI language), both amended 2026-11-17.
+- **Supported languages:** `en`, `pl` (`Domain/Localization/SupportedLanguages`). Every language value is matched **case-sensitively** against that list (or the prompt manifest's `languages`, today the same list) before it reaches SQL, a prompt or the seed map, and is **never echoed** in a problem. In OpenAPI these are plain `string`s, not enums (the API's enums serialise as PascalCase names); the SPA narrows them to its `Language` type.
+- **Server texts are not localised:** problem `title`/`detail` and 400 field messages stay English; the SPA maps codes to keys and shows a localised generic field message for unmapped server errors in a non-English UI.
+
+| Method & path | operationId | Policy | Success | Errors |
+|---|---|---|---|---|
+| `PUT /api/me/language` (new) | `updateMyLanguage` | Auth (users and guests), general rate limiter | **204** (writes only the caller's `Users` row; id from the claims) | 400 `errors.language` (missing, null or unsupported value), 401, 404 (caller's row gone) |
+| `GET /api/me` (changed) | `getMe` | Auth | `MeResponse.language` | unchanged |
+| `POST /api/guest-sessions?lang=en\|pl` (changed) | `createGuestSession` | Anon, `guest-create` + global window | 201; the guest's `Language` is stored **before seeding**, so the demo diary, demo goal and demo plan are in that language (no re-seed on a later switch). Absent = `en` | **400 `errors.lang`** for any other value, checked after the per-IP `guest-create` policy and before the global limiter and any database work; others unchanged |
+| `GET` / `POST /api/insights/summary` (changed) | `getInsightsSummary`, `generateInsightsSummary` | unchanged | `lang` accepts `en` (default) or **`pl`**; each language is its own cached summary (`period.lang`), generated, validated and counted separately (quotas are not per language) | 400 `errors.lang` for other values |
+| `POST /api/goals/{goalId}/plan` (changed) | `generateTrainingPlan` | unchanged (`ai-plan`) | body `lang` → plan texts in that language, stored as `plan.language` | **400 `errors.lang`** (other value, incl. empty string) **before** any lookup, quota or model call; then the M9 order of checks |
+| `GET /api/goals`, `GET /api/goals/{goalId}`, plan responses (changed) | `listGoals`, `getGoal`, `generateTrainingPlan` | unchanged | `GoalDto.plan.language` | unchanged |
+| `GET /api/geocoding/search` (changed) | `searchPlaces` | unchanged (`geocode`) | place names in the language of the request's **`Accept-Language`**, reduced to `en`/`pl` (default `en`; `q` honoured, `q=0` ignored, region dropped, header bounded to 256 chars / 16 entries); response header **`Vary: Accept-Language`**. The header is not an OpenAPI parameter (the SPA sends it on every `/api` call) | unchanged |
+
+### Shapes (M10)
+
+```ts
+MeResponse += { language: string | null }            // "en" | "pl"; null = never chosen
+UpdateMyLanguageRequest = { language: string }       // "en" | "pl"; required
+// POST /api/guest-sessions?lang=en|pl               // optional query; default en
+GenerateSummaryRequest.lang?: string                 // "en" (default) | "pl"; GET query lang likewise
+GenerateTrainingPlanRequest = { replaceOtherGoals?: boolean; lang?: string | null }   // "en" (default) | "pl"; body still optional
+GoalDto.plan += { language: string }                 // "en" | "pl"; plans stored before M10 (PlanLanguage NULL) → "en"
+```
+
+**Defaults and behaviour:**
+- The plan `lang` defaults to `en`, **not** the profile language; the SPA always sends the UI language (also on Regenerate). A regeneration without `lang` is English and overwrites the stored `plan.language`. The SPA shows a "generated in English/Polish" hint when `plan.language` differs from the UI language; nothing is regenerated automatically.
+- A Polish summary or plan that breaks a Polish-only validator rule (`genderedForm`, `wrongLanguage`, ADR 0043 amendment) is retried once like any other violation; a second invalid answer is the existing 502 `summary-failed` / `plan-failed` (`reason: "invalidOutput"`). No new problem type, status code or extension.
+- The guest demo plan in `pl` comes from the seed translation map; `client-config` is unchanged (no language flag: `pl` is released in the SPA build).
+
 ## Planned for later milestones
 
-Nothing planned. M9 (above) is implemented; its gates G-P1…G-P4 change no contract, and neither did the real Foundry deployment (M7 Part B, gate G7).
+Nothing planned. M9 and M10 (above) are implemented; M9's gates G-P1…G-P4 changed no contract, and neither did the real Foundry deployment (M7 Part B, gate G7). M10's G-L2 (deploy) changes none either.
