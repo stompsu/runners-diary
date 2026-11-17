@@ -31,6 +31,7 @@ export type HandledOperations = Pick<
   | 'createGuestSession'
   | 'getMe'
   | 'updateMe'
+  | 'updateMyLanguage'
   | 'listRunTypes'
   | 'getCalendarMonth'
   | 'listRuns'
@@ -73,6 +74,8 @@ export interface Account {
   timeZoneId: string
   timeZoneIsDefault: boolean
   unitSystem: 'Metric' | 'Imperial'
+  /** The stored UI language (`Users.Language`); null = never chosen. */
+  language: string | null
   expiresAtMs: number | null
   runs: Map<string, RunDto>
   /** Tracks of all the account's runs by track id (each knows its run). */

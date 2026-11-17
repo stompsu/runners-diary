@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { addDays, diffDays, isValid } from '@/lib/dates/plainDate'
 import { formatDuration, parseDuration } from '@/lib/format/duration'
+import i18n from '@/i18n'
 import { formatKmInput, kmToMeters, parseKm } from '@/lib/format/units'
 import type { GoalDto, GoalStatus, GoalType, GoalWriteRequest, Surface } from './goalTypes'
 
@@ -72,7 +73,7 @@ export function toGoalFormValues(goal: GoalDto): GoalFormValues {
     type: goal.type,
     title: goal.title,
     targetDate: goal.targetDate,
-    distanceKm: formatKmInput(goal.distanceMeters),
+    distanceKm: formatKmInput(goal.distanceMeters, i18n.language),
     elevationGain: goal.elevationGainMeters == null ? '' : String(goal.elevationGainMeters),
     surface: goal.surface ?? '',
     targetTime: goal.targetDurationSeconds == null ? '' : formatDuration(goal.targetDurationSeconds),

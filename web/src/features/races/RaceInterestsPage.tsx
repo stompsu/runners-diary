@@ -25,6 +25,7 @@ import { DistanceRangeField } from './DistanceRangeField'
 import { KindPicker } from './KindPicker'
 import { RadiusField } from './RadiusField'
 import { RegionPicker } from './RegionPicker'
+import { genericFieldMessage } from '@/lib/api/fieldMessage'
 import { mapRaceInterestsErrors, toFormValues, toWriteRequest } from './raceInterestsMapping'
 import { HORIZON_PRESETS, RADIUS_KM, raceInterestsSchema, type RaceInterestsFormValues } from './raceInterestsSchema'
 import { useRaceInterests, useUpdateRaceInterests } from './raceQueries'
@@ -144,7 +145,7 @@ function RaceInterestsForm({ saved }: { saved: RaceInterestsDto }) {
       setProblem({ message: writeProblemMessage(apiProblem, tErrors), details: [] })
       return
     }
-    const mapped = mapRaceInterestsErrors(apiProblem.fieldErrors)
+    const mapped = mapRaceInterestsErrors(apiProblem.fieldErrors, genericFieldMessage())
     const names = Object.keys(mapped.fields)
     names.forEach((name) => setError(name as 'kinds', { type: 'server', message: mapped.fields[name] }))
     if (mapped.summary.length === 0) focusFirstInvalid()

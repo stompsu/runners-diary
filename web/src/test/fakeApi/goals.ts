@@ -392,6 +392,7 @@ async function generatePlan(
       generationId,
       notes: 'Build gradually and keep the easy days easy.',
       promptVersion: 2,
+      language: 'en',
       model: 'fake-model',
       horizonEnd: plan.horizonEnd,
       horizonCapped: plan.capped,

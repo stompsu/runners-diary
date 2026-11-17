@@ -16,7 +16,8 @@
     "unauthorized": "Your session has ended. Please sign in again.",
     "payloadTooLarge": "The request is too large.",
     "unavailable": "The server is not reachable right now. Please try again.",
-    "unknown": "Something went wrong. Please try again."
+    "unknown": "Something went wrong. Please try again.",
+    "fieldInvalid": "This value is not valid."
   },
   "retry": "Try again",
   "loadFailedTitle": "Couldn't load this page"

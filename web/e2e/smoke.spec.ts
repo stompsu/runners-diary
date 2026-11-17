@@ -48,8 +48,11 @@ test('anonymous visitors are sent to the sign-in page and remember where they wa
 })
 
 test('"Try as guest" creates a demo session and returns to the requested page', async ({ page }) => {
-  await page.route('**/api/guest-sessions', (route) =>
-    route.fulfill({
+  const guestUrls: string[] = []
+  // The SPA sends `?lang=` (ADR 0042 §3), so the glob must match a query string.
+  await page.route('**/api/guest-sessions?*', (route) => {
+    guestUrls.push(route.request().url())
+    return route.fulfill({
       status: 201,
       json: {
         accessToken: 'e2e-new-guest',
@@ -57,8 +60,8 @@ test('"Try as guest" creates a demo session and returns to the requested page', 
         expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         userId: '1',
       },
-    }),
-  )
+    })
+  })
   await page.goto('/insights')
 
   await page.getByRole('button', { name: 'Try as guest' }).click()
@@ -66,6 +69,7 @@ test('"Try as guest" creates a demo session and returns to the requested page', 
   await expect(page).toHaveURL(/\/insights$/)
   await expect(page.getByText('You are in demo mode. Data is deleted after 24 hours.')).toBeVisible()
   expect(await page.evaluate(() => localStorage.getItem('rd.guestSession'))).toContain('e2e-new-guest')
+  expect(guestUrls.map((url) => new URL(url).searchParams.get('lang'))).toEqual(['en'])
 })
 
 test('End demo returns to the sign-in page and forgets the session', async ({ page }) => {

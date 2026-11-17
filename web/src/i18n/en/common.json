@@ -17,5 +17,12 @@
     "degraded": "API degraded",
     "unhealthy": "API unavailable"
   },
-  "close": "Close"
+  "close": "Close",
+  "language": {
+    "label": "Language",
+    "names": {
+      "en": "English",
+      "pl": "Polski"
+    }
+  }
 }

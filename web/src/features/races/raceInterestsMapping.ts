@@ -1,10 +1,12 @@
+import i18n from '@/i18n'
 import { formatKmInput, kmToMeters, parseKm } from '@/lib/format/units'
 import { mapFieldErrors, type FieldErrors } from '@/lib/api/problem'
 import { POLISH_REGION_CODES } from './polishRegions'
 import { keywordTerms, type RaceInterestsFormValues } from './raceInterestsSchema'
 import { RACE_KINDS, type RaceInterestsDto, type UpdateRaceInterestsRequest } from './raceTypes'
 
-const kmText = (meters: number | null | undefined): string => (meters == null ? '' : formatKmInput(meters))
+const kmText = (meters: number | null | undefined): string =>
+  meters == null ? '' : formatKmInput(meters, i18n.language)
 
 /** The response (display units: km, strings) as form values. `configured: false` already carries the defaults. */
 export function toFormValues(dto: RaceInterestsDto): RaceInterestsFormValues {
@@ -72,8 +74,9 @@ export const RACE_INTERESTS_FIELDS: ReadonlySet<string> = new Set([
   'keywords',
 ])
 
-export function mapRaceInterestsErrors(fieldErrors: FieldErrors) {
+export function mapRaceInterestsErrors(fieldErrors: FieldErrors, genericMessage?: string) {
   return mapFieldErrors(fieldErrors, {
+    genericMessage,
     keyMap: RACE_INTERESTS_KEY_MAP,
     isField: (name) => RACE_INTERESTS_FIELDS.has(name),
   })

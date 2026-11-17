@@ -144,3 +144,16 @@ describe('isRetryable', () => {
     expect(isRetryable(undefined)).toBe(false)
   })
 })
+
+describe('mapFieldErrors with a generic message (non-English UI)', () => {
+  const isField = (name: string) => ['distanceKm', 'title'].includes(name)
+
+  it('replaces every server text, for fields and the summary, and does not repeat it', () => {
+    const result = mapFieldErrors(
+      { distanceMeters: ['Too small.'], title: ['Too long.', 'Bad.'], body: ['Invalid body.'], nonsense: ['Hm.'] },
+      { keyMap: { distanceMeters: 'distanceKm' }, isField, genericMessage: 'Niepoprawna wartość.' },
+    )
+    expect(result.fields).toEqual({ distanceKm: 'Niepoprawna wartość.', title: 'Niepoprawna wartość.' })
+    expect(result.summary).toEqual(['Niepoprawna wartość.'])
+  })
+})

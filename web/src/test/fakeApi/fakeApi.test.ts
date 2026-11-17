@@ -117,6 +117,50 @@ describe('fake API', () => {
     expect(((await bad.json()) as { errors: object }).errors).toHaveProperty('timeZoneId')
   })
 
+  describe('language (M10)', () => {
+    it('stores the language, reports null until chosen, and rejects unsupported values', async () => {
+      const api = createFakeApi()
+      const token = api.issueToken('User')
+      expect(await (await call(api, 'GET', '/api/me', { token })).json()).toMatchObject({ language: null })
+
+      const ok = await call(api, 'PUT', '/api/me/language', { token, body: { language: 'pl' } })
+      expect(ok.status).toBe(204)
+      expect(await (await call(api, 'GET', '/api/me', { token })).json()).toMatchObject({ language: 'pl' })
+      expect(api.languageOf(token)).toBe('pl')
+
+      for (const body of [{ language: 'de' }, { language: null }, {}, { language: 5 }]) {
+        const bad = await call(api, 'PUT', '/api/me/language', { token, body })
+        expect(bad.status).toBe(400)
+        expect(((await bad.json()) as { errors: object }).errors).toHaveProperty('language')
+      }
+      expect(api.languageOf(token)).toBe('pl')
+    })
+
+    it('needs a token and only changes the caller', async () => {
+      const api = createFakeApi()
+      const a = api.issueToken('Guest')
+      const b = api.issueToken('Guest')
+      expect((await call(api, 'PUT', '/api/me/language', { body: { language: 'pl' } })).status).toBe(401)
+      await call(api, 'PUT', '/api/me/language', { token: a, body: { language: 'pl' } })
+      expect([api.languageOf(a), api.languageOf(b)]).toEqual(['pl', null])
+    })
+
+    it('creates a guest in the requested language and rejects an unsupported one', async () => {
+      const api = createFakeApi()
+      const res = await call(api, 'POST', '/api/guest-sessions?lang=pl')
+      expect(res.status).toBe(201)
+      const { accessToken } = (await res.json()) as { accessToken: string }
+      expect(api.languageOf(accessToken)).toBe('pl')
+
+      const bad = await call(api, 'POST', '/api/guest-sessions?lang=de')
+      expect(bad.status).toBe(400)
+      expect(((await bad.json()) as { errors: object }).errors).toHaveProperty('lang')
+
+      const plain = (await (await call(api, 'POST', '/api/guest-sessions')).json()) as { accessToken: string }
+      expect(api.languageOf(plain.accessToken)).toBeNull()
+    })
+  })
+
   describe('runs', () => {
     it('creates with the profile zone, bumps version on update and 409s on a stale one', async () => {
       const api = createFakeApi()

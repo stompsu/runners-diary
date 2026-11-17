@@ -16,7 +16,9 @@ const ALLOWED_GROWTH_BYTES = 5 * 1024
 // form) load only through their lazy routes; the grid shows proposals with eager code that imports no `races` strings.
 // M9: the Goals pages (list, form, detail, plan section) and the suggestion cards load only through their lazy routes
 // or the lazy Day/accept panels; the grid's suggestion bubbles, goal marker and toggle are eager and import no goals strings.
+// M10: the Polish eager namespaces (`i18n-pl-eager`) are a dynamic-import chunk that only Polish users download.
 const LAZY_ONLY = [
+  'i18n-pl-eager',
   'map-vendor',
   'azure-maps-vendor',
   'AzureMapsMap',

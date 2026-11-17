@@ -6,6 +6,8 @@ import {
   type AuthenticationResult,
 } from '@azure/msal-browser'
 import { describe, expect, it, vi } from 'vitest'
+import i18n from '@/i18n'
+import { setLanguage } from '@/i18n/language'
 import { buildMsalConfig, createEntraController, type EntraConfig, type MsalApp } from './msalClient'
 
 const config: EntraConfig = {
@@ -48,12 +50,30 @@ describe('buildMsalConfig (ADR 0014 §2)', () => {
 })
 
 describe('createEntraController', () => {
-  it('starts loginRedirect with only the API scope (no state: returnTo lives on /signin)', async () => {
+  it('starts loginRedirect with the API scope and the UI language as ui_locales (no state: returnTo lives on /signin)', async () => {
     const app = mockApp()
 
     await createEntraController(app, config).login()
 
-    expect(app.loginRedirect).toHaveBeenCalledExactlyOnceWith({ scopes: [config.apiScope] })
+    expect(app.loginRedirect).toHaveBeenCalledExactlyOnceWith({
+      scopes: [config.apiScope],
+      extraQueryParameters: { ui_locales: 'en' },
+    })
+  })
+
+  it('passes ui_locales=pl in a Polish UI', async () => {
+    const app = mockApp()
+    await setLanguage('pl')
+    try {
+      await createEntraController(app, config).login()
+    } finally {
+      await i18n.changeLanguage('en')
+    }
+
+    expect(app.loginRedirect).toHaveBeenCalledExactlyOnceWith({
+      scopes: [config.apiScope],
+      extraQueryParameters: { ui_locales: 'pl' },
+    })
   })
 
   it('acquires the token silently for the API scope and the current account', async () => {

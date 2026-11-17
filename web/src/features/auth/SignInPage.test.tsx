@@ -5,6 +5,8 @@ import { GUEST_STORAGE_KEY } from '@/auth/guestSession'
 import { getSession } from '@/auth/session'
 import { getFakeApi } from '@/test/fake'
 import { faults } from '@/test/fakeApi'
+import { setLanguage } from '@/i18n/language'
+import { ignoreMissingKeys } from '@/test/missingKeys'
 import { renderRoute } from '@/test/render'
 
 const guestButton = () => screen.findByRole('button', { name: 'Try as guest' })
@@ -199,5 +201,43 @@ describe('SignInPage', () => {
     await waitFor(() => expect(screen.queryByText('Checking sign-in options…')).not.toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try as guest' })).toBeEnabled()
+  })
+
+  describe('guest language (ADR 0042 §3)', () => {
+    function guestRequestUrls(): string[] {
+      const urls: string[] = []
+      const fallback = vi.mocked(fetch).getMockImplementation()!
+      vi.mocked(fetch).mockImplementation((input, init) => {
+        const request = input instanceof Request ? input : new Request(input, init)
+        if (request.method === 'POST' && new URL(request.url).pathname === '/api/guest-sessions') urls.push(request.url)
+        return fallback(input, init)
+      })
+      return urls
+    }
+
+    it('creates the guest with ?lang=en in an English UI', async () => {
+      const user = userEvent.setup()
+      const urls = guestRequestUrls()
+      renderRoute('/signin', { session: 'none' })
+
+      await user.click(await guestButton())
+
+      await waitFor(() => expect(urls).toHaveLength(1))
+      expect(new URL(urls[0]!).searchParams.get('lang')).toBe('en')
+    })
+
+    it('creates the guest with ?lang=pl in a Polish UI, and the profile keeps it', async () => {
+      const user = userEvent.setup()
+      const urls = guestRequestUrls()
+      renderRoute('/signin', { session: 'none' })
+      await act(() => setLanguage('pl'))
+      ignoreMissingKeys() // the auth namespace has no Polish file until step B1
+
+      await user.click(await screen.findByRole('button', { name: /tryAsGuest/ }))
+
+      await waitFor(() => expect(urls).toHaveLength(1))
+      expect(new URL(urls[0]!).searchParams.get('lang')).toBe('pl')
+      await waitFor(() => expect(getSession().kind).toBe('guest'))
+    })
   })
 })

@@ -3,9 +3,10 @@ import '@testing-library/jest-dom/vitest'
 import { Blob as NodeBlob, File as NodeFile } from 'node:buffer'
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
-import '@/i18n'
+import i18n from '@/i18n'
 import { resetSessionForTests } from '@/auth/session'
 import { getFakeApi, resetFakeApi } from './fake'
+import { installMissingKeyDetection, missingKeys } from './missingKeys'
 import { installMatchMedia } from './viewport'
 
 // openapi-fetch captures `fetch` when the client module loads, so the stub must exist before any test imports it.
@@ -38,7 +39,12 @@ vi.stubGlobal(
 vi.stubGlobal('Blob', NodeBlob)
 vi.stubGlobal('File', NodeFile)
 
-beforeEach(() => {
+installMissingKeyDetection()
+
+beforeEach(async () => {
+  missingKeys.length = 0
+  await i18n.changeLanguage('en')
+  document.documentElement.lang = 'en'
   installMatchMedia()
   localStorage.clear()
   sessionStorage.clear()
@@ -50,4 +56,9 @@ beforeEach(() => {
   )
 })
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  const missing = [...missingKeys]
+  missingKeys.length = 0
+  if (missing.length > 0) throw new Error(`Missing translation keys: ${[...new Set(missing)].join(', ')}`)
+})

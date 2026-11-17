@@ -23,9 +23,12 @@ export function formatDistance(meters: number, locale: string, maxFractionDigits
   }).format(metersToKm(meters))
 }
 
-/** Plain number for an input value: 12.35 (not localized, '.' decimal). */
-export function formatKmInput(meters: number): string {
-  return String(Number(metersToKm(meters).toFixed(3)))
+/**
+ * Plain number for an input value, up to 3 decimals, no grouping, with the language's decimal separator:
+ * "12.35" in English, "12,35" in Polish. `parseKm` accepts both separators.
+ */
+export function formatKmInput(meters: number, locale = 'en'): string {
+  return new Intl.NumberFormat(locale, { useGrouping: false, maximumFractionDigits: 3 }).format(metersToKm(meters))
 }
 
 /** Parses a user-entered km value ("12,5" or "12.5"); null when not a positive finite number. */

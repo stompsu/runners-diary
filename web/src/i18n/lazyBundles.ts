@@ -16,3 +16,14 @@ i18n.addResourceBundle('en', 'tracks', tracks, true, true)
 i18n.addResourceBundle('en', 'insights', insights, true, true)
 i18n.addResourceBundle('en', 'races', races, true, true)
 i18n.addResourceBundle('en', 'goals', goals, true, true)
+
+// Polish (ADR 0042 §4): the lazy namespaces carry both languages so this stays a synchronous side effect. The glob
+// picks up whichever `pl` files exist (Part B adds them), so no change is needed here when a namespace is translated.
+const polish = import.meta.glob<Record<string, unknown>>('./pl/{maps,tracks,insights,races,goals}.json', {
+  eager: true,
+  import: 'default',
+})
+for (const [path, bundle] of Object.entries(polish)) {
+  const ns = /\/([^/]+)\.json$/.exec(path)![1]!
+  i18n.addResourceBundle('pl', ns, bundle, true, true)
+}

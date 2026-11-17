@@ -77,7 +77,7 @@ export function RunNewPanel() {
  * `acceptTrainingSuggestion` with `{ run }` and then opens the new run in place of this panel.
  */
 export function AcceptSuggestionPanel() {
-  const { t } = useTranslation('goals')
+  const { t, i18n } = useTranslation('goals')
   const { suggestionId = '' } = useParams()
   const close = useClosePanel()
   const navigate = useNavigate()
@@ -95,10 +95,10 @@ export function AcceptSuggestionPanel() {
     return {
       ...values,
       notes: suggestion.description,
-      distanceKm: suggestion.distanceMeters ? formatKmInput(suggestion.distanceMeters) : '',
+      distanceKm: suggestion.distanceMeters ? formatKmInput(suggestion.distanceMeters, i18n.language) : '',
       duration: suggestion.durationSeconds ? formatDuration(suggestion.durationSeconds) : '',
     }
-  }, [suggestion])
+  }, [suggestion, i18n.language])
 
   const failed = [me, types, list].find((query) => query.isError)
   const gone = list.data && !suggestion

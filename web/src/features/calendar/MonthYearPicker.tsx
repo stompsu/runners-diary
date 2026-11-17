@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { isInRange, MAX_YEAR, MIN_YEAR, type DiaryMonth } from '@/features/diary/diaryMonth'
-import { monthLabel, monthName } from '@/lib/dates/plainDate'
+import { capitalizeFirst, monthLabel, monthName } from '@/lib/dates/plainDate'
 
 /** Popover with a year stepper and a 12-month button grid; picking a month navigates to it. */
 export function MonthYearPicker({ month, onSelect }: { month: DiaryMonth; onSelect: (month: DiaryMonth) => void }) {
@@ -28,7 +28,7 @@ export function MonthYearPicker({ month, onSelect }: { month: DiaryMonth; onSele
           className="h-11 sm:h-9"
           aria-label={t('picker.trigger', { month: monthLabel(month.year, month.month, locale) })}
         >
-          {monthLabel(month.year, month.month, locale)}
+          {capitalizeFirst(monthLabel(month.year, month.month, locale), locale)}
           <ChevronDown aria-hidden="true" />
         </Button>
       </PopoverTrigger>
@@ -76,7 +76,7 @@ export function MonthYearPicker({ month, onSelect }: { month: DiaryMonth; onSele
                   onSelect({ year, month: m })
                 }}
               >
-                {monthName(m, locale, 'short')}
+                {capitalizeFirst(monthName(m, locale, 'short'), locale)}
               </Button>
             )
           })}

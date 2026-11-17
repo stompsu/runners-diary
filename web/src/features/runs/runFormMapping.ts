@@ -1,4 +1,5 @@
 import { formatDuration, parseDuration } from '@/lib/format/duration'
+import i18n from '@/i18n'
 import { formatKmInput, kmToMeters, parseKm } from '@/lib/format/units'
 import type {
   FormPatch,
@@ -57,7 +58,8 @@ export function defaultFormValues(options: { date: string; runTypeId: number }):
 const text = (value: string | null | undefined): string => value ?? ''
 const intText = (value: number | null | undefined): string => (value == null ? '' : String(value))
 const metresText = (value: number | null | undefined): string => (value == null ? '' : formatMetres(value))
-const kmText = (value: number | null | undefined): string => (value == null ? '' : formatKmInput(value))
+const localKmInput = (meters: number): string => formatKmInput(meters, i18n.language)
+const kmText = (value: number | null | undefined): string => (value == null ? '' : formatKmInput(value, i18n.language))
 const durationText = (value: number | null | undefined): string => (value == null ? '' : formatDuration(value))
 
 /** Metres as typed in a field: at most one decimal, '.' separator. */
@@ -132,9 +134,12 @@ function numberOrBase(
   convert: (shown: string) => number | null,
 ): number | null {
   if (shown.trim() === '') return null
-  if (baseValue != null && formatForField(baseValue) === shown.trim()) return baseValue
+  // The text may have been formatted in another language than the current one ("12,5" vs "12.5"): compare normalised.
+  if (baseValue != null && sameNumberText(formatForField(baseValue), shown)) return baseValue
   return convert(shown)
 }
+
+const sameNumberText = (a: string, b: string): boolean => a.trim().replace(',', '.') === b.trim().replace(',', '.')
 
 const kmToMetersOrNull = (shown: string): number | null => {
   const km = parseKm(shown)
@@ -160,7 +165,7 @@ export function toWriteRequest(values: RunFormValues, base?: RunDto): RunWriteRe
     location: values.location
       ? { latitude: values.location.latitude, longitude: values.location.longitude, name: orNull(values.location.name) }
       : null,
-    distanceMeters: numberOrBase(values.distanceKm, base?.distanceMeters, formatKmInput, kmToMetersOrNull),
+    distanceMeters: numberOrBase(values.distanceKm, base?.distanceMeters, localKmInput, kmToMetersOrNull),
     durationSeconds: numberOrBase(values.duration, base?.durationSeconds, formatDuration, parseDuration),
     elevationGainMeters: numberOrBase(values.elevationGain, base?.elevationGainMeters, formatMetres, parseNonNegative),
     elevationLossMeters: numberOrBase(values.elevationLoss, base?.elevationLossMeters, formatMetres, parseNonNegative),
@@ -177,7 +182,7 @@ export function toWriteRequest(values: RunFormValues, base?: RunDto): RunWriteRe
           officialDistanceMeters: numberOrBase(
             race.officialDistanceKm,
             base?.race?.officialDistanceMeters,
-            formatKmInput,
+            localKmInput,
             kmToMetersOrNull,
           ),
           bibNumber: orNull(race.bibNumber),

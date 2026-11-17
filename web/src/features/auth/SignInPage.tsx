@@ -4,17 +4,19 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, useSearchParams } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { fetchClient } from '@/api/client'
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
 import { sanitizeReturnTo } from '@/auth/returnTo'
 import { isSignOutReason, signInWithEntra, startGuestSession, useEntraReady, useSession } from '@/auth/session'
 import { useClientConfig } from '@/auth/useClientConfig'
+import { toLanguage } from '@/i18n/language'
 import { parseProblem } from '@/lib/api/problem'
 import { SlowStartNotice } from './SlowStartNotice'
 import { guestCreationMessage } from './signInProblem'
 
 /** The only public route: "Try as guest" always, "Sign in" only when the API reports Entra settings (ADR 0015). */
 export function SignInPage() {
-  const { t } = useTranslation('auth')
+  const { t, i18n } = useTranslation('auth')
   const { t: tErrors } = useTranslation('errors')
   const [params] = useSearchParams()
   const session = useSession()
@@ -24,7 +26,9 @@ export function SignInPage() {
   // clock skew. Errors are thrown in the normalised problem shape, as $api does.
   const createGuest = useMutation({
     mutationFn: async () => {
-      const { data, error, response } = await fetchClient.POST('/api/guest-sessions', {})
+      // The guest is seeded in the UI language (ADR 0042 §3); the API rejects anything but en/pl, so only those go.
+      const lang = toLanguage(i18n.language) ?? 'en'
+      const { data, error, response } = await fetchClient.POST('/api/guest-sessions', { params: { query: { lang } } })
       if (error !== undefined || !data) throw error ?? new Error('Empty guest session response')
       return { ...data, serverDate: response.headers.get('Date') }
     },
@@ -73,6 +77,9 @@ export function SignInPage() {
 
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4 py-10">
+      <div className="flex justify-end">
+        <LanguageSwitcher />
+      </div>
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t('signIn.title')}</h1>
         <p className="text-muted-foreground">{t('signIn.intro')}</p>

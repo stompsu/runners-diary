@@ -9,7 +9,7 @@ import { diaryPath } from '@/features/diary/diaryMonth'
 import { NotFoundPage } from '@/features/errors/NotFoundPage'
 import { QueryError } from '@/features/errors/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
-import { compare, dayLabel, isValid } from '@/lib/dates/plainDate'
+import { capitalizeFirst, compare, dayLabel, isValid } from '@/lib/dates/plainDate'
 import '@/i18n/lazyBundles'
 import { useGoalList, useGoalsEnabled, useMonthSuggestions } from '@/features/calendar/suggestionQueries'
 import { SuggestionCard } from '@/features/goals/SuggestionCard'
@@ -57,7 +57,12 @@ function DayPanelView({ date }: { date: string }) {
   if (outsideGrid) return <NotFoundPage />
 
   return (
-    <ResponsiveDialog title={dayLabel(date, i18n.language)} onClose={close} restoreFocusDate={date} panel="day">
+    <ResponsiveDialog
+      title={capitalizeFirst(dayLabel(date, i18n.language), i18n.language)}
+      onClose={close}
+      restoreFocusDate={date}
+      panel="day"
+    >
       {failed ? (
         <QueryError
           error={failed.error}

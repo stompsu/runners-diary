@@ -1,5 +1,6 @@
 import createFetchClient, { type Middleware } from 'openapi-fetch'
 import createClient from 'openapi-react-query'
+import i18n from '@/i18n'
 import { bearerMatchesSession, getAccessToken, getSession, signOut } from '@/auth/session'
 import { parseRetryAfter } from '@/lib/api/problem'
 import type { paths } from './generated/schema'
@@ -25,13 +26,15 @@ export function isAnonymousEndpoint(method: string, url: string): boolean {
 
 /**
  * Auth + error-shape middleware, the only place that touches tokens.
- * - onRequest: bearer token from the session store (guest token or MSAL silent token).
+ * - onRequest: `Accept-Language` (UI language) on every call; bearer token from the session store (guest token or MSAL silent token).
  * - onResponse: a 401 on an authenticated request ends the session (the guard sends the user to /signin and
  *   Providers clears the query cache); failed responses get one error shape: a problem+json object, or `{ status }`
  *   for HTML/empty bodies (proxy 502/504), plus `retryAfterSeconds` from the `Retry-After` header.
  */
 export const authMiddleware: Middleware = {
   async onRequest({ request }) {
+    // The UI language, for the endpoints that localise (geocoder). The API reduces it to en/pl and never echoes it.
+    request.headers.set('Accept-Language', i18n.language)
     if (isAnonymousEndpoint(request.method, request.url)) return undefined
     const token = await getAccessToken()
     if (token) request.headers.set('Authorization', `Bearer ${token}`)
