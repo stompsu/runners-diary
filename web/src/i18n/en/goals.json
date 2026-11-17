@@ -93,6 +93,9 @@
       "targetPace": "That time implies a pace outside 2:30 to 15:00 /km.",
       "eventRequired": "Enter the event name.",
       "eventTooLong": "The event name can have at most 150 characters.",
+      "locationLatitude": "Choose a place on the map again: the latitude is out of range.",
+      "locationLongitude": "Choose a place on the map again: the longitude is out of range.",
+      "locationNameTooLong": "The place name can have at most 200 characters.",
       "notesTooLong": "Notes can have at most 1,000 characters."
     },
     "problem": {
@@ -132,6 +135,7 @@
     "targetTime": "Target time",
     "targetPace": "Target pace",
     "event": "Event",
+    "location": "Location",
     "notes": "Notes",
     "linkedRun": "Linked run",
     "viewRun": "Open the run",

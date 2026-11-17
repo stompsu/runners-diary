@@ -55,6 +55,32 @@ describe('goalSchema (mirror of the server rules)', () => {
     expect(toGoalRequest(valid({ type: 'Distance' })).targetDurationSeconds).toBeNull()
   })
 
+  it('checks the location like the server: latitude, longitude and a 200-character name', () => {
+    const at = (latitude: number, longitude: number, name = '') => valid({ location: { latitude, longitude, name } })
+    expect(issues(valid({ location: null }))).toEqual({})
+    expect(issues(at(90, 180, 'x'.repeat(200)))).toEqual({})
+    expect(issues(at(-90, -180))).toEqual({})
+    expect(issues(at(90.1, 0)).location).toBe('locationLatitude')
+    expect(issues(at(Number.NaN, 0)).location).toBe('locationLatitude')
+    expect(issues(at(0, -180.1)).location).toBe('locationLongitude')
+    const tooLong = goalSchema(TODAY).safeParse(at(50, 18, 'x'.repeat(201)))
+    expect(tooLong.success ? [] : tooLong.error.issues.map((i) => [i.path.join('.'), i.message])).toEqual([
+      ['location.name', 'locationNameTooLong'],
+    ])
+    // Also checked for a Distance goal, which skips the time rules.
+    expect(issues(valid({ type: 'Distance', location: { latitude: 91, longitude: 0, name: '' } })).location).toBe(
+      'locationLatitude',
+    )
+  })
+
+  it('applies the common rules (notes, title, location) to every type, Distance included', () => {
+    for (const type of ['Race', 'Performance', 'Distance'] as const) {
+      const base = valid({ type, targetTime: '0:55:00', eventName: 'Event' })
+      expect(issues({ ...base, notes: 'x'.repeat(1001) }).notes).toBe('notesTooLong')
+      expect(issues({ ...base, notes: 'x'.repeat(1000) }).notes).toBeUndefined()
+    }
+  })
+
   it('bounds the implied pace to 2:30-15:00 /km', () => {
     expect(
       issues(valid({ targetTime: '0:20:00' })).targetPace ?? issues(valid({ targetTime: '0:20:00' })).targetTime,
@@ -104,6 +130,19 @@ describe('mapping', () => {
       elevationGainMeters: null,
       targetDurationSeconds: null,
     })
+  })
+
+  it('maps the location both ways: a blank name is sent as null, no location as null', () => {
+    const withPlace: GoalDto = { ...goal, location: { latitude: 50.29, longitude: 18.67, name: 'Gliwice' } }
+    const values = toGoalFormValues(withPlace)
+    expect(values.location).toEqual({ latitude: 50.29, longitude: 18.67, name: 'Gliwice' })
+    expect(toGoalRequest(values).location).toEqual({ latitude: 50.29, longitude: 18.67, name: 'Gliwice' })
+    expect(toGoalRequest({ ...values, location: { ...values.location!, name: '  ' } }).location?.name).toBeNull()
+    expect(toGoalFormValues({ ...withPlace, location: { latitude: 1, longitude: 2, name: null } }).location?.name).toBe(
+      '',
+    )
+    expect(toGoalFormValues(goal).location).toBeNull()
+    expect(toGoalRequest(toGoalFormValues(goal)).location).toBeNull()
   })
 
   it('knows the presets and falls back to custom', () => {

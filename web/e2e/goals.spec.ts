@@ -8,6 +8,7 @@ import {
   seriousViolations,
   seriousViolationsIn,
   settled,
+  stubMapNetwork,
   test,
 } from './support.ts'
 
@@ -168,4 +169,36 @@ test('an AI error is shown as a friendly message and nothing changes', async ({ 
   expect(fake.suggestionsOf(token)).toHaveLength(0)
   await expect(page.getByRole('button', { name: 'Generate suggestions' })).toBeEnabled()
   expect(await seriousViolations(page)).toEqual([])
+})
+
+test('a goal gets a location from the map, shows it, and the location can be cleared again', async ({ page }) => {
+  const { fake, token } = await start(page)
+  await stubMapNetwork(page)
+  await page.goto('/goals/new')
+  await expect(page.getByRole('heading', { level: 1, name: 'New goal' })).toBeVisible()
+  await page.getByLabel('Target time (h:mm:ss)').fill('0:55:00')
+  await page.getByRole('button', { name: 'Pick on map' }).click()
+  const picker = page.getByRole('dialog', { name: 'Choose a location' })
+  const map = page.getByRole('region', { name: 'Map for choosing a location' })
+  await expect(map).toHaveAttribute('data-map-state', 'ready')
+  await map.locator('.maplibregl-canvas').click()
+  await picker.getByRole('button', { name: 'Use this location' }).click()
+  await expect(picker).toHaveCount(0)
+  await page.getByLabel('Place name').fill('Gliwice start line')
+  expect(await seriousViolations(page)).toEqual([])
+  await page.getByRole('button', { name: 'Save goal' }).click()
+
+  await expect(page.getByRole('heading', { level: 1, name: '10K' })).toBeVisible()
+  await expect(page.getByText(/Gliwice start line/)).toBeVisible()
+  const stored = fake.goalsOf(token)[0]?.location
+  expect(stored?.name).toBe('Gliwice start line')
+  expect(stored?.latitude).toBeGreaterThan(50.2)
+  expect(stored?.latitude).toBeLessThan(50.4)
+
+  await page.getByRole('link', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Clear location' }).click()
+  await page.getByRole('button', { name: 'Save goal' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: '10K' })).toBeVisible()
+  await expect(page.getByText(/Gliwice start line/)).toHaveCount(0)
+  expect(fake.goalsOf(token)[0]?.location).toBeNull()
 })

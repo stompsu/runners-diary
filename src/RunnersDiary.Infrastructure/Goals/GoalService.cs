@@ -61,15 +61,31 @@ public sealed class GoalService(
         }
 
         var max = currentUser.IsGuest ? options.Value.MaxGoalsPerGuest : options.Value.MaxGoalsPerUser;
-        if (await db.Goals.CountAsync(cancellationToken) >= max)
+
+        // The count and the insert run under the per-user goal lock, so two concurrent creates at cap-1 cannot both pass: the cap is hard.
+        var goal = await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            await GoalWriteLock.AcquireAsync(db, currentUser.UserId, cancellationToken);
+            if (await db.Goals.CountAsync(cancellationToken) >= max)
+            {
+                return null;
+            }
+
+            // The owner is always the caller (never from the request).
+            var created = Goal.Create(currentUser.UserId, values, today, linked, clock.GetUtcNow());
+            db.Goals.Add(created);
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return created;
+        });
+
+        if (goal is null)
         {
             return new GoalWriteResult(GoalWriteStatus.LimitReached);
         }
 
-        // The owner is always the caller (never from the request).
-        var goal = Goal.Create(currentUser.UserId, values, today, linked, clock.GetUtcNow());
-        db.Goals.Add(goal);
-        await db.SaveChangesAsync(cancellationToken);
         return new GoalWriteResult(GoalWriteStatus.Ok, (await ViewsAsync([goal], today, cancellationToken))[0]);
     }
 

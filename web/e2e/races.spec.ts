@@ -312,6 +312,9 @@ test.describe('accessibility (axe: serious and critical fail)', () => {
     await openDiary(page, `/diary/2026/11/races/${DEMO_RACE_IDS.silesianTrail}`)
     const dialog = detailsDialog(page, 'Demo Silesian Trail Weekend')
     await expect(dialog.getByRole('link', { name: /Open signup page/ })).toBeVisible()
+    // The dialog's map lazy-loads and shows a transient "Loading map…" note; axe must not see that intermediate state
+    // (it flaked on the note's contrast when axe ran first). The whole content, map included, is checked once ready.
+    await expect(dialog.locator('[data-map-state]')).toHaveAttribute('data-map-state', 'ready')
     expect(await seriousViolationsIn(page, '[role="dialog"]')).toEqual([])
     // With the signup form open.
     await dialog.getByRole('button', { name: 'I signed up' }).click()

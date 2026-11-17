@@ -20,6 +20,14 @@ import { SuggestionWeekList } from './SuggestionWeekList'
 import '@/i18n/lazyBundles'
 
 /**
+ * After a cancel, the second refresh waits this long. The abort reaches the server as a cancelled request, so a model
+ * call still running is stopped; what can still land is a plan whose model answer had just arrived, i.e. a short
+ * validate-and-commit (milliseconds to about a second). 5 s covers that with margin and still feels immediate; it is
+ * deliberately not tied to the 90 s attempt / 190 s total timeouts, which only bound a request that is not cancelled.
+ */
+export const CANCEL_REFRESH_DELAY_MS = 5000
+
+/**
  * The plan section of a goal (plan §5): Generate / Regenerate with a progress state for a request of up to ~3 minutes
  * (cancellable), the replace-other-goal confirmation, every problem type as a friendly message, the outdated and
  * capped notes and the suggestions by ISO week.
@@ -41,7 +49,18 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
   const attempt = useRef(0)
 
   // Leaving the page cancels a request that is still in flight (the server may still finish and store the plan, and a cancelled attempt counts toward the generation limit).
-  useEffect(() => () => controller.current?.abort(), [])
+  const lateRefresh = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearLateRefresh = () => {
+    if (lateRefresh.current !== null) clearTimeout(lateRefresh.current)
+    lateRefresh.current = null
+  }
+  useEffect(
+    () => () => {
+      controller.current?.abort()
+      if (lateRefresh.current !== null) clearTimeout(lateRefresh.current)
+    },
+    [],
+  )
 
   const aiAvailable = config.data?.ai?.planGeneration === true
   const eligible = goal.status === 'Active'
@@ -51,6 +70,7 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
 
   async function start(replaceOtherGoals: boolean) {
     const mine = ++attempt.current
+    clearLateRefresh() // a new attempt makes its own refresh the one that counts
     const abort = new AbortController()
     controller.current = abort
     setRunning(true)
@@ -87,6 +107,12 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
     setCancelled(true)
     // The abort can land after the model succeeded: the server then still commits the plan, so refresh what shows it.
     void invalidate()
+    // ...and once more shortly after, for a commit that lands after this first refresh.
+    clearLateRefresh()
+    lateRefresh.current = setTimeout(() => {
+      lateRefresh.current = null
+      void invalidate()
+    }, CANCEL_REFRESH_DELAY_MS)
   }
 
   function onGenerate() {

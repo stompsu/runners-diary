@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatCoordinates } from '@/features/runs/locationCoordinates'
 import { useGoalList } from '@/features/calendar/suggestionQueries'
 import { diaryPath } from '@/features/diary/diaryMonth'
 import { QueryError } from '@/features/errors/QueryError'
@@ -157,6 +158,14 @@ function GoalDetail({ goal, goals, today }: { goal: GoalDto; goals: readonly Goa
             <Row label={t('detail.targetTime')}>{formatDuration(goal.targetDurationSeconds)}</Row>
           ) : null}
           {pace ? <Row label={t('detail.targetPace')}>{pace}</Row> : null}
+          {goal.location ? (
+            <Row label={t('detail.location')}>
+              {goal.location.name ? <span className="font-medium">{goal.location.name} · </span> : null}
+              <span className="text-muted-foreground tabular-nums" data-testid="goal-location-coordinates">
+                {formatCoordinates(goal.location.latitude, goal.location.longitude)}
+              </span>
+            </Row>
+          ) : null}
           {goal.eventName ? <Row label={t('detail.event')}>{goal.eventName}</Row> : null}
           {goal.raceRunId && goal.raceRunDate ? (
             <Row label={t('detail.linkedRun')}>

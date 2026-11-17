@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using RunnersDiary.Api.Features.ClientConfig;
@@ -293,14 +294,41 @@ public sealed class ClientConfigEndpointTests(OfflineApiFactory factory) : IClas
         Assert.DoesNotContain("gpt-test", on, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Runs <paramref name="build"/> on a fresh host until it reports the startup failure. WebApplicationFactory's deferred host races the
+    /// failing entry point: when the host's start throws (here: options validation on start), the entry point disposes the host on its own
+    /// thread, and the factory may then touch the disposed service provider first and throw ObjectDisposedException instead of the real
+    /// exception (seen intermittently in full runs). That masks the failure but is not the behaviour under test, so it is retried.
+    /// </summary>
+    private static TException AssertStartupFails<TException>(Action<IWebHostBuilder> configure, OfflineApiFactory host)
+        where TException : Exception
+    {
+        const int attempts = 10;
+        for (var attempt = 1; ; attempt++)
+        {
+            using var failing = host.WithWebHostBuilder(configure);
+            try
+            {
+                failing.CreateClient();
+            }
+            catch (TException expected)
+            {
+                return expected;
+            }
+            catch (ObjectDisposedException) when (attempt < attempts)
+            {
+                continue;
+            }
+
+            throw new Xunit.Sdk.XunitException($"Expected {typeof(TException).Name} at startup, but the host started.");
+        }
+    }
+
     [Fact]
     public void The_fake_ai_provider_is_refused_outside_development_and_testing_and_a_bad_foundry_setup_fails_at_startup()
     {
-        using var fake = factory.WithWebHostBuilder(b => b.UseSetting("Ai:Provider", "Fake"));
-        using var noEndpoint = factory.WithWebHostBuilder(b => b.UseSetting("Ai:Provider", "Foundry"));
-
-        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() => fake.CreateClient());
-        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() => noEndpoint.CreateClient());
+        AssertStartupFails<Microsoft.Extensions.Options.OptionsValidationException>(b => b.UseSetting("Ai:Provider", "Fake"), factory);
+        AssertStartupFails<Microsoft.Extensions.Options.OptionsValidationException>(b => b.UseSetting("Ai:Provider", "Foundry"), factory);
     }
 
     [Theory]

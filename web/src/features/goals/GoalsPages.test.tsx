@@ -1,12 +1,13 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getFakeApi, resetFakeApi } from '@/test/fake'
 import { faults, PLAN_PROBLEMS, typeId, type RunWriteRequest } from '@/test/fakeApi'
 import { renderRoute, signInForTest } from '@/test/render'
 import { recordRequests } from '@/test/requests'
 import { stubResizeObserver } from '@/test/resizeObserver'
 import '@/i18n/lazyBundles'
+import { CANCEL_REFRESH_DELAY_MS } from './PlanSection'
 
 beforeEach(() => stubResizeObserver())
 
@@ -186,6 +187,61 @@ describe('Goal detail and plan section', () => {
     expect(screen.queryByRole('region', { name: /^Week \d+, from/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Generate suggestions' })).toBeEnabled()
     expect(token).toBeTruthy()
+  })
+
+  describe('the delayed second refresh after Cancel', () => {
+    afterEach(() => vi.useRealTimers())
+
+    // Only setTimeout is faked; real time still passes so waitFor and the fake API keep working.
+    const fakeTimeouts = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true })
+    const goalGets = (requests: ReturnType<typeof recordRequests>, id: string) =>
+      requests.filter((r) => r.method === 'GET' && r.path === `/api/goals/${id}`).length
+
+    it('refreshes again after the delay, once', async () => {
+      fakeTimeouts()
+      const { user, goal } = await detail()
+      getFakeApi().addFault(faults.delay({ method: 'POST', path: /\/plan$/ }, 60_000))
+      await user.click(await generateButton())
+      await screen.findByTestId('plan-progress')
+      const requests = recordRequests()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(goalGets(requests, goal.id)).toBe(1))
+
+      await vi.advanceTimersByTimeAsync(CANCEL_REFRESH_DELAY_MS - 100)
+      expect(goalGets(requests, goal.id)).toBe(1)
+      await vi.advanceTimersByTimeAsync(200)
+      await waitFor(() => expect(goalGets(requests, goal.id)).toBe(2))
+      await vi.advanceTimersByTimeAsync(CANCEL_REFRESH_DELAY_MS * 3)
+      expect(goalGets(requests, goal.id)).toBe(2)
+    })
+
+    it('a regenerate before the delay drops the pending refresh', async () => {
+      fakeTimeouts()
+      const { user, goal } = await detail()
+      getFakeApi().addFault(faults.delay({ method: 'POST', path: /\/plan$/ }, 60_000, 1))
+      await user.click(await generateButton())
+      await screen.findByTestId('plan-progress')
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await user.click(await generateButton())
+      await screen.findByRole('button', { name: 'Regenerate' })
+      const requests = recordRequests()
+      await vi.advanceTimersByTimeAsync(CANCEL_REFRESH_DELAY_MS * 2)
+      expect(goalGets(requests, goal.id)).toBe(0)
+    })
+
+    it('leaving the page drops the pending refresh', async () => {
+      fakeTimeouts()
+      const { user, goal, router } = await detail()
+      getFakeApi().addFault(faults.delay({ method: 'POST', path: /\/plan$/ }, 60_000))
+      await user.click(await generateButton())
+      await screen.findByTestId('plan-progress')
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await router.navigate('/goals')
+      await screen.findByRole('heading', { level: 1, name: 'Goals' })
+      const requests = recordRequests()
+      await vi.advanceTimersByTimeAsync(CANCEL_REFRESH_DELAY_MS * 2)
+      expect(goalGets(requests, goal.id)).toBe(0)
+    })
   })
 
   it('disables Generate with a reason when plan generation is off', async () => {
