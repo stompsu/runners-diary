@@ -12,7 +12,7 @@ test('try as guest -> seeded month -> add -> complete -> rate -> delete', async 
   await page.goto('/')
   await expect(page).toHaveURL(/\/signin/)
   const guestSession = page.waitForResponse(
-    (response) => response.url().endsWith('/api/guest-sessions') && response.request().method() === 'POST',
+    (response) => new URL(response.url()).pathname === '/api/guest-sessions' && response.request().method() === 'POST',
   )
   await page.getByRole('button', { name: 'Try as guest' }).click()
   expect((await guestSession).status()).toBe(201)
