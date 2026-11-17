@@ -50,7 +50,7 @@ export function MapView({ ariaLabel, provider, styleUrl, azureMapsDomain, classN
         </Suspense>
       )}
       {state === 'loading' && webGl && (
-        <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+        <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-foreground">
           {t('loading')}
         </p>
       )}

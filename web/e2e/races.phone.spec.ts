@@ -42,6 +42,8 @@ test('details open as a bottom sheet; the actions are touch sized; nothing scrol
   const sheet = page.getByRole('dialog', { name: 'Demo Silesian Trail Weekend' })
   await expect(sheet).toHaveAttribute('data-variant', 'sheet')
   await expect(sheet.getByRole('link', { name: /Open signup page/ })).toBeVisible()
+  // Axe must not see the lazy map's transient "Loading map…" note (same race as the desktop details test).
+  await expect(sheet.locator('[data-map-state]')).toHaveAttribute('data-map-state', 'ready')
 
   const box = (await sheet.boundingBox())!
   expect(box.x).toBeGreaterThanOrEqual(0)
