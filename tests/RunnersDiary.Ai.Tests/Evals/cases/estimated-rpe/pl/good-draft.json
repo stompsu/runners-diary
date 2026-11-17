@@ -1,0 +1,11 @@
+{
+  "headline": "Równy miesiąc – treningi: {totals.runCount}, dystans: {totals.distance}.",
+  "wentWell": [
+    { "text": "Wskaźnik obciążenia pozostał na poziomie {acwr.asOf.value} (przedział: {acwr.asOf.band})." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Zapisuj odczuwalny wysiłek (RPE) po każdym treningu, aby wartości obciążenia były dokładniejsze." },
+  "dataNotes": [
+    { "text": "Część obciążenia opiera się na szacowanym wysiłku: {dq.estimatedLoadShare}; treningi bez oceny: {dq.sessionsWithEstimatedRpe}." }
+  ]
+}

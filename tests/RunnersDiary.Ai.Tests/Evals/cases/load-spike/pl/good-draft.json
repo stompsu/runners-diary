@@ -1,0 +1,13 @@
+{
+  "headline": "Równy miesiąc z jednym wyraźnym skokiem obciążenia w tygodniu od {week.4.start}.",
+  "wentWell": [
+    { "text": "Liczba treningów: {totals.runCount}, łączny dystans: {totals.distance}." }
+  ],
+  "watchOuts": [
+    { "text": "W tygodniu od {week.4.start} obciążenie wzrosło do {week.4.load}, a wskaźnik ACWR do {week.4.acwrAtEnd} (przedział: {week.4.acwrBand}), wyraźnie powyżej twojego typowego obciążenia." }
+  ],
+  "suggestion": { "text": "Zwiększaj obciążenie tygodniowe mniejszymi krokami, a po mocnym tygodniu zaplanuj lżejszy." },
+  "dataNotes": [
+    { "text": "Do dnia {acwr.asOf.date} wskaźnik wrócił do {acwr.asOf.value} (przedział: {acwr.asOf.band})." }
+  ]
+}

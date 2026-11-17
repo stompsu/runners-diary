@@ -1,0 +1,11 @@
+{
+  "headline": "Dotychczas, do {period.asOf}: {totals.distance}, liczba treningów: {totals.runCount}.",
+  "wentWell": [
+    { "text": "Wskaźnik obciążenia wynosi {acwr.asOf.value} (przedział: {acwr.asOf.band}), więc treningi są blisko twojego typowego obciążenia." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Utrzymaj ten sam rytm do końca okresu." },
+  "dataNotes": [
+    { "text": "Okres jeszcze trwa; upłynęło: {period.elapsedDays} z {period.days}." }
+  ]
+}

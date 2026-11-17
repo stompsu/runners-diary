@@ -1,5 +1,5 @@
 {
-  "current": 2,
+  "current": 3,
   "factSheetVersion": 2,
   "versions": {
     "1": {
@@ -13,7 +13,16 @@
       "sha256": "318379f6975a0bc195078aaed9bb37b29592929e22bb2eee3eca6e9018d971b4",
       "estimatedLoadThreshold": 0.25,
       "denyList": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"]
+    },
+    "3": {
+      "file": "v3.md",
+      "sha256": "72d6f16d65354b0676eb2cb87e6dbcbc5c7c39ceff52a12880411bec563575a5",
+      "estimatedLoadThreshold": 0.25,
+      "denyList": {
+        "en": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"],
+        "pl": ["kontuzj*", "uraz*", "przetrenow*", "diagnoz*", "medyczn*", "chorob*", "zachorow*", "chory", "chora", "chore", "chorego", "chorej", "chorzy", "sercow*", "zawal", "zawalu", "zawalem", "zawaly", "zawalow", "zawalom", "zawalami", "zawalach", "lekarz*", "lekark*", "lekarsk*", "fizjoterap*", "bol", "bolu", "bolem", "bole", "bolow", "bolom", "bolami", "bolach", "boli", "bola", "bolal", "bolala", "bolalo", "bolaly", "bolec", "bolesn*", "obolal*", "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*", "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach", "zlaman* zmeczeniow*", "zlaman* kosc*", "peknieci*", "pekniet*", "ryzyko", "ryzyka", "ryzyku", "ryzykiem"]
+      }
     }
   },
-  "languages": ["en"]
+  "languages": ["en", "pl"]
 }

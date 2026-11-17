@@ -1,0 +1,9 @@
+{
+  "headline": "W drugim tygodniu miesiąca, od {week.4.start}, obciążenie wyraźnie wzrosło.",
+  "wentWell": [
+    { "text": "Liczba treningów: {totals.runCount}, łączny dystans: {totals.distance}." }
+  ],
+  "watchOuts": [],
+  "suggestion": null,
+  "dataNotes": []
+}

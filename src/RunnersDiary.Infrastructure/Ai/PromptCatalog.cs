@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 
 namespace RunnersDiary.Infrastructure.Ai;
 
@@ -63,17 +64,13 @@ public sealed class PromptCatalog
             }
 
             var current = m.GetProperty("current").GetInt32();
-            var languages = m.GetProperty("languages").EnumerateArray().Select(l => l.GetString()!).ToList();
-            if (languages.Count == 0)
-            {
-                throw new InvalidOperationException("The manifest lists no language.");
-            }
+            var languages = ReadLanguages(m, "The manifest");
+            var currentVersion = versions.TryGetValue(current, out var found)
+                ? found
+                : throw new InvalidOperationException($"The current prompt version {current} is not listed.");
+            EnsureDenyLists(currentVersion.Policy.LanguageDenyLists, languages, current);
 
-            return new PromptCatalog(
-                root,
-                versions.TryGetValue(current, out var currentVersion) ? currentVersion : throw new InvalidOperationException($"The current prompt version {current} is not listed."),
-                versions,
-                languages);
+            return new PromptCatalog(root, currentVersion, versions, languages);
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or FormatException)
         {
@@ -113,10 +110,82 @@ public sealed class PromptCatalog
             throw new InvalidOperationException($"Prompt '{file}' declares version {frontMatterVersion}, the manifest lists it as {version}.");
         }
 
-        var policy = new SummaryValidationPolicy(
-            entry.GetProperty("estimatedLoadThreshold").GetDouble(),
-            [.. entry.GetProperty("denyList").EnumerateArray().Select(d => d.GetString()!)]);
+        var (denyList, languageDenyLists) = ReadDenyList(entry.GetProperty("denyList"), version);
+        var policy = new SummaryValidationPolicy(entry.GetProperty("estimatedLoadThreshold").GetDouble(), denyList);
+        if (languageDenyLists is not null)
+        {
+            policy = policy with { LanguageDenyLists = languageDenyLists };
+        }
+
         return new PromptVersion(version, instructions, actual, policy);
+    }
+
+    /// <summary>
+    /// A version's <c>denyList</c> (shared with <see cref="PlanPromptCatalog"/>): a flat array is the English list (v1/v2; the validators then use
+    /// their built-in lists for other languages), an object <c>{ "en": [...], "pl": [...] }</c> (v3, ADR 0043 §3) gives one list per language.
+    /// The object must have <c>en</c>, and every other member must be a language the validators have rules for.
+    /// </summary>
+    internal static (IReadOnlyList<string> English, IReadOnlyDictionary<string, IReadOnlyList<string>>? Others) ReadDenyList(JsonElement denyList, int version)
+    {
+        static List<string> Entries(JsonElement list) => [.. list.EnumerateArray().Select(d => d.GetString() ?? throw new FormatException("A deny entry is null."))];
+
+        if (denyList.ValueKind == JsonValueKind.Array)
+        {
+            return (Entries(denyList), null);
+        }
+
+        if (denyList.ValueKind != JsonValueKind.Object)
+        {
+            throw new FormatException($"v{version}: denyList must be an array or an object per language.");
+        }
+
+        IReadOnlyList<string>? english = null;
+        var others = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var member in denyList.EnumerateObject())
+        {
+            if (member.Name == NarrativeLanguages.English)
+            {
+                english = Entries(member.Value);
+            }
+            else if (NarrativeLanguages.IsSupported(member.Name))
+            {
+                others[member.Name] = Entries(member.Value);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Prompt v{version}: the deny list names '{member.Name}', a language without validator rules.");
+            }
+        }
+
+        return (english ?? throw new InvalidOperationException($"Prompt v{version}: the deny list has no 'en' entry."), others);
+    }
+
+    /// <summary>Every non-English manifest language has a deny list in the current version (ADR 0043 §3: <c>pl</c> applies en ∪ pl).</summary>
+    internal static void EnsureDenyLists(IReadOnlyDictionary<string, IReadOnlyList<string>> languageDenyLists, IEnumerable<string> languages, int current)
+    {
+        if (languages.FirstOrDefault(l => l != NarrativeLanguages.English && !languageDenyLists.ContainsKey(l)) is { } missing)
+        {
+            throw new InvalidOperationException($"Prompt v{current} has no deny list for '{missing}'.");
+        }
+    }
+
+    /// <summary>The manifest's <c>languages</c>: not empty, no duplicates, each one with validator rules (<see cref="NarrativeLanguages"/>).</summary>
+    internal static List<string> ReadLanguages(JsonElement manifest, string what)
+    {
+        var languages = manifest.GetProperty("languages").EnumerateArray().Select(l => l.GetString() ?? string.Empty).ToList();
+        if (languages.Count == 0)
+        {
+            throw new InvalidOperationException($"{what} lists no language.");
+        }
+
+        if (languages.FirstOrDefault(l => !NarrativeLanguages.IsSupported(l)) is { } unknown)
+        {
+            throw new InvalidOperationException($"{what} lists '{unknown}', a language without validator rules.");
+        }
+
+        return languages.Count == languages.Distinct(StringComparer.Ordinal).Count()
+            ? languages
+            : throw new InvalidOperationException($"{what} lists a language twice.");
     }
 
     /// <summary>The <c>version</c> of a prompt file's front matter and the instructions after it (shared with <see cref="PlanPromptCatalog"/>).</summary>

@@ -54,7 +54,7 @@ internal static class EvalRunner
         var result = await harness.Generate(evalCase.Sheet);
         var row = harness.Generations.Rows.SingleOrDefault();
         var failures = result.Summary is { } summary ? EvalAssertions.Failures(evalCase, summary.Draft) : [];
-        var policy = harness.Agents.Agent!.Prompt.Policy;
+        var policy = harness.Agents.Agent!.Prompt.Policy.ForLanguage(evalCase.Sheet.Language);
         var attempts = recorder.Take().Select(text => new EvalAttempt(text, SummaryValidator.Validate(text, evalCase.Sheet, policy).Result.Violations)).ToList();
         return new EvalOutcome(evalCase, result, failures, row?.InputTokens ?? 0, row?.OutputTokens ?? 0, attempts);
     }

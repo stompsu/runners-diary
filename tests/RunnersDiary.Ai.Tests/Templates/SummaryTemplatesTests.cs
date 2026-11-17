@@ -12,6 +12,11 @@ public sealed class SummaryTemplatesTests
     private static readonly SummaryTemplateSet English =
         SummaryTemplateSet.Parse(File.ReadAllText(Path.Combine(RepoPaths.Prompts, "templates", "en.json")));
 
+    private static readonly SummaryTemplateSet Polish =
+        SummaryTemplateSet.Parse(File.ReadAllText(Path.Combine(RepoPaths.Prompts, "templates", "pl.json")));
+
+    private static readonly SummaryValidationPolicy PolishPolicy = SummaryValidationPolicy.Default.ForLanguage("pl");
+
     [Fact]
     public void Wholly_future_period_is_planned_only_even_with_history()
     {
@@ -142,4 +147,76 @@ public sealed class SummaryTemplatesTests
         const string json = """{ "version": 1, "language": "en", "templates": { "empty": { "headline": "x", "wentWell": [], "watchOuts": [], "suggestion": null, "dataNotes": [] } } }""";
         Assert.Throws<DomainRuleException>(() => SummaryTemplateSet.Parse(json));
     }
+
+    // ---- Polish (ADR 0043 §4) ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Polish_file_has_every_template_with_the_same_variants_as_english()
+    {
+        Assert.Equal("pl", Polish.Language);
+        foreach (var kind in Enum.GetValues<SummaryTemplateKind>())
+        {
+            var variants = Polish.Variants(kind);
+            Assert.Equal(English.Variants(kind).Select(v => v.When), variants.Select(v => v.When));
+            Assert.Empty(variants[^1].When);
+        }
+    }
+
+    [Theory]
+    [InlineData(EvalCases.EmptyMonth, SummaryTemplateKind.Empty)]
+    [InlineData(EvalCases.WhollyFuture, SummaryTemplateKind.PlannedOnly)]
+    public void Polish_template_validates_with_the_polish_rules_and_resolves_against_its_case(string name, SummaryTemplateKind kind)
+    {
+        var sheet = EvalCases.Get(name, "pl").Sheet;
+        var draft = Polish.Get(kind, sheet);
+
+        var result = SummaryValidator.Validate(draft, sheet, PolishPolicy);
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Empty(LanguageCheck.EnglishWords(draft.Texts().Select(t => t.Text)));
+        Assert.Equal(
+            English.Get(kind, EvalCases.Get(name).Sheet).Texts().SelectMany(t => Placeholders.Scan(t.Text).Keys).Order(StringComparer.Ordinal),
+            draft.Texts().SelectMany(t => Placeholders.Scan(t.Text).Keys).Order(StringComparer.Ordinal));
+        Assert.NotEmpty(SummaryValues.Resolve(draft, sheet).Values);
+    }
+
+    /// <summary>The counts are 0/1/2 (fewer than 3 sessions), so the equality predicates give the Polish noun forms: "1 wykonany trening", "2 wykonane treningi".</summary>
+    [Theory]
+    [InlineData(1, true, "Na razie tylko jeden trening w okresie", "Masz za sobą {dq.completedSessions} wykonany trening,")]
+    [InlineData(2, true, "Na razie tylko kilka treningów w okresie", "Masz za sobą {dq.completedSessions} wykonane treningi,")]
+    [InlineData(1, false, "Tylko jeden trening w okresie", "W tym okresie: {dq.completedSessions} wykonany trening,")]
+    [InlineData(2, false, "Tylko kilka treningów w okresie", "W tym okresie: {dq.completedSessions} wykonane treningi,")]
+    public void Polish_few_sessions_template_agrees_with_the_count(int sessions, bool partial, string headline, string item)
+    {
+        var log = new Training();
+        for (var i = 0; i < sessions; i++)
+        {
+            log.Run(D("2026-03-02").AddDays(2 * i), "easy", 8000, 2880, 3);
+        }
+
+        var report = log.Report(D("2026-03-01"), D("2026-03-31"), partial ? D("2026-03-10") : D("2026-04-30"));
+        var sheet = FactSheetBuilder.Build(report, "pl");
+        var draft = Polish.Get(SummaryTemplateKind.FewSessions, sheet);
+
+        var result = SummaryValidator.Validate(draft, sheet, PolishPolicy);
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.StartsWith(headline, draft.Headline, StringComparison.Ordinal);
+        Assert.StartsWith(item, Assert.Single(draft.WentWell).Text, StringComparison.Ordinal);
+        Assert.Equal(sessions, SummaryValues.Resolve(draft, sheet).Values["dq.completedSessions"].Number);
+    }
+
+    [Theory]
+    [InlineData(true, "Na razie brak wykonanych treningów w okresie od {period.from} do {period.to}.")]
+    [InlineData(false, "Brak wykonanych treningów w okresie od {period.from} do {period.to}.")]
+    public void Polish_empty_template_says_na_razie_only_for_a_partial_period(bool partial, string headline)
+    {
+        var log = new Training().Weeks(D("2026-01-05"), 7);
+        var report = log.Report(D("2026-03-01"), D("2026-03-31"), partial ? D("2026-03-20") : D("2026-04-10"));
+        var sheet = FactSheetBuilder.Build(report, "pl");
+
+        var draft = Polish.Get(SummaryTemplateKind.Empty, sheet);
+
+        Assert.Equal(headline, draft.Headline);
+        Assert.True(SummaryValidator.Validate(draft, sheet, PolishPolicy).IsValid);
+    }
 }
+

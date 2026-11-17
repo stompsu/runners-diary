@@ -1,8 +1,12 @@
+using RunnersDiary.Ai.Tests.Support;
 using RunnersDiary.Domain.Insights.Narrative;
 
 namespace RunnersDiary.Ai.Tests.Evals;
 
-/// <summary>Case-level checks shared by the CI (scripted) and live evals: required keys are cited, forbidden ones are not.</summary>
+/// <summary>
+/// Case-level checks shared by the CI (scripted) and live evals: required keys are cited, forbidden ones are not, and a Polish case is written
+/// in Polish (<see cref="LanguageCheck"/>, a prompt-quality metric, not a validator rule; ADR 0043 §5).
+/// </summary>
 internal static class EvalAssertions
 {
     public static List<string> Failures(EvalCase evalCase, SummaryDraft draft)
@@ -24,6 +28,11 @@ internal static class EvalAssertions
             {
                 failures.Add($"{prohibition.Section} must not cite [{string.Join(", ", hits)}].");
             }
+        }
+
+        if (evalCase.Language == "pl" && LanguageCheck.PolishFailure(draft.Texts().Select(t => t.Text)) is { } language)
+        {
+            failures.Add(language);
         }
 
         return failures;

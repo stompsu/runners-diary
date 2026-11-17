@@ -33,7 +33,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         { "?from=1949-12-31&to=1950-01-05", "from" },
         { "?from=2025-03-03&to=2025-03-16&compare=bogus", "compare" },
         { "?from=2025-03-03&to=2025-03-16&compare=Previous", "compare" },
-        { "?from=2025-03-03&to=2025-03-16&lang=pl", "lang" },
+        { "?from=2025-03-03&to=2025-03-16&lang=de", "lang" },
         { "?from=2025-03-03&to=2025-03-16&lang=", "lang" },
         { "?from=2025-03-03&to=2025-03-16&lang=EN", "lang" },
     };
@@ -60,7 +60,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         { """{"from":"2025-01-01","to":"2026-01-02"}""", "to" },
         { """{"from":"2025-03-03","to":"2025-03-16","compare":"Previous"}""", "compare" },
         { """{"from":"2025-03-03","to":"2025-03-16","compare":"bogus"}""", "compare" },
-        { """{"from":"2025-03-03","to":"2025-03-16","lang":"pl"}""", "lang" },
+        { """{"from":"2025-03-03","to":"2025-03-16","lang":"de"}""", "lang" },
         { """{"from":"2025-03-03","to":"2025-03-16","regenerate":"yes"}""", "regenerate" },
         { """{"from":"2025-03-03","to":"2025-03-16","userId":"00000000-0000-0000-0000-000000000001"}""", "userId" },
         { """{"from":"2025-03-03","to":"2025-03-16","extra":1}""", "extra" },
@@ -247,7 +247,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
         var summary = created.GetProperty("summary");
         Assert.Equal("model", summary.GetProperty("source").GetString());
         Assert.Equal("scripted-model", summary.GetProperty("model").GetString());
-        Assert.Equal(2, summary.GetProperty("promptVersion").GetInt32());
+        Assert.Equal(3, summary.GetProperty("promptVersion").GetInt32());
         Assert.Equal(1, summary.GetProperty("metricsVersion").GetInt32());
         Assert.NotEqual(JsonValueKind.Null, summary.GetProperty("createdAt").ValueKind);
         Assert.Contains("{period.from}", summary.GetProperty("headline").GetProperty("text").GetString(), StringComparison.Ordinal);
@@ -256,7 +256,7 @@ public sealed class InsightsSummaryEndpointTests(ContainersApiFactory factory)
 
         var row = Assert.Single(await host.SummariesAsync(userId));
         Assert.Equal(32, row.Fingerprint.Length);
-        Assert.Equal((short)2, row.PromptVersion);
+        Assert.Equal((short)3, row.PromptVersion);
         Assert.Equal("gpt-test", row.ModelDeployment);
         Assert.Equal(1234, row.InputTokens);
         Assert.Equal(321, row.OutputTokens);

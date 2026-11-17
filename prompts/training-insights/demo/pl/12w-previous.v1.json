@@ -1,0 +1,37 @@
+{
+  "preset": "12w-previous",
+  "language": "pl",
+  "version": 1,
+  "factSheetVersion": 2,
+  "requires": [
+    { "key": "comparison.delta.distance.percent", "op": "gt", "value": 0 },
+    { "key": "races.completedCount", "op": "gte", "value": 2 },
+    { "key": "race.1.status", "op": "eq", "value": "completed" },
+    { "key": "race.1.type", "op": "eq", "value": "roadRace" },
+    { "key": "race.1.category", "op": "eq", "value": "halfMarathon" },
+    { "key": "race.1.isPersonalBest", "op": "eq", "value": true },
+    { "key": "race.1.resultTime", "op": "exists" },
+    { "key": "pace.slope", "op": "lt", "value": 0 },
+    { "key": "week.1.acwrBand", "op": "eq", "value": "high" },
+    { "key": "week.4.acwrBand", "op": "eq", "value": "low" },
+    { "key": "week.5.raceType", "op": "eq", "value": "roadRace" },
+    { "key": "acwr.peak.isRaceWeek", "op": "eq", "value": true },
+    { "key": "acwr.peak.raceType", "op": "eq", "value": "trailRace" }
+  ],
+  "summary": {
+    "headline": "Równy blok treningowy z większym dystansem niż wcześniej i rekordem życiowym: {race.1.category}, {race.1.date}.",
+    "wentWell": [
+      { "text": "Łącznie: {totals.distance}, liczba treningów: {totals.runCount}. Zmiana dystansu względem poprzedniego okresu: {comparison.delta.distance.percent}." },
+      { "text": "Start z dnia {race.1.date} ({race.1.category}) zakończył się rekordem życiowym: {race.1.resultTime}." },
+      { "text": "Tempo spokojnych biegów przyspieszało ({pace.slope}); w tygodniu od {pace.last.week} wyniosło {pace.last.pace}." }
+    ],
+    "watchOuts": [
+      { "text": "W tygodniu od {week.1.start} obciążenie wzrosło do {week.1.load}, a wskaźnik ACWR do {week.1.acwrAtEnd} (przedział: {week.1.acwrBand}), powyżej twojego typowego obciążenia." }
+    ],
+    "suggestion": { "text": "Utrzymuj spokojne dni naprawdę spokojnymi i zwiększaj obciążenie tygodniowe stopniowo, tak aby pozostawało blisko twojego typowego poziomu." },
+    "dataNotes": [
+      { "text": "Niski wskaźnik w tygodniu od {week.4.start} wynikał z lżejszego tygodnia przed startem ({race.1.category}): to tapering, a nie spadek formy." },
+      { "text": "Najwyższy wskaźnik wyniósł {acwr.peak.value} ({acwr.peak.date}) i wynika ze startu ({acwr.peak.raceType}), a nie ze skoku obciążenia treningowego." }
+    ]
+  }
+}

@@ -59,19 +59,13 @@ public sealed class PlanPromptCatalog
             }
 
             var current = m.GetProperty("current").GetInt32();
-            var languages = m.GetProperty("languages").EnumerateArray().Select(l => l.GetString()!).ToList();
-            if (languages.Count == 0)
-            {
-                throw new InvalidOperationException("The plan manifest lists no language.");
-            }
+            var languages = PromptCatalog.ReadLanguages(m, "The plan manifest");
+            var currentVersion = versions.TryGetValue(current, out var found)
+                ? found
+                : throw new InvalidOperationException($"The current plan prompt version {current} is not listed.");
+            PromptCatalog.EnsureDenyLists(currentVersion.Policy.LanguageDenyLists, languages, current);
 
-            return new PlanPromptCatalog(
-                root,
-                versions.TryGetValue(current, out var currentVersion)
-                    ? currentVersion
-                    : throw new InvalidOperationException($"The current plan prompt version {current} is not listed."),
-                versions,
-                languages);
+            return new PlanPromptCatalog(root, currentVersion, versions, languages);
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or FormatException)
         {
@@ -103,7 +97,13 @@ public sealed class PlanPromptCatalog
             throw new InvalidOperationException($"Plan prompt '{file}' declares version {frontMatterVersion}, the manifest lists it as {version}.");
         }
 
-        var policy = new PlanValidationPolicy([.. entry.GetProperty("denyList").EnumerateArray().Select(d => d.GetString()!)]);
+        var (denyList, languageDenyLists) = PromptCatalog.ReadDenyList(entry.GetProperty("denyList"), version);
+        var policy = new PlanValidationPolicy(denyList);
+        if (languageDenyLists is not null)
+        {
+            policy = policy with { LanguageDenyLists = languageDenyLists };
+        }
+
         return new PlanPromptVersion(version, instructions, actual, policy);
     }
 }

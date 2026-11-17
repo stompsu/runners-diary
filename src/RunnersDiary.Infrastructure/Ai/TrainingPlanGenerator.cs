@@ -81,6 +81,8 @@ public sealed partial class TrainingPlanGenerator(
             return new PlanGenerationResult(GenerationStatus.Failed, Failure: GenerationFailure.Provider);
         }
 
+        // The rules of the plan's language (ADR 0043 §3): the en ∪ pl deny list for Polish texts.
+        var policy = agent.Prompt.Policy.ForLanguage(request.Sheet.Language);
         IReadOnlyList<PlanViolation>? rejected = null;
         var details = new List<PlanAttemptDetails>();
         var run = await runner.RunAsync<PlanValidation>(
@@ -89,7 +91,7 @@ public sealed partial class TrainingPlanGenerator(
             async ct =>
             {
                 var attempt = await agent.RunAsync(factSheetJson, request.Sheet.Language, rejected, ct);
-                var validation = TrainingPlanValidator.Validate(attempt.Text, request.Sheet, agent.Prompt.Policy);
+                var validation = TrainingPlanValidator.Validate(attempt.Text, request.Sheet, policy);
                 details.Add(Details(details.Count + 1, attempt, validation));
                 if (validation.IsValid)
                 {

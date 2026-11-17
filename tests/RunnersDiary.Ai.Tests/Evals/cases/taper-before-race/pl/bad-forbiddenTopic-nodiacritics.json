@@ -1,0 +1,9 @@
+{
+  "headline": "Okres przygotowań zakończony startem: {race.1.category}, {race.1.date}.",
+  "wentWell": [
+    { "text": "Wynik startu: {race.1.resultTime}." }
+  ],
+  "watchOuts": [],
+  "suggestion": { "text": "Uwazaj po starcie, zeby uniknac kontuzji." },
+  "dataNotes": []
+}

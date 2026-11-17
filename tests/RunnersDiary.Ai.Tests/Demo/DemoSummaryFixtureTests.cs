@@ -12,6 +12,9 @@ public sealed class DemoSummaryFixtureTests
     private static readonly DemoSummaryFixture Fixture =
         DemoSummaryFixture.Parse(File.ReadAllText(Path.Combine(RepoPaths.Prompts, "demo", "en", "12w-previous.v1.json")));
 
+    private static readonly DemoSummaryFixture PolishFixture =
+        DemoSummaryFixture.Parse(File.ReadAllText(Path.Combine(RepoPaths.Prompts, "demo", "pl", "12w-previous.v1.json")));
+
     [Theory]
     [MemberData(nameof(DemoFacts.EveryDayOf2028), MemberType = typeof(DemoFacts))]
     public void Predicates_hold_and_the_fixture_validates_for_every_today(DateOnly today)
@@ -103,4 +106,31 @@ public sealed class DemoSummaryFixtureTests
         Assert.False(new FactPredicate("a.missing", PredicateOperator.Exists, null).Holds(sheet));
         Assert.False(new FactPredicate("a.n", PredicateOperator.Eq, FactValue.Of("2")).Holds(sheet));
     }
+
+    // ---- Polish (ADR 0043 §4) ------------------------------------------------------------------------------------------
+
+    [Theory]
+    [MemberData(nameof(DemoFacts.EveryDayOf2028), MemberType = typeof(DemoFacts))]
+    public void Polish_fixture_holds_and_validates_with_the_polish_rules_for_every_today(DateOnly today)
+    {
+        var sheet = FactSheetBuilder.Build(DemoFacts.TwelveWeeks(today), "pl");
+
+        Assert.Null(PolishFixture.FirstFailing(sheet));
+        var result = SummaryValidator.Validate(PolishFixture.Draft, sheet, SummaryValidationPolicy.Default.ForLanguage("pl"));
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+    }
+
+    /// <summary>Same preset, same claims (predicates) and the same cited keys per section as the English fixture; written in Polish.</summary>
+    [Fact]
+    public void Polish_fixture_makes_the_same_claims_as_the_english_one()
+    {
+        Assert.Equal((DemoPresets.TwelveWeeksPrevious, "pl", Fixture.Version, FactSheet.CurrentVersion), (PolishFixture.Preset, PolishFixture.Language, PolishFixture.Version, PolishFixture.FactSheetVersion));
+        Assert.Equal(Fixture.Requires, PolishFixture.Requires);
+        Assert.Equal(Keys(Fixture.Draft), Keys(PolishFixture.Draft));
+        Assert.Empty(LanguageCheck.EnglishWords(PolishFixture.Draft.Texts().Select(t => t.Text)));
+
+        static List<string> Keys(SummaryDraft draft) =>
+            [.. draft.Texts().Select(t => t.Location.Split('.')[0] + ":" + string.Join(",", Placeholders.Scan(t.Text).Keys.Order(StringComparer.Ordinal)))];
+    }
 }
+

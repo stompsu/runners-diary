@@ -12,7 +12,33 @@ internal static class EvalFiles
 
     public static string CaseDirectory(string name) => Path.Combine(CasesDirectory, name);
 
+    /// <summary>English drafts sit in the case directory, the drafts of another language in its <c>&lt;lang&gt;/</c> subdirectory.</summary>
+    public static string CaseDirectory(string name, string language) => language == "en" ? CaseDirectory(name) : Path.Combine(CaseDirectory(name), language);
+
     public static string GoodDraft(string name) => File.ReadAllText(Path.Combine(CaseDirectory(name), "good-draft.json"));
+
+    public static string GoodDraft(string name, string language) => File.ReadAllText(Path.Combine(CaseDirectory(name, language), "good-draft.json"));
+
+    /// <summary>The adversarial drafts of a non-English language: <c>cases/&lt;case&gt;/&lt;lang&gt;/bad-*.json</c>.</summary>
+    public static TheoryData<string, string> BadDrafts(string language)
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var caseDir in Directory.GetDirectories(CasesDirectory).Order(StringComparer.Ordinal))
+        {
+            var dir = Path.Combine(caseDir, language);
+            if (Directory.Exists(dir))
+            {
+                foreach (var file in Directory.GetFiles(dir, "bad-*.json").Order(StringComparer.Ordinal))
+                {
+                    data.Add(Path.GetFileName(caseDir), Path.GetFileName(file));
+                }
+            }
+        }
+
+        return data;
+    }
+
+    public static TheoryData<string, string> PolishBadDrafts() => BadDrafts("pl");
 
     /// <summary>Adversarial drafts: <c>bad-&lt;ruleCode&gt;[-variant].json</c> with the rule code they must violate.</summary>
     public static TheoryData<string, string> BadDrafts()

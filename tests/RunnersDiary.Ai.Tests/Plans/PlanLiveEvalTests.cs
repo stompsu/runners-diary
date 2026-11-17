@@ -17,7 +17,9 @@ namespace RunnersDiary.Ai.Tests.Plans;
 /// Pass: valid within two attempts and the case's plan checks hold. Prints per run the attempts, input/output tokens (vs the 8,000 cap) and the
 /// cost at gpt-5.4-mini Global Standard prices ($0.75 / $4.50 per 1M; failed attempts included), and per answered attempt the finish reason
 /// (<c>length</c> = cut at the cap), kept/dropped sessions and the violated rules with counts and locations. <c>RD_AI_LIVE_CASES</c> and
-/// <c>RD_AI_LIVE_RUNS</c> work as for the summary evals.
+/// <c>RD_AI_LIVE_RUNS</c> work as for the summary evals. Every case runs in <c>en</c> and <c>pl</c> (M10 gate G-L1, ADR 0043 §5): the plan
+/// fact sheet's <c>language</c> is set, and a Polish plan whose notes and descriptions read as English fails the run
+/// (<see cref="LanguageCheck"/>); <c>RD_AI_LIVE_LANGUAGES=pl</c> runs only the listed languages.
 /// <para>
 /// <c>RD_AI_LIVE_DUMP_DIR=&lt;dir&gt;</c> (optional, local inspection only) writes, per invocation, <c>&lt;dir&gt;/&lt;timestamp&gt;/&lt;case&gt;/</c>
 /// with the fact sheet, the raw model JSON of every answered attempt and the retry note sent before each retry. The data is the synthetic
@@ -45,24 +47,44 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
         Environment.GetEnvironmentVariable("RD_AI_LIVE_CASES") is not { Length: > 0 } cases
         || cases.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Contains(name, StringComparer.Ordinal);
 
+    private static bool LanguageSelected(string language) =>
+        Environment.GetEnvironmentVariable("RD_AI_LIVE_LANGUAGES") is not { Length: > 0 } languages
+        || languages.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Contains(language, StringComparer.Ordinal);
+
+    public static TheoryData<string, string> NamesByLanguage()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var language in new[] { "en", "pl" })
+        {
+            foreach (var c in PlanEvalCases.All)
+            {
+                data.Add(c.Name, language);
+            }
+        }
+
+        return data;
+    }
+
     [Theory]
-    [MemberData(nameof(PlanEvalCases.Names), MemberType = typeof(PlanEvalCases))]
-    public async Task Live_plan_case_passes_three_times(string name)
+    [MemberData(nameof(NamesByLanguage))]
+    public async Task Live_plan_case_passes_three_times(string name, string language)
     {
         Assert.SkipUnless(Enabled, "Live eval is opt-in: set RD_AI_LIVE_EVAL=1, RD_AI_ENDPOINT and RD_AI_DEPLOYMENT.");
         Assert.SkipUnless(Selected(name), "Not selected by RD_AI_LIVE_CASES.");
+        Assert.SkipUnless(LanguageSelected(language), "Not selected by RD_AI_LIVE_LANGUAGES.");
         var endpoint = Environment.GetEnvironmentVariable("RD_AI_ENDPOINT") ?? throw new InvalidOperationException("RD_AI_ENDPOINT is not set.");
         var deployment = Environment.GetEnvironmentVariable("RD_AI_DEPLOYMENT") ?? throw new InvalidOperationException("RD_AI_DEPLOYMENT is not set.");
         var options = new AiOptions { Provider = AiProvider.Foundry, Foundry = { Endpoint = endpoint, Deployment = deployment } };
         using var inner = ChatClientFactory.CreateFoundryClient(options);
         var c = PlanEvalCases.Get(name);
+        var sheet = c.Sheet with { Language = language };
 
         string? dumpDir = null;
         if (DumpRoot is { } root)
         {
-            dumpDir = Path.Combine(root, Stamp, name);
+            dumpDir = Path.Combine(root, Stamp, $"{name}-{language}");
             Directory.CreateDirectory(dumpDir);
-            await File.WriteAllTextAsync(Path.Combine(dumpDir, "factsheet.json"), PlanFactSheetJson.ToJson(c.Sheet), TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(dumpDir, "factsheet.json"), PlanFactSheetJson.ToJson(sheet), TestContext.Current.CancellationToken);
             output.WriteLine($"{name}: dumping raw attempts to {dumpDir}");
         }
 
@@ -81,13 +103,13 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
                 o.Foundry = options.Foundry;
             }, deployment);
             var started = DateTimeOffset.UtcNow;
-            var result = await harness.Generate(c.Sheet);
+            var result = await harness.Generate(sheet);
             var seconds = (DateTimeOffset.UtcNow - started).TotalSeconds;
             var cost = Cost(result.InputTokens, result.OutputTokens);
             totalCost += cost;
             var retried = result.Status == GenerationStatus.Succeeded && result.Attempts > 1;
             output.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                $"{name} #{run + 1}: {result.Status} {result.Failure} attempts {result.Attempts}{(retried ? " (rescued by the retry)" : "")}, {result.InputTokens} in / {result.OutputTokens} out tokens (cap {options.Plan.MaxOutputTokens}), {seconds:0} s, ${cost:0.0000}"));
+                $"{name} ({language}) #{run + 1}: {result.Status} {result.Failure} attempts {result.Attempts}{(retried ? " (rescued by the retry)" : "")}, {result.InputTokens} in / {result.OutputTokens} out tokens (cap {options.Plan.MaxOutputTokens}), {seconds:0} s, ${cost:0.0000}"));
             if (result.Status != GenerationStatus.Succeeded || result.Attempts > 1 || (result.AttemptDetails ?? []).Any(a => a.Repairs.Count > 0))
             {
                 WriteAttempts(result, options.Plan.MaxOutputTokens);
@@ -95,15 +117,26 @@ public sealed class PlanLiveEvalTests(ITestOutputHelper output)
 
             if (result.Status == GenerationStatus.Succeeded)
             {
-                c.AssertPlan(result.Plan!, c.Sheet);
+                c.AssertPlan(result.Plan!, sheet);
                 output.WriteLine($"  {result.Plan!.Kept.Count} sessions, {result.Plan.DroppedCount} dropped; notes: {result.Plan.Notes}");
+                foreach (var description in result.Plan.Kept.Select(s => s.Description).Distinct(StringComparer.Ordinal).Take(5))
+                {
+                    output.WriteLine($"  description: {description}");
+                }
+
+                if (language == "pl" && LanguageCheck.PolishFailure(result.Plan.Kept.Select(s => s.Description).Append(result.Plan.Notes ?? string.Empty)) is { } failure)
+                {
+                    output.WriteLine($"  FAIL language: {failure}");
+                    continue;
+                }
+
                 passed++;
                 rescued += retried ? 1 : 0;
             }
         }
 
         output.WriteLine(string.Create(CultureInfo.InvariantCulture,
-            $"{name}: {passed}/{Runs} passed, {rescued} rescued by the retry, total ${totalCost:0.0000} (failed attempts included)"));
+            $"{name} ({language}): {passed}/{Runs} passed, {rescued} rescued by the retry, total ${totalCost:0.0000} (failed attempts included)"));
         Assert.Equal(Runs, passed);
     }
 

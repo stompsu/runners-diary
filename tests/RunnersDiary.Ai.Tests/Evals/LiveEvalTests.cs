@@ -11,6 +11,7 @@ namespace RunnersDiary.Ai.Tests.Evals;
 /// </code>
 /// Pass criteria per run: valid within two attempts and the case's required/forbidden keys hold. Tokens and cost are printed, and
 /// for every attempt the validator's verdict (rule codes, locations, keys) and the raw draft (test output only, live mode only).
+/// Every case runs in every eval language (<c>en</c>, <c>pl</c>; M10 gate G-L1); <c>RD_AI_LIVE_LANGUAGES=pl</c> runs only the listed languages.
 /// Targeted runs (tuning): <c>RD_AI_LIVE_CASES=taper-before-race,load-spike</c> skips the other cases, <c>RD_AI_LIVE_RUNS=1</c> runs
 /// each case fewer times (a pass then proves less), <c>RD_AI_REASONING_EFFORT=medium</c> overrides the effort, and
 /// <c>RD_AI_LIVE_LOG=/path/file.log</c> also appends the output to a file (the test platform shows passing tests' output only on failure).
@@ -31,12 +32,17 @@ public sealed class LiveEvalTests(ITestOutputHelper output)
         Environment.GetEnvironmentVariable("RD_AI_LIVE_CASES") is not { Length: > 0 } cases
         || cases.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Contains(name, StringComparer.Ordinal);
 
+    private static bool LanguageSelected(string language) =>
+        Environment.GetEnvironmentVariable("RD_AI_LIVE_LANGUAGES") is not { Length: > 0 } languages
+        || languages.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Contains(language, StringComparer.Ordinal);
+
     [Theory]
-    [MemberData(nameof(EvalCases.ModelNames), MemberType = typeof(EvalCases))]
-    public async Task Live_case_passes_three_times(string name)
+    [MemberData(nameof(EvalCases.ModelNamesByLanguage), MemberType = typeof(EvalCases))]
+    public async Task Live_case_passes_three_times(string name, string language)
     {
         Assert.SkipUnless(Enabled, "Live eval is opt-in: set RD_AI_LIVE_EVAL=1, RD_AI_ENDPOINT and RD_AI_DEPLOYMENT.");
         Assert.SkipUnless(Selected(name), "Not selected by RD_AI_LIVE_CASES.");
+        Assert.SkipUnless(LanguageSelected(language), "Not selected by RD_AI_LIVE_LANGUAGES.");
         var endpoint = Environment.GetEnvironmentVariable("RD_AI_ENDPOINT") ?? throw new InvalidOperationException("RD_AI_ENDPOINT is not set.");
         var deployment = Environment.GetEnvironmentVariable("RD_AI_DEPLOYMENT") ?? throw new InvalidOperationException("RD_AI_DEPLOYMENT is not set.");
         var options = new AiOptions { Provider = AiProvider.Foundry, Foundry = { Endpoint = endpoint, Deployment = deployment } };
@@ -46,7 +52,7 @@ public sealed class LiveEvalTests(ITestOutputHelper output)
         var outcomes = new List<EvalOutcome>();
         for (var run = 0; run < Runs; run++)
         {
-            var outcome = await EvalRunner.RunAsync(EvalCases.Get(name), inner, deployment, o =>
+            var outcome = await EvalRunner.RunAsync(EvalCases.Get(name, language), inner, deployment, o =>
             {
                 o.Provider = AiProvider.Foundry;
                 o.Foundry = options.Foundry;
@@ -59,7 +65,7 @@ public sealed class LiveEvalTests(ITestOutputHelper output)
 
         Write(string.Create(
             System.Globalization.CultureInfo.InvariantCulture,
-            $"{name}: {outcomes.Count(o => o.Passed)}/{Runs} passed, first-attempt {outcomes.Count(o => o.Result.Summary?.Attempts == 1)}/{Runs}, effort {effort}, total ≈ ${outcomes.Sum(o => o.EstimatedCostUsd):0.0000}"));
+            $"{name} ({language}): {outcomes.Count(o => o.Passed)}/{Runs} passed, first-attempt {outcomes.Count(o => o.Result.Summary?.Attempts == 1)}/{Runs}, effort {effort}, total ≈ ${outcomes.Sum(o => o.EstimatedCostUsd):0.0000}"));
         Assert.All(outcomes, o => Assert.True(o.Passed, o.ToString()));
     }
 

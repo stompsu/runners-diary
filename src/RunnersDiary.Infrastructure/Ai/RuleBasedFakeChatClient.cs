@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using RunnersDiary.Domain.Goals.Planning;
 using RunnersDiary.Domain.Insights.Narrative;
+using RunnersDiary.Domain.Insights.Narrative.Languages;
 
 namespace RunnersDiary.Infrastructure.Ai;
 
@@ -51,41 +52,41 @@ public sealed class RuleBasedFakeChatClient : IChatClient
         // Nothing to release.
     }
 
-    /// <summary>The draft the fake writes; it always passes <see cref="SummaryValidator"/> with the default policy.</summary>
+    /// <summary>
+    /// The draft the fake writes, in the sheet's language (<c>en</c> or <c>pl</c>, ADR 0043 §5); it always passes <see cref="SummaryValidator"/>
+    /// with the policy of that language. Any other language gets the English texts.
+    /// </summary>
     public static SummaryDraft Write(FactSheet sheet)
     {
         ArgumentNullException.ThrowIfNull(sheet);
+        var t = sheet.Language == NarrativeLanguages.Polish ? FakeSummaryTexts.Polish : FakeSummaryTexts.English;
         var partial = sheet.Flag("period.isPartial") == true && sheet.Contains("period.asOf");
-        var headline = partial
-            ? "Your training so far, from {period.from} up to {period.asOf}."
-            : "Your training from {period.from} to {period.to}.";
+        var headline = partial ? t.HeadlinePartial : t.Headline;
 
-        var wentWell = new List<SummaryItem> { new("You completed {totals.runCount} runs covering {totals.distance} in {totals.duration}.") };
+        var wentWell = new List<SummaryItem> { new(t.Totals) };
         if (sheet.Number("pace.slope") is < 0)
         {
-            wentWell.Add(new SummaryItem("Your easy pace trended faster ({pace.slope})."));
+            wentWell.Add(new SummaryItem(t.PaceFaster));
         }
 
         var watchOuts = new List<SummaryItem>();
         if (sheet.Text("acwr.peak.band") == "high")
         {
-            watchOuts.Add(sheet.Flag("acwr.peak.isRaceWeek") == true
-                ? new SummaryItem("Your highest load ratio, {acwr.peak.value} on {acwr.peak.date}, came from your {acwr.peak.raceType}.")
-                : new SummaryItem("Your load ratio peaked at {acwr.peak.value} on {acwr.peak.date}, in the {acwr.peak.band} band."));
+            watchOuts.Add(new SummaryItem(sheet.Flag("acwr.peak.isRaceWeek") == true ? t.PeakRace : t.PeakHigh));
         }
 
         var dataNotes = new List<SummaryItem>();
         if (sheet.Number("dq.estimatedLoadShare") >= SummaryValidationPolicy.Default.EstimatedLoadThreshold)
         {
-            dataNotes.Add(new SummaryItem("{dq.estimatedLoadShare} of the load uses estimated effort ratings."));
+            dataNotes.Add(new SummaryItem(t.EstimatedLoad));
         }
 
         if (sheet.Flag("acwr.asOf.unavailable") == true)
         {
-            dataNotes.Add(new SummaryItem("The load ratio needs {thresholds.acwrMinHistoryDays} of training history."));
+            dataNotes.Add(new SummaryItem(t.RatioUnavailable));
         }
 
-        return new SummaryDraft(headline, wentWell, watchOuts, new SummaryItem("Keep easy days easy and build load gradually."), dataNotes);
+        return new SummaryDraft(headline, wentWell, watchOuts, new SummaryItem(t.Suggestion), dataNotes);
     }
 
     private static bool IsPlanRequest(ChatOptions? options, string input) =>
@@ -102,4 +103,40 @@ public sealed class RuleBasedFakeChatClient : IChatClient
             ? throw new InvalidOperationException("The fake client found no fact sheet in the request.")
             : text[(start + open.Length)..end].Trim();
     }
+}
+
+/// <summary>The fixed texts of <see cref="RuleBasedFakeChatClient.Write"/> per language.</summary>
+internal sealed record FakeSummaryTexts(
+    string Headline,
+    string HeadlinePartial,
+    string Totals,
+    string PaceFaster,
+    string PeakRace,
+    string PeakHigh,
+    string EstimatedLoad,
+    string RatioUnavailable,
+    string Suggestion)
+{
+    public static FakeSummaryTexts English { get; } = new(
+        "Your training from {period.from} to {period.to}.",
+        "Your training so far, from {period.from} up to {period.asOf}.",
+        "You completed {totals.runCount} runs covering {totals.distance} in {totals.duration}.",
+        "Your easy pace trended faster ({pace.slope}).",
+        "Your highest load ratio, {acwr.peak.value} on {acwr.peak.date}, came from your {acwr.peak.raceType}.",
+        "Your load ratio peaked at {acwr.peak.value} on {acwr.peak.date}, in the {acwr.peak.band} band.",
+        "{dq.estimatedLoadShare} of the load uses estimated effort ratings.",
+        "The load ratio needs {thresholds.acwrMinHistoryDays} of training history.",
+        "Keep easy days easy and build load gradually.");
+
+    /// <summary>Gender-neutral, placeholders only in nominative slots (after a colon or in parentheses), no counted noun after a count (prompt v3).</summary>
+    public static FakeSummaryTexts Polish { get; } = new(
+        "Twoje treningi w okresie od {period.from} do {period.to}.",
+        "Twoje treningi do tej pory: od {period.from} do {period.asOf}.",
+        "Liczba wykonanych treningów: {totals.runCount}, dystans: {totals.distance}, czas: {totals.duration}.",
+        "Tempo spokojnych biegów przyspieszało ({pace.slope}).",
+        "Najwyższy wskaźnik obciążenia wyniósł {acwr.peak.value} ({acwr.peak.date}) i wynika ze startu ({acwr.peak.raceType}).",
+        "Wskaźnik obciążenia osiągnął {acwr.peak.value} w dniu {acwr.peak.date} (przedział: {acwr.peak.band}).",
+        "Część obciążenia opiera się na szacowanym odczuwalnym wysiłku: {dq.estimatedLoadShare}.",
+        "Do obliczenia wskaźnika obciążenia potrzeba {thresholds.acwrMinHistoryDays} historii treningów.",
+        "Utrzymuj spokojne dni naprawdę spokojnymi i zwiększaj obciążenie stopniowo.");
 }

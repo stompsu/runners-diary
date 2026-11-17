@@ -26,7 +26,7 @@ public sealed class TrainingInsightsAgentTests
         var prompt = PromptCatalog.Load(RepoPaths.PromptsInOutput).Current;
 
         Assert.NotNull(options);
-        Assert.Equal(2, prompt.Version);
+        Assert.Equal(3, prompt.Version);
         Assert.Equal(prompt.Instructions, options.Instructions);
         Assert.DoesNotContain("version: 1", options.Instructions, StringComparison.Ordinal);
         Assert.Equal(1500, options.MaxOutputTokens);
