@@ -29,7 +29,7 @@ export default defineConfig({
         // software rasteriser automatically, so opt in (M4 step 4 spike, see docs/plans/M4-maps-gpx.md).
         launchOptions: { args: ['--enable-unsafe-swiftshader'] },
       },
-      testIgnore: /.*\.phone\.spec\.ts/,
+      testIgnore: /(\.phone|polish)\.spec\.ts$/,
     },
     // AC12/AC14: a 360x640 touch viewport whose browser zone (Los Angeles) differs from the user's profile zone
     // (the fake API's guests are in Europe/Warsaw), so any date that shifts through UTC or the browser zone shows up.
@@ -42,6 +42,29 @@ export default defineConfig({
         hasTouch: true,
         timezoneId: 'America/Los_Angeles',
         locale: 'en-US',
+        launchOptions: { args: ['--enable-unsafe-swiftshader'] },
+      },
+    },
+    // M10 B5: the Polish UI (browser locale pl-PL, so the language is detected) on desktop and at 360 px.
+    {
+      name: 'desktop-pl',
+      testMatch: /polish\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        locale: 'pl-PL',
+        timezoneId: 'Europe/Warsaw',
+        launchOptions: { args: ['--enable-unsafe-swiftshader'] },
+      },
+    },
+    {
+      name: 'phone-pl',
+      testMatch: /polish\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 360, height: 640 },
+        hasTouch: true,
+        locale: 'pl-PL',
+        timezoneId: 'Europe/Warsaw',
         launchOptions: { args: ['--enable-unsafe-swiftshader'] },
       },
     },

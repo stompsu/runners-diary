@@ -34,8 +34,8 @@ describe('resolveInitialLanguage (ADR 0042 §2)', () => {
     expect(resolveInitialLanguage(null, ['pl', 'en'], EN_ONLY)).toBe('en')
   })
 
-  it('releases pl only in dev and tests, until the translations are complete', () => {
-    expect(releasedLanguages(false)).toEqual(['en'])
+  it('releases pl in production builds too (M10 B5), and AI texts stay English until Part C', () => {
+    expect(releasedLanguages(false)).toEqual(['en', 'pl'])
     expect(releasedLanguages(true)).toEqual(['en', 'pl'])
   })
 })

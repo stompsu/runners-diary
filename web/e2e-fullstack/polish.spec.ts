@@ -1,0 +1,97 @@
+import { expect } from '@playwright/test'
+// Same test with the CSP guard (fails on Content-Security-Policy violations when the web image serves the page)
+import { test } from '../e2e/support.ts'
+
+// M10 B5: a Polish guest through the real stack (web -> /api proxy -> API -> SQL). The browser locale is pl-PL, so the
+// SPA detects Polish and asks for `POST /api/guest-sessions?lang=pl`; the API then seeds the demo data with the Polish
+// texts of seed/demo/i18n/pl.json. Nothing is mocked. The AI summary stays English until Part C.
+
+test.use({ locale: 'pl-PL', timezoneId: 'Europe/Warsaw' })
+
+const DEMO_GOAL_PL = 'Demo: trail w Beskidach 25K' // "Demo Beskids Trail 25K"
+const DEMO_RACE = 'Gliwice 10K City Run' // week -20, Sunday; its rating comment is a translated demo text
+const RACE_COMMENT_PL = 'Nowy rekord życiowy. Początek trochę za szybki, ale udało się utrzymać tempo.'
+
+interface Run {
+  id: string
+  date: string
+  title: string | null
+}
+
+test('Polish guest -> Polish UI and demo texts (run comment, goal, plan) -> switch to English and back', async ({
+  page,
+}) => {
+  // The bearer token the SPA uses, to read the truth from the API next to the UI.
+  let authorization: string | undefined
+  page.on('request', (r) => {
+    const header = r.headers()['authorization']
+    if (r.url().includes('/api/') && header) authorization = header
+  })
+
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/signin/)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'pl')
+  await expect(page.getByRole('heading', { level: 1, name: 'Zaloguj się do Runners Diary' })).toBeVisible()
+  const created = page.waitForResponse(
+    (r) => new URL(r.url()).pathname === '/api/guest-sessions' && r.request().method() === 'POST',
+  )
+  await page.getByRole('button', { name: 'Wypróbuj jako gość' }).click()
+  const response = await created
+  expect(response.status()).toBe(201)
+  expect(new URL(response.url()).searchParams.get('lang')).toBe('pl')
+
+  // The diary is Polish; the demo banner too.
+  await expect(page).toHaveURL(/\/diary\/\d{4}\/\d{2}$/)
+  await expect(page.getByRole('heading', { level: 1, name: /^Dziennik – / })).toBeVisible()
+  await expect(page.getByRole('grid', { name: /^Kalendarz: / })).toBeVisible()
+  await expect(page.getByText('Jesteś w trybie demo. Dane są usuwane po 24 godzinach.')).toBeVisible()
+  await expect(page.locator('[role="gridcell"] [data-run-id]').first()).toBeAttached({ timeout: 20_000 })
+
+  // The profile language was stored by the guest creation: /api/me reports it.
+  expect(authorization, 'the SPA sent a bearer token').toBeTruthy()
+  const me = await page.request.get('/api/me', { headers: { authorization: authorization! } })
+  expect(me.status()).toBe(200)
+  expect(((await me.json()) as { language: string | null }).language).toBe('pl')
+
+  // The seeded race run (20 weeks back) has its rating comment in Polish.
+  const runs = await page.request.get('/api/runs?from=2000-01-01&to=2100-01-01', {
+    headers: { authorization: authorization! },
+  })
+  expect(runs.status()).toBe(200)
+  const race = ((await runs.json()) as { items: Run[] }).items.find((run) => run.title === DEMO_RACE)
+  expect(race, `the demo race "${DEMO_RACE}" is seeded`).toBeDefined()
+  const [year, month] = race!.date.split('-') as [string, string]
+  await page.goto(`/diary/${year}/${month}/day/${race!.date}`)
+  const day = page.getByRole('dialog')
+  await expect(day).toBeVisible()
+  await day.getByRole('listitem').filter({ hasText: DEMO_RACE }).getByRole('link', { name: 'Pokaż szczegóły' }).click()
+  const details = page.getByRole('dialog', { name: new RegExp(DEMO_RACE) })
+  await expect(details.getByText(RACE_COMMENT_PL)).toBeVisible()
+  await expect(details.getByText('New personal best')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // Goals: the demo goal and its example plan are Polish (feature on in CI: Goals__Enabled).
+  await page.goto('/goals')
+  await expect(page.getByRole('heading', { level: 1, name: 'Cele' })).toBeVisible()
+  const card = page.locator('li[data-goal-id]').filter({ hasText: DEMO_GOAL_PL })
+  await expect(card).toBeVisible()
+  await card.getByRole('link', { name: 'Otwórz' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: DEMO_GOAL_PL })).toBeVisible()
+  await expect(page.getByText('Po półmaratonie plan przechodzi na trail', { exact: false })).toBeVisible()
+
+  // Switching to English re-renders without a reload and is saved to the profile; the data stays as seeded (Polish).
+  const saved = page.waitForResponse(
+    (r) => new URL(r.url()).pathname === '/api/me/language' && r.request().method() === 'PUT',
+  )
+  await page.getByRole('combobox', { name: 'Język' }).selectOption('en')
+  expect((await saved).status()).toBe(204)
+  await expect(page.getByRole('heading', { level: 1, name: DEMO_GOAL_PL })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'All goals' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+
+  // A reload keeps English (rd.lang and the profile agree), and the profile says so.
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  const after = await page.request.get('/api/me', { headers: { authorization: authorization! } })
+  expect(((await after.json()) as { language: string | null }).language).toBe('en')
+})

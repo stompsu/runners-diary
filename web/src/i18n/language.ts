@@ -4,13 +4,13 @@ import i18n from 'i18next'
 export const SUPPORTED_LANGUAGES = ['en', 'pl'] as const
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
-/**
- * Languages offered by detection and the switcher in production (ADR 0042 §8). `pl` is added in the commit that
- * completes its translations (M10 step B5); until then it is selectable in dev and tests only.
- */
-export const RELEASED_LANGUAGES: readonly Language[] = ['en']
+/** Languages offered by detection and the switcher (ADR 0042 §8). `pl` was released with its translations (M10 B5). */
+export const RELEASED_LANGUAGES: readonly Language[] = ['en', 'pl']
 
-/** Whether the language is shown to the user: released ones, plus every supported one in dev and tests. */
+/**
+ * Whether the language is shown to the user: the released ones, plus every supported one in dev and tests (so a
+ * language still being translated can be tried before it is released; today the two lists are equal).
+ */
 export function releasedLanguages(dev: boolean = import.meta.env.DEV): readonly Language[] {
   return dev ? SUPPORTED_LANGUAGES : RELEASED_LANGUAGES
 }

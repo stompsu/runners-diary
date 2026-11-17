@@ -30,6 +30,22 @@ describe('language switcher and profile sync', () => {
     expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('pl')
   })
 
+  it('shows a compact code for phones that is hidden from assistive technology; the names stay full', async () => {
+    const user = userEvent.setup()
+    renderRoute('/diary/2026/11')
+
+    const select = await switcher()
+    const code = screen.getByText('EN')
+    expect(code).toHaveAttribute('aria-hidden', 'true')
+    expect(select).toHaveAccessibleName('Language')
+
+    await user.selectOptions(select, 'pl')
+
+    expect(await screen.findByText('PL')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByRole('combobox', { name: 'Język' })).toBeInTheDocument()
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['English', 'Polski'])
+  })
+
   it('is a labelled native select in the tab order (the browser provides the keyboard operation)', async () => {
     const user = userEvent.setup()
     renderRoute('/diary/2026/11')

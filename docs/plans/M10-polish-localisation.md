@@ -157,7 +157,7 @@ v1/v2 entries are unchanged; a flat `denyList` is read as `{ "en": … }`.
 ```ts
 export const SUPPORTED_LANGUAGES = ['en', 'pl'] as const
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]
-export function releasedLanguages(): readonly Language[]          // pl: dev/test only until Part B step B5
+export function releasedLanguages(): readonly Language[]          // pl released with B5 (RELEASED_LANGUAGES = ['en','pl'])
 export function resolveInitialLanguage(stored: string | null, navigatorLanguages: readonly string[]): Language
 export function initLanguage(): Promise<void>                      // resolve → ensure bundle → changeLanguage → <html lang>
 export function setLanguage(lng: Language, opts: { persistToProfile: boolean }): Promise<void>
@@ -185,7 +185,7 @@ export const AI_LANGUAGES: readonly Language[]                     // ['en'] unt
 5. [x] **B2 frontend-react (user approved 2026-11-17):** `maps`, `tracks`, `insights` (~540 lines).
 6. [x] **B3 frontend-react (user approved 2026-11-17):** `races`, `goals` (~520 lines).
 7. [x] **B4 backend-dotnet:** `seed/demo/i18n/pl.json` (demo notes, goal, plan texts), map completeness test strict.
-8. [ ] **B5 frontend-react + qa-tester:** release `pl` (`RELEASED_LANGUAGES`), layout fixes found at 360 px, Playwright `desktop-pl`/`phone-pl`, full-stack Polish guest journey.
+8. [x] **B5 frontend-react + qa-tester:** release `pl` (`RELEASED_LANGUAGES`), layout fixes found at 360 px, Playwright `desktop-pl`/`phone-pl`, full-stack Polish guest journey.
 
 **Part C – AI in Polish (ai-insights)**
 9. [x] **C1:** Polish number words, per-language policies, folded deny matching; Domain.Tests (adversarial drafts per rule).
@@ -311,6 +311,15 @@ Done: language module (`web/src/i18n/language.ts`), `initLanguage` before the fi
 10. **`AI_LANGUAGES = ['en']`** and `aiLanguage()` exist but are not wired into `summaryQueries`/`PlanSection` (Part C3). `plan.languageHint` is also C3.
 11. **E2E:** the `desktop-pl`/`phone-pl` projects are B5 (they need a released `pl` in the preview build). The only e2e change: the guest-session mock in `smoke.spec.ts` matches `?lang=` and asserts `lang=en`.
 12. `web/src/components/map/` was not touched. `AzureMapsMap.test.tsx` renders `pl` with an untranslated `maps` namespace; it passes because of item 5.
+
+### Step 8 / B5 (frontend-react), implemented 2026-11-17
+
+Done: `pl` released (`RELEASED_LANGUAGES = ['en', 'pl']`, so detection and the switcher work in the production build; `releasedLanguages(dev)` still returns every supported language in dev and tests, today the same list; `AI_LANGUAGES` stays `['en']` until C3). Compact switcher on phones. Playwright projects `desktop-pl` and `phone-pl` with `e2e/polish.spec.ts`. Full-stack `e2e-fullstack/polish.spec.ts`. Deviations and decisions:
+
+1. **Switcher on phones:** still the native select (keyboard and screen readers unchanged). Below `sm` its own text is transparent and an `aria-hidden` "EN"/"PL" sits on top (width 4.75 rem, 44 px high); the accessible name, the option names and the open list stay "Language" / "English" / "Polski". In forced-colors mode the code is hidden and the full name shown. Not done: a custom listbox (more code, worse a11y for no gain).
+2. **New spec instead of re-running the English specs:** the existing specs assert English strings, so `desktop-pl` and `phone-pl` (locale `pl-PL`, zone Europe/Warsaw; phone = 360x640 touch, the same width as `phone-la`) run only `e2e/polish.spec.ts` (the `chromium` project ignores it). It covers: sign-in and guest start (`?lang=pl`), switching en/pl without reload, diary (grid, month list, run form), insights, race interests, goals (list, detail with a generated plan, new goal), diary with race proposals and suggestions plus race details. Each screen asserts `<html lang="pl">`, no raw keys (namespace prefix or dotted camelCase path), none of a short list of English UI words, and no horizontal overflow. The production build has no missing-key handler (English is the silent fallback), so a gap is caught only if it is one of those words; the Vitest missing-key detection (step 3) is the strict check.
+3. **Layout at 360 px:** no overflow or truncation was found on any of those screens (checked with screenshots of the header, sign-in, diary, insights, goals form). No CSS change besides the switcher.
+4. **Full-stack journey** (`e2e-fullstack/polish.spec.ts`, runs on `main`): Polish guest (`POST /api/guest-sessions?lang=pl`), `/api/me.language = pl`, the seeded race's rating comment and the demo goal title and plan text are the Polish demo texts, switching to English saves `PUT /api/me/language` (204) and survives a reload. Written against the existing full-stack specs but **not run locally** (no stack was up); the first CI run on `main` is the check.
 
 ## Assumptions
 1. The user is a Polish speaker and will review the Polish texts. Claude's drafts are not merged unreviewed.
