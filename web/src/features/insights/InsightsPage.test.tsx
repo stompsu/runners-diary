@@ -160,7 +160,7 @@ describe('empty and data quality states', () => {
     await loaded()
     const note = screen.getByRole('complementary', { name: 'About these numbers' })
     expect(note).toHaveTextContent('18% of the training load comes from 6 sessions without a logged effort (RPE)')
-    expect(note).toHaveTextContent('1 sessions have no duration')
+    expect(note).toHaveTextContent('1 session has no duration')
   })
 
   it('has no note for clean data', async () => {

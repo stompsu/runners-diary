@@ -1,0 +1,63 @@
+{
+  "loading": "Wczytywanie mapy…",
+  "unavailable": {
+    "title": "Mapa niedostępna",
+    "noWebGl": "Twoja przeglądarka nie może narysować mapy (WebGL 2 jest niedostępny). Szczegóły trasy są pokazane jako tekst.",
+    "error": "Nie udało się wczytać mapy. Szczegóły trasy są pokazane jako tekst."
+  },
+  "controls": {
+    "map": "Mapa",
+    "zoomIn": "Przybliż",
+    "zoomOut": "Oddal",
+    "resetBearing": "Ustaw północ u góry",
+    "toggleAttribution": "Pokaż lub ukryj źródła danych",
+    "mapFeedback": "Opinie o mapie",
+    "markerTitle": "Znacznik na mapie",
+    "gesturesWindows": "Przytrzymaj Ctrl i przewijaj, aby przybliżać mapę",
+    "gesturesMac": "Przytrzymaj ⌘ i przewijaj, aby przybliżać mapę",
+    "gesturesMobile": "Przesuwaj mapę dwoma palcami"
+  },
+  "markers": {
+    "start": "Start",
+    "finish": "Meta",
+    "position": "Wybrana pozycja",
+    "highlight": "Punkt na trasie"
+  },
+  "location": {
+    "mapLabel": "Mapa miejsca treningu"
+  },
+  "picker": {
+    "title": "Wybierz lokalizację",
+    "description": "Kliknij lub dotknij mapy albo wpisz współrzędne.",
+    "cancel": "Anuluj",
+    "confirm": "Użyj tej lokalizacji",
+    "mapLabel": "Mapa do wyboru lokalizacji",
+    "latitude": "Szerokość geograficzna",
+    "longitude": "Długość geograficzna",
+    "latitudeError": "Szerokość geograficzna musi być liczbą od -90 do 90.",
+    "longitudeError": "Długość geograficzna musi być liczbą od -180 do 180.",
+    "instructions": "Kliknij lub dotknij mapy, aby ustawić pinezkę. Jeśli nie możesz użyć mapy, wpisz szerokość i długość geograficzną w stopniach, na przykład 50,2945 i 18,6714.",
+    "selected": "Wybrana pozycja: {{latitude}}, {{longitude}}",
+    "none": "Nie wybrano jeszcze pozycji."
+  },
+  "search": {
+    "label": "Szukaj miejsca",
+    "button": "Szukaj",
+    "hint": "Wpisz nazwę miejsca i naciśnij Enter lub Szukaj.",
+    "tooShort": "Wpisz co najmniej 2 znaki.",
+    "searching": "Szukanie…",
+    "none": "Nie znaleziono miejsc.",
+    "found_one": "Znaleziono {{count}} miejsce.",
+    "found_few": "Znaleziono {{count}} miejsca.",
+    "found_many": "Znaleziono {{count}} miejsc.",
+    "found_other": "Znaleziono {{count}} miejsca.",
+    "unavailable": "Wyszukiwanie miejsc jest teraz niedostępne.",
+    "failed": "Wyszukiwanie nie powiodło się. Spróbuj ponownie.",
+    "results": "Wyniki wyszukiwania",
+    "budget": "Wyszukiwanie miejsc osiągnęło dzienny limit. Spróbuj jutro albo kliknij mapę lub wpisz współrzędne."
+  },
+  "privacy": {
+    "tiles": "Mapa wczytuje kafelki z serwera {{host}}, który widzi oglądany przez ciebie obszar. Nie są wysyłane żadne dane konta.",
+    "azureMaps": "Mapa wczytuje kafelki z Microsoft Azure Maps, który widzi oglądany przez ciebie obszar. Nie są wysyłane żadne dane konta."
+  }
+}

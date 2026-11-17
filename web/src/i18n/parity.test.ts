@@ -21,6 +21,8 @@ const SAME_AS_ENGLISH: readonly RegExp[] = [
   /^common:app\.name$/, // brand
   /^common:language\.names\./, // each language in its own name
   /^[a-z]+:(.*\.)?(acwr|rpe|ultra|fartlek|status)$/i, // terms and loanwords used as is in Polish
+  /^maps:markers\.start$/, // "Start" is the same word in Polish
+  /^tracks:(splits\.distance|prefill\.fromTrack)$/, // the unit "Km" and the format name "GPX"
   /^runs:fields\.durationPlaceholder$/, // the h:mm:ss format code
 ]
 
