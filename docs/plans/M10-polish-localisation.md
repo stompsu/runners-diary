@@ -1,6 +1,6 @@
 # M10 – Polish localisation: plan
 
-**Status:** Approved 2026-11-17 (outline and all §9 defaults approved by the user: "Approve with defaults"). **Implemented 2026-11-17 on `m10-polish-localisation`** (Parts A, B and C, steps 1–12; the user approved the B1–B4 and C2 Polish texts; reviewer verdict "approve with follow-ups", all findings fixed). **G-L1 passed 2026-11-17** (live eval accepted by the user, §5.2). **Awaiting the PR and G-L2** (merge + deploy).
+**Status:** Approved 2026-11-17 (outline and all §9 defaults approved by the user: "Approve with defaults"). **Implemented 2026-11-17 on `m10-polish-localisation`** (Parts A, B and C, steps 1–12; the user approved the B1–B4 and C2 Polish texts; reviewer verdict "approve with follow-ups", all findings fixed). **G-L1 passed 2026-11-17** (live eval accepted by the user, §5.2). **Merged (stompsu/runners-diary#47, full-stack spec fix #48) and deployed 2026-11-17: G-L2 done, Polish is live in production** (§5.2).
 **Builds on:**
 - M1/M3: i18next with typed keys (`web/src/i18n`), `Intl`-based plain-date and unit formatters (ADR 0017), the run form's server-error mapping (ADR 0018), bundle budget, fake API, Playwright `chromium` + `phone-la`.
 - M2: `Users` profile, `GET`/`PUT /api/me`, guest creation and `DemoDataSeeder`.
@@ -212,7 +212,7 @@ If the user prefers, Part C can follow in a separate PR. Until then `AI_LANGUAGE
 | 2026-11-17 | G-L1 (run 2) | Polish summaries only (≈ $0.18): **17/18**. `genderedForm` forced 3 retries, all successful. One `race-week-peak-demo` answer was entirely English and **accepted by the validator** (caught only by the eval's language heuristic) → new validator rule `wrongLanguage` (§10 "G-L1 follow-up: wrong language"). |
 | 2026-11-17 | G-L1 (run 3) | Polish summaries only (≈ $0.17): **16/18**. `race-week-peak-demo` 2/3 (English headline rejected by `wrongLanguage`; the Polish retry was valid but missed an eval content point); `estimated-rpe` 2/3 (`genderedForm` rejection, the retry returned malformed JSON → failed generation). Every case ≥ 2/3. |
 | 2026-11-17 | **G-L1 passed** | Combined Polish summaries over runs 1–3: **51/54 (94 %)**, every case ≥ 2/3; plans en 20/21 (95 %), pl 21/21; summaries en 18/18. Total live-eval spend ≈ **$1.42**. The user accepted the gate on the combined figure ("Accept on 51/54"). No token-cap change. Follow-ups: §10 "Follow-ups (not done)". |
-| — | G-L2 | Not started (merge + deploy; needs the user's explicit "yes"). |
+| 2026-11-17 | **G-L2** | User: "Yes, deploy M10", then "Merge #48, then deploy". `main` CI for #47 (bd4d330) was cancelled at the 25-min limit: every full-stack journey waited for a URL ending in `/api/guest-sessions`, but the SPA now sends `?lang=`, and the new Polish journey listed runs over > 92 days (400). Test-only fix #48 (7896e73; all 12 journeys passed against the CI stack built locally), `main` CI green incl. full-stack. A stale queued docs deploy (a38f086) was cancelled with the user's OK; `deploy.yml` run 44183896363 approved: migration `Localisation`, rollout, smoke test passed, no rollback. **Live check** (new Polish guest): Polish sign-in and switcher, `POST /api/guest-sessions?lang=pl` 201, Polish diary (dates, decimal comma, run types), Insights and the Polish demo summary, one live Polish summary (prompt v3, gpt-5.4-mini, gender-neutral; known slips "39 treningów", "w 4 paź"), Polish demo goal and plan, profile language wins over the local choice. Spend ≈ $0.01. |
 
 ## 6. Cost
 | Item | Estimate |
@@ -424,7 +424,9 @@ In the Polish summary re-run (after the gendered-form fix) one Polish request (`
 3. **Known limit of `wrongLanguage`:** an English field without any stop word is not listed itself (the draft is still rejected when the whole draft crosses the threshold).
 4. **Prompt polish candidates (next prompt version, Polish section):** count before the noun ("{totals.runCount} treningów", whose case depends on the number) and a placeholder used as a word ("{race.1.isPersonalBest} potwierdza") still occur.
 5. **Failure rate:** the two new rules cause more retries, which slightly raises the chance of a failed generation (G-L1 run 3: one retry returned malformed JSON → 502 `summary-failed`). Watch the `summary-failed`/`plan-failed` rate per language after G-L2.
-6. From earlier steps: any future geocoder result cache must key on the reduced language (step 2, item 4); the full-stack Polish journey's first real run is the CI run on `main` (step 8, item 4); Entra's Polish page customisation is a G8 checklist item (Assumption 5).
+6. From earlier steps: any future geocoder result cache must key on the reduced language (step 2, item 4); Entra's Polish page customisation is a G8 checklist item (Assumption 5). The full-stack Polish journey ran green on `main` after #48.
+7. **Silent CI timeout:** a broken full-stack journey ran into the 25-minute job limit and was cancelled without printing its error (G-L2). Candidate: a shorter Playwright test/global timeout, or upload the report even on cancel.
+8. **Responses not reaching the page (production, seen before M10 too):** in the browser pane, two full page loads hung on `/api/me` and one summary POST never completed in the browser, although App Insights shows the server answered (POST 200 in ≈ 5 s). A reload fixed each case. Not yet known whether this is the (hidden) browser pane, nginx or the Container Apps ingress; worth a look.
 
 ## Assumptions
 1. The user is a Polish speaker and will review the Polish texts. Claude's drafts are not merged unreviewed.
