@@ -196,4 +196,78 @@ public sealed class TrainingPlanRepairTests
         Assert.Empty(second.Repairs);
         Assert.Equal(first.Sessions, second.Sessions);
     }
+
+    private static (PlanFactSheet Sheet, DateOnly Day) EasySheet(int reference)
+    {
+        var sheet = TrainingPlanValidatorTests.Sheet(referencePace: reference);
+        return (sheet, sheet.Envelope.Weeks[1].Start.AddDays(1));
+    }
+
+    [Fact]
+    public void Easy_pace_clamp_raises_the_bound_keeps_the_range_inside_the_spread_and_lengthens_the_duration()
+    {
+        var (sheet, day) = EasySheet(340);
+        PlannedSession[] sessions =
+        [
+            Session(day, 8_000, 2_400, paceMin: 300, paceMax: 380),                       // implied 300 s/km, faster than the bound
+            Session(day.AddDays(2), 6_000, 2_400, paceMin: 300, paceMax: 700),            // slower bound beyond min + 90
+            Session(day.AddDays(4), 6_000, 2_400, TrainingIntensity.Recovery, paceMin: 320, paceMax: 340), // slower bound below the new minimum
+        ];
+
+        var result = TrainingPlanRepair.Apply(sessions, sheet);
+
+        Assert.Equal(0, result.Dropped);
+        Assert.Equal((340, 380, 2_720), (result.Sessions[0].TargetPaceMinSecondsPerKm, result.Sessions[0].TargetPaceMaxSecondsPerKm, result.Sessions[0].DurationSeconds));
+        Assert.Equal((340, 430, 2_400), (result.Sessions[1].TargetPaceMinSecondsPerKm, result.Sessions[1].TargetPaceMaxSecondsPerKm, result.Sessions[1].DurationSeconds)); // 400 s/km implied: kept
+        Assert.Equal((340, 340), (result.Sessions[2].TargetPaceMinSecondsPerKm, result.Sessions[2].TargetPaceMaxSecondsPerKm));
+        Assert.Equal(3, result.Repairs.Count(r => r.Rule == PlanRuleCode.EasyPace && r.Action == PlanRepairAction.Clamp));
+        var first = result.Repairs.First(r => r.Rule == PlanRuleCode.EasyPace);
+        Assert.Equal((300, 340), (first.From, first.To));
+    }
+
+    [Fact]
+    public void Easy_pace_clamp_leaves_unranged_and_hard_sessions_alone_and_drops_a_hard_one_at_the_pace_rule_first()
+    {
+        var (sheet, day) = EasySheet(340);
+        PlannedSession[] sessions =
+        [
+            Session(day, 6_000, 1_800),                                                    // easy without a pace range: not checked
+            Session(day.AddDays(2), 6_000, 1_800, TrainingIntensity.Steady, paceMin: 300, paceMax: 330),
+            Session(day.AddDays(4), 6_000, null, paceMin: 200, paceMax: 220),             // under 0.85 x ref: the pace drop comes first
+        ];
+
+        var result = TrainingPlanRepair.Apply(sessions, sheet);
+
+        Assert.Equal(1, result.Dropped);
+        Assert.Equal(1_800, result.Sessions[0].DurationSeconds);
+        Assert.Equal(300, result.Sessions[1].TargetPaceMinSecondsPerKm);
+        Assert.Contains(result.Repairs, r => r.Rule == PlanRuleCode.Pace && r.Action == PlanRepairAction.Drop);
+        Assert.DoesNotContain(result.Repairs, r => r.Rule == PlanRuleCode.EasyPace);
+    }
+
+    [Fact]
+    public void Easy_pace_drops_a_session_the_clamp_would_push_out_of_its_range()
+    {
+        var (sheet, day) = EasySheet(880);
+
+        // 26 km at 880 s/km = 22,880 s, above the 6 h duration limit.
+        var result = TrainingPlanRepair.Apply([Session(day, 26_000, 20_000, paceMin: 800, paceMax: 880)], sheet);
+
+        Assert.Empty(result.Sessions);
+        Assert.Equal(1, result.Dropped);
+        var drop = Assert.Single(result.Repairs, r => r.Rule == PlanRuleCode.EasyPace);
+        Assert.Equal(PlanRepairAction.Drop, drop.Action);
+    }
+
+    [Fact]
+    public void Easy_pace_clamp_is_idempotent()
+    {
+        var (sheet, day) = EasySheet(340);
+        var first = TrainingPlanRepair.Apply([Session(day, 8_000, 2_400, paceMin: 300, paceMax: 380)], sheet);
+
+        var second = TrainingPlanRepair.Apply(first.Sessions, sheet);
+
+        Assert.Equal(first.Sessions, second.Sessions);
+        Assert.DoesNotContain(second.Repairs, r => r.Rule == PlanRuleCode.EasyPace);
+    }
 }

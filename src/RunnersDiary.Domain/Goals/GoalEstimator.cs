@@ -37,7 +37,8 @@ public static class GoalEstimator
         var history = TrainingHistory.From(facts, today);
         var recentWeekly = history.MeanWeeklyDistanceMeters;
 
-        var prediction = RaceTimePredictor.Predict(goal.DistanceMeters, goal.ElevationGainMeters, Efforts(facts, races, today));
+        var prediction = RaceTimePredictor.Predict(
+            goal.DistanceMeters, goal.ElevationGainMeters, Efforts(facts, races, today), RecentTrainingRuns(facts, today));
 
         var warnings = new List<EstimateWarning>();
         if (prediction is null)
@@ -106,4 +107,17 @@ public static class GoalEstimator
 
         return efforts;
     }
+
+    /// <summary>
+    /// Ordinary completed Training-category runs of the last 42 days (<c>[today - 41, today]</c>) for the fallback basis
+    /// (<see cref="RaceTimePredictor.FromRecentTraining"/>; ADR 0039 amendment 2026-11-21).
+    /// </summary>
+    internal static List<EffortFact> RecentTrainingRuns(IReadOnlyList<RunFact> facts, DateOnly today) =>
+    [
+        .. facts
+            .Where(f => f.Status == RunStatus.Completed && f.Date <= today && f.Date > today.AddDays(-RaceTimePredictor.FallbackLookbackDays)
+                && f.DistanceMeters is > 0 && f.DurationSeconds is > 0
+                && RunTypeCatalog.Find(f.RunTypeId) is { Category: RunTypeCategory.Training })
+            .Select(f => new EffortFact(f.Id, f.Date, EffortKind.Training, f.DistanceMeters!.Value, f.DurationSeconds!.Value, f.ElevationGainMeters)),
+    ];
 }

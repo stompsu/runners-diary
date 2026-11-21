@@ -94,4 +94,58 @@ public sealed class TrainingHistoryTests
         Assert.Equal(new DateOnly(2026, 11, 9), h.Weeks[^1].Start);
         Assert.Equal(0, h.Weeks[^1].Sessions);
     }
+
+    // Today 2026-11-16: the base window is 2026-10-19 .. 2026-11-15.
+    private static RunFact Easy(string date, int id, double meters = 8_000, int seconds = 2_880, string type = "easy", Surface? surface = null) =>
+        InsightsTestData.Run(date, type, meters, seconds, surface: surface, id: id);
+
+    [Fact]
+    public void Recent_easy_pace_is_the_median_of_easy_recovery_and_long_runs_of_the_base_window()
+    {
+        var facts = new List<RunFact>
+        {
+            Easy("2026-10-20", 1, seconds: 2_800),                 // 350
+            Easy("2026-10-27", 2, seconds: 2_880),                 // 360
+            Easy("2026-11-03", 3, seconds: 3_200, type: "long"),   // 400
+            Easy("2026-11-05", 4, seconds: 2_160, type: "tempo"),  // not an easy type
+            Easy("2026-11-06", 5, seconds: 1_000),                 // 125 s/km: out of range
+            Easy("2026-10-12", 6, seconds: 5_000),                 // before the window
+            Easy("2026-11-16", 7, seconds: 5_000),                 // this week
+        };
+
+        Assert.Equal(360, TrainingHistory.From(facts, Today).RecentEasyPaceSecondsPerKm);
+    }
+
+    [Fact]
+    public void Recent_easy_pace_excludes_trail_and_treadmill_and_runs_under_one_km()
+    {
+        var facts = new List<RunFact>
+        {
+            Easy("2026-10-20", 1, seconds: 2_800),
+            Easy("2026-10-27", 2, seconds: 2_880),
+            Easy("2026-11-03", 3, seconds: 3_200, surface: Surface.Trail),
+            Easy("2026-11-04", 4, seconds: 3_200, surface: Surface.Treadmill),
+            Easy("2026-11-05", 5, meters: 900, seconds: 600),
+        };
+
+        var h = TrainingHistory.From(facts, Today);
+
+        // Two usable runs only: falls back to the mean pace of the window.
+        Assert.Equal(h.MeanPaceSecondsPerKm, h.RecentEasyPaceSecondsPerKm);
+        Assert.NotNull(h.RecentEasyPaceSecondsPerKm);
+    }
+
+    [Fact]
+    public void Recent_easy_pace_is_null_without_any_pace()
+    {
+        Assert.Null(TrainingHistory.From([], Today).RecentEasyPaceSecondsPerKm);
+    }
+
+    [Fact]
+    public void Recent_easy_pace_with_an_even_count_is_the_mean_of_the_middle_two()
+    {
+        var facts = new List<RunFact> { Easy("2026-10-20", 1, seconds: 2_800), Easy("2026-10-27", 2, seconds: 2_880), Easy("2026-11-03", 3, seconds: 3_040), Easy("2026-11-05", 4, seconds: 3_200) };
+
+        Assert.Equal(370, TrainingHistory.From(facts, Today).RecentEasyPaceSecondsPerKm); // 350, 360, 380, 400 -> (360 + 380) / 2 = 370
+    }
 }

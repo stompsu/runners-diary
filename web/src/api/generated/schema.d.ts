@@ -689,7 +689,7 @@ export interface components {
             activeDays: components["schemas"]["DeltaDto"];
         };
         /** @enum {unknown} */
-        EffortKind: "Race" | "Training";
+        EffortKind: "Race" | "Training" | "RecentTraining";
         EntraClientConfig: {
             clientId: string;
             authority: string;
@@ -697,7 +697,7 @@ export interface components {
         };
         EstimateBasisDto: {
             /** Format: uuid */
-            runId: string;
+            runId: null | string;
             /** Format: date */
             date: string;
             kind: components["schemas"]["EffortKind"];
@@ -707,6 +707,8 @@ export interface components {
             durationSeconds: number;
             /** Format: double */
             elevationGainMeters: null | number;
+            /** Format: int32 */
+            runCount: number;
         };
         EstimateGoalRequest: {
             type: components["schemas"]["GoalType"];
@@ -811,6 +813,9 @@ export interface components {
             language: string;
             horizonCapped: boolean;
             outdated: boolean;
+            ambitiousTarget: boolean;
+            /** Format: int32 */
+            trainsTowardSeconds: null | number;
             /** Format: int32 */
             pendingCount: number;
             /** Format: int32 */

@@ -27,6 +27,9 @@ public enum PlanRuleCode
 
     /// <summary>Polish only: English text in a Polish plan's notes or descriptions (M10 G-L1 follow-up), same rule as the summary's <c>wrongLanguage</c>.</summary>
     WrongLanguage,
+
+    /// <summary>M9.1: an easy or recovery session faster than the envelope's <c>easyPaceMinSecondsPerKm</c>. Repaired by clamp; appended last so the existing numbers stay.</summary>
+    EasyPace,
 }
 
 public static class PlanRuleCodes
@@ -49,6 +52,7 @@ public static class PlanRuleCodes
         PlanRuleCode.Empty => "empty",
         PlanRuleCode.GenderedForm => "genderedForm",
         PlanRuleCode.WrongLanguage => "wrongLanguage",
+        PlanRuleCode.EasyPace => "easyPace",
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown plan rule code."),
     };
 }
@@ -59,7 +63,7 @@ public static class PlanRuleCodes
 /// <para>
 /// <see cref="Value"/> and <see cref="Limit"/> are integers computed by the validator (ADR 0040 amendment "plan reliability"), set for
 /// <c>weeklyVolume</c> (the week's suggested running distance and its <c>availableDistanceMeters</c>), <c>longRun</c> (the session's distance and
-/// the week's <c>maxLongRunMeters</c>) and a too-wide pace range (<c>schema</c> at <c>paceMaxSecondsPerKm</c>: the spread and
+/// the week's <c>maxLongRunMeters</c>) and an <c>easyPace</c> session (its faster pace bound and the envelope's <c>easyPaceMinSecondsPerKm</c>), a too-wide pace range (<c>schema</c> at <c>paceMaxSecondsPerKm</c>: the spread and
 /// the run type's limit from <see cref="TrainingSuggestion.MaxPaceSpreadSeconds"/>), so the retry note can say by how much. Numbers only, never text.
 /// </para>
 /// </summary>

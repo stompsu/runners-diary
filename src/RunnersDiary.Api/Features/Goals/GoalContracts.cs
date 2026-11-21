@@ -93,6 +93,15 @@ public sealed record GoalPlanDto
     /// <summary>A plan-relevant field of the goal changed after this plan was generated.</summary>
     public required bool Outdated { get; init; }
 
+    /// <summary>
+    /// M9.1: the goal's target time is more than 5 % faster than the realistic time this plan was built for (<c>targetDurationSeconds &lt; 0.95 × stored prediction</c>).
+    /// False when there is no target or no stored prediction (plans before M9.1). The UI hides the notice while <see cref="Outdated"/> is true.
+    /// </summary>
+    public required bool AmbitiousTarget { get; init; }
+
+    /// <summary>The realistic time the plan trains toward, seconds, when <see cref="AmbitiousTarget"/>; otherwise null.</summary>
+    public required int? TrainsTowardSeconds { get; init; }
+
     public required int PendingCount { get; init; }
 
     public required int DismissedCount { get; init; }
@@ -170,7 +179,8 @@ public sealed record EstimateGoalRequest
 
 public sealed record EstimateBasisDto
 {
-    public required Guid RunId { get; init; }
+    /// <summary>Null for the <c>RecentTraining</c> basis (the median of several runs, no single run).</summary>
+    public required Guid? RunId { get; init; }
 
     public required DateOnly Date { get; init; }
 
@@ -181,6 +191,9 @@ public sealed record EstimateBasisDto
     public required int DurationSeconds { get; init; }
 
     public required double? ElevationGainMeters { get; init; }
+
+    /// <summary>1 for <c>Race</c> and <c>Training</c>; the number of runs the <c>RecentTraining</c> basis is the median of.</summary>
+    public required int RunCount { get; init; }
 }
 
 public sealed record EstimatePredictionDto

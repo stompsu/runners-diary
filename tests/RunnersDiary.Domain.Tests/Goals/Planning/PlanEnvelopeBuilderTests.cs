@@ -220,17 +220,45 @@ public sealed class PlanEnvelopeBuilderTests
     }
 
     [Fact]
-    public void Reference_pace_prefers_the_target_then_the_prediction_then_the_mean_pace()
+    public void Reference_pace_is_the_slower_of_the_target_pace_and_the_fitness_pace()
     {
         var basis = new EffortFact(Guid.NewGuid(), Today, EffortKind.Race, 10_000, 3_000, null);
         var predicted = new TimePrediction(2_950, 295, PredictionConfidence.High, basis);
-        var withTarget = new GoalSpec(GoalType.Performance, 10_000, null, Today.AddDays(60), 2_700, Surface.Road);
+        var fast = new GoalSpec(GoalType.Performance, 10_000, null, Today.AddDays(60), 2_700, Surface.Road); // 270 s/km
+        var slow = new GoalSpec(GoalType.Performance, 10_000, null, Today.AddDays(60), 3_300, Surface.Road); // 330 s/km
         var withoutTarget = Goal(Today.AddDays(60));
 
-        Assert.Equal(270, PlanEnvelopeBuilder.ReferencePace(withTarget, predicted, History()));
+        Assert.Equal(295, PlanEnvelopeBuilder.ReferencePace(fast, predicted, History()));          // target faster than fitness: train from fitness
+        Assert.Equal(330, PlanEnvelopeBuilder.ReferencePace(slow, predicted, History()));          // target slower: the target
         Assert.Equal(295, PlanEnvelopeBuilder.ReferencePace(withoutTarget, predicted, History()));
         Assert.Equal(297, PlanEnvelopeBuilder.ReferencePace(withoutTarget, null, History(pace: 330))); // 0.90 x 330
+        Assert.Equal(297, PlanEnvelopeBuilder.ReferencePace(fast, null, History(pace: 330)));      // mean-pace fitness beats a faster target
+        Assert.Equal(270, PlanEnvelopeBuilder.ReferencePace(fast, null, History(pace: null)));     // no fitness: the target
         Assert.Null(PlanEnvelopeBuilder.ReferencePace(withoutTarget, null, History(pace: null)));
+    }
+
+    [Fact]
+    public void Easy_pace_bound_is_the_slower_of_the_reference_and_ninety_five_percent_of_the_recent_easy_pace()
+    {
+        static TrainingHistory WithEasy(double? easy) => History() with { RecentEasyPaceSecondsPerKm = easy };
+
+        Assert.Equal(343, PlanEnvelopeBuilder.EasyPaceMin(343, WithEasy(360)));    // 0.95 x 360 = 342 -> ref wins
+        Assert.Equal(350, PlanEnvelopeBuilder.EasyPaceMin(300, WithEasy(368)));    // ceil(349.6) = 350
+        Assert.Equal(342, PlanEnvelopeBuilder.EasyPaceMin(null, WithEasy(360)));   // 0.95 x 360 = 342 exactly (no float overshoot)
+        Assert.Equal(300, PlanEnvelopeBuilder.EasyPaceMin(300, WithEasy(null)));
+        Assert.Null(PlanEnvelopeBuilder.EasyPaceMin(null, WithEasy(null)));
+    }
+
+    [Fact]
+    public void The_envelope_carries_the_easy_pace_bound_and_version_3()
+    {
+        var history = History() with { RecentEasyPaceSecondsPerKm = 400 };
+
+        var e = PlanEnvelopeBuilder.Build(Goal(new DateOnly(2027, 1, 24)), Today, history, [], 343);
+
+        Assert.Equal(3, e.Version);
+        Assert.Equal(343, e.ReferencePaceSecondsPerKm);
+        Assert.Equal(380, e.EasyPaceMinSecondsPerKm); // 0.95 x 400
     }
 
     [Fact]

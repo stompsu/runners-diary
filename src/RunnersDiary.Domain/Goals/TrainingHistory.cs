@@ -21,8 +21,10 @@ public sealed record TrainingHistory(
     double SessionsPerWeek,
     double? MeanPaceSecondsPerKm,
     int RunningSessionsLast84Days,
-    IReadOnlyList<DayOfWeek> UsualWeekdays)
+    IReadOnlyList<DayOfWeek> UsualWeekdays,
+    double? RecentEasyPaceSecondsPerKm = null)
 {
+    public const int MinEasyRuns = 3;
     public const int WeekCount = 10;
     public const int BaseWeeks = 4;
     public const int RecentDays = 84;
@@ -65,7 +67,24 @@ public sealed record TrainingHistory(
             Rounding.Round(weeks.Sum(w => w.Sessions) / (double)WeekCount, 2),
             paceDistance > 0 ? Rounding.Round(paceDuration / paceDistance * 1000, 1) : null,
             running.Count(f => f.Date >= today.AddDays(-(RecentDays - 1))),
-            UsualWeekdaysOf(running, weeks));
+            UsualWeekdaysOf(running, weeks),
+            EasyPace(recentRuns, paceDistance > 0 ? Rounding.Round(paceDuration / paceDistance * 1000, 1) : null));
+    }
+
+    /// <summary>
+    /// The median real pace of easy, recovery and long runs of the base window (ADR 0040 amendment 2026-11-21): at least 3 runs of 1,000 m or more with a
+    /// pace of 150-900 s/km, trail and treadmill excluded; else the mean pace, else null.
+    /// </summary>
+    private static double? EasyPace(List<RunFact> recentRuns, double? meanPace)
+    {
+        var paces = recentRuns
+            .Where(f => RunTypeCatalog.Find(f.RunTypeId)?.Code is "easy" or "recovery" or "long"
+                && f.Surface is not (Surface.Trail or Surface.Treadmill)
+                && f.DistanceMeters is >= 1_000 && f.DurationSeconds is > 0)
+            .Select(f => f.DurationSeconds!.Value / (f.DistanceMeters!.Value / 1000))
+            .Where(p => p is >= RaceTimePredictor.MinEffortPaceSecondsPerKm and <= RaceTimePredictor.MaxEffortPaceSecondsPerKm)
+            .ToList();
+        return paces.Count >= MinEasyRuns ? Rounding.Round(RaceTimePredictor.Median(paces), 1) : meanPace;
     }
 
     /// <summary>A completed run of a tempo-like type, a race, or one with RPE 7 or more (ADR 0040 §3).</summary>

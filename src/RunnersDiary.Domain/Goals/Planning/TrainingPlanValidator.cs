@@ -22,6 +22,7 @@ public static class TrainingPlanValidator
     public const int DescriptionMaxLength = TrainingSuggestion.DescriptionMaxLength;
     public const double Tolerance = 1.05;
     public const double MinPaceShareOfReference = 0.85;
+    public const double MinRacePaceShareOfReference = PlanEnvelopeRules.RacePaceShareOfReference;
     public const int TaperQuietDays = 3;
 
     /// <summary>Training types that count as hard when they are commitments (the history's hard types, ADR 0040 §3).</summary>
@@ -159,10 +160,18 @@ public static class TrainingPlanValidator
         !sheet.Envelope.HorizonCapped && s.Intensity.IsHard()
         && s.Date >= sheet.Goal.TargetDate.AddDays(-TaperQuietDays) && s.Date < sheet.Goal.TargetDate;
 
-    /// <summary>The target pace's faster bound is faster than the reference pace allows (85 %; easy and recovery: not faster than the reference).</summary>
+    /// <summary>
+    /// The target pace's faster bound is faster than the reference pace allows: under 85 % of it for any session, under 97 % of it for a
+    /// <c>racePace</c> session (M9.1). The easy/recovery bound is <see cref="IsEasyTooFast"/>.
+    /// </summary>
     internal static bool IsTooFast(PlannedSession s, int? reference) =>
         reference is { } r && s.TargetPaceMinSecondsPerKm is { } min
-        && (min < MinPaceShareOfReference * r || (s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && min < r));
+        && (min < MinPaceShareOfReference * r || (s.Intensity == TrainingIntensity.RacePace && min < MinRacePaceShareOfReference * r));
+
+    /// <summary>An easy or recovery session whose faster pace bound is under the envelope's <c>easyPaceMinSecondsPerKm</c> (M9.1).</summary>
+    internal static bool IsEasyTooFast(PlannedSession s, int? easyPaceMin) =>
+        easyPaceMin is { } bound && s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery
+        && s.TargetPaceMinSecondsPerKm is { } min && min < bound;
 
     private static PlannedSession? Convert(
         DraftSession s, string location, bool trailGoal, DenyMatcher deny, List<PlanViolation> violations, List<PlanRepair> repairs)
@@ -348,6 +357,11 @@ public static class TrainingPlanValidator
             if (IsTooFast(s, reference))
             {
                 violations.Add(new PlanViolation(PlanRuleCode.Pace, where));
+            }
+
+            if (IsEasyTooFast(s, envelope.EasyPaceMinSecondsPerKm))
+            {
+                violations.Add(new PlanViolation(PlanRuleCode.EasyPace, where, s.TargetPaceMinSecondsPerKm, envelope.EasyPaceMinSecondsPerKm));
             }
         }
     }

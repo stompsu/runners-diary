@@ -6,7 +6,7 @@ namespace RunnersDiary.Domain.Goals.Planning;
 /// The deterministic repair step between parsing and the plan-level verdict (ADR 0040 amendment "repair"). Local, mechanical issues never fail a
 /// plan; each repair only makes the plan easier or safer, and everything else stays a violation (retry, then <c>plan-failed</c>).
 /// <para>Order: <c>phase</c> set from the envelope week; item-level drops of hard sessions in the quiet window (<c>taperIntensity</c>) and of
-/// too-fast targets (<c>pace</c>), then the <c>frequency</c> drops of an over-full week; <c>longRun</c> clamp; <c>weeklyVolume</c> scale. (The pace-spread clamp happens while a session is converted, in
+/// too-fast targets (<c>pace</c>), the <c>easyPace</c> clamp (M9.1), then the <c>frequency</c> drops of an over-full week; <c>longRun</c> clamp; <c>weeklyVolume</c> scale. (The pace-spread clamp happens while a session is converted, in
 /// <see cref="TrainingPlanValidator"/>.) Long runs are clamped before the weekly sum is judged, so a week that overshoots only because of one long run
 /// can be rescued. A volume or long-run overshoot of more than <see cref="MaxRepairedOvershoot"/> above the tolerant cap is not repaired. A repair that
 /// would push a session out of its own range (distance below 1,000 m, duration below 10 min, implied pace out of bounds) is skipped, so the
@@ -56,6 +56,35 @@ public static class TrainingPlanRepair
 
             result.Add(s);
         }
+
+        // 4a. easyPace: clamp easy/recovery sessions to the envelope's easy-pace bound (slower is the safe direction); drop when that leaves the session's range.
+        var trailGoal = TrainingPlanValidator.IsTrailGoal(sheet);
+        for (var i = result.Count - 1; i >= 0; i--)
+        {
+            var s = result[i];
+            if (!TrainingPlanValidator.IsEasyTooFast(s, envelope.EasyPaceMinSecondsPerKm))
+            {
+                continue;
+            }
+
+            var where = TrainingPlanValidator.Format(s.Date);
+            if (ClampEasyPace(s, envelope.EasyPaceMinSecondsPerKm!.Value, trailGoal) is { } slower)
+            {
+                repairs.Add(new PlanRepair(PlanRuleCode.EasyPace, where, PlanRepairAction.Clamp, s.TargetPaceMinSecondsPerKm, slower.TargetPaceMinSecondsPerKm));
+                result[i] = slower;
+            }
+            else
+            {
+                repairs.Add(new PlanRepair(PlanRuleCode.EasyPace, where, PlanRepairAction.Drop, s.TargetPaceMinSecondsPerKm, envelope.EasyPaceMinSecondsPerKm));
+                result.RemoveAt(i);
+                dropped++;
+            }
+        }
+
+        // The clamp loop ran back to front; keep the repair log in date order.
+        var easyLog = repairs.Where(r => r.Rule == PlanRuleCode.EasyPace).OrderBy(r => r.Location, StringComparer.Ordinal).ToList();
+        repairs.RemoveAll(r => r.Rule == PlanRuleCode.EasyPace);
+        repairs.AddRange(easyLog);
 
         // 4b. frequency: drop the excess running sessions of an over-full week (fixed commitments + suggestions above MaxSessionsPerWeek).
         foreach (var week in envelope.Weeks)
@@ -141,6 +170,33 @@ public static class TrainingPlanRepair
         }
 
         return new RepairResult([.. result.OrderBy(s => s.Date)], dropped, repairs);
+    }
+
+    /// <summary>
+    /// The easy/recovery session with its faster pace bound raised to <paramref name="bound"/>, the slower bound kept inside the run type's spread and
+    /// a duration whose implied pace is faster than the new bound raised to <c>ceil(distance in km × bound)</c>. Null (the session is dropped) when
+    /// the bound or the duration leaves the session's own range.
+    /// </summary>
+    private static PlannedSession? ClampEasyPace(PlannedSession s, int bound, bool trailGoal)
+    {
+        if (s.TargetPaceMinSecondsPerKm is null || s.TargetPaceMaxSecondsPerKm is not { } oldMax || bound > GoalRules.MaxPaceSecondsPerKm)
+        {
+            return null;
+        }
+
+        var spread = TrainingSuggestion.MaxPaceSpreadSeconds(s.RunTypeId, trailGoal);
+        var max = Math.Min(Math.Clamp(oldMax, bound, bound + spread), GoalRules.MaxPaceSecondsPerKm);
+        var duration = s.DurationSeconds;
+        if (s.DistanceMeters is { } distance && duration is { } seconds && seconds * 1000.0 < bound * distance)
+        {
+            duration = (int)Math.Ceiling((distance / 1000 * bound) - 1e-9);
+            if (duration > TrainingSuggestion.MaxDurationSeconds || !TrainingSuggestion.HasPlausibleImpliedPace(distance, duration))
+            {
+                return null;
+            }
+        }
+
+        return s with { TargetPaceMinSecondsPerKm = bound, TargetPaceMaxSecondsPerKm = max, DurationSeconds = duration };
     }
 
     /// <summary>

@@ -96,7 +96,8 @@ public sealed class PlanFactSheetTests
         Assert.Equal("2026-11-17", envelope.GetProperty("planStart").GetString());
         Assert.Equal("2027-01-23", envelope.GetProperty("planEnd").GetString());
         Assert.False(envelope.GetProperty("horizonCapped").GetBoolean());
-        Assert.Equal(270, envelope.GetProperty("referencePaceSecondsPerKm").GetInt32());
+        // M9.1: the slower of the target pace (270) and the fitness pace (the 10K race prediction, 290).
+        Assert.Equal(290, envelope.GetProperty("referencePaceSecondsPerKm").GetInt32());
         Assert.Equal(13, envelope.GetProperty("allowedRunTypes").GetArrayLength());
         var week1 = envelope.GetProperty("weeks")[0];
         Assert.Equal("2026-11-16", week1.GetProperty("start").GetString());

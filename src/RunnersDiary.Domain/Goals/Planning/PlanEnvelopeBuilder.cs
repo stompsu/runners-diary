@@ -32,14 +32,28 @@ public static class PlanEnvelopeBuilder
         return phases;
     }
 
-    /// <summary>The reference pace (ADR 0040 §2): the target pace, else the predicted pace, else 0.90 × the mean pace of the last 4 complete weeks, else null.</summary>
+    /// <summary>
+    /// The reference pace (ADR 0040 amendment 2026-11-21): the slower (larger s/km) of the target pace and the fitness pace; the fitness pace is the
+    /// prediction's pace (any basis), else 0.90 × the mean pace of the last 4 complete weeks. Whichever exists when only one does; null when none.
+    /// </summary>
     public static int? ReferencePace(GoalSpec goal, TimePrediction? prediction, TrainingHistory history)
     {
         ArgumentNullException.ThrowIfNull(goal);
         ArgumentNullException.ThrowIfNull(history);
-        return goal.TargetPaceSecondsPerKm
-            ?? prediction?.PaceSecondsPerKm
+        int? fitness = prediction?.PaceSecondsPerKm
             ?? (history.MeanPaceSecondsPerKm is { } mean ? (int)Math.Round(PlanEnvelopeRules.ReferencePaceFromMeanPace * mean, MidpointRounding.AwayFromZero) : null);
+        var target = goal.TargetPaceSecondsPerKm;
+        return target is { } t && fitness is { } f ? Math.Max(t, f) : target ?? fitness;
+    }
+
+    /// <summary>The faster bound of easy and recovery sessions: <c>max(reference, ceil(0.95 × recent easy pace))</c>; either part alone; null when neither.</summary>
+    public static int? EasyPaceMin(int? referencePaceSecondsPerKm, TrainingHistory history)
+    {
+        ArgumentNullException.ThrowIfNull(history);
+        int? fromHistory = history.RecentEasyPaceSecondsPerKm is { } easy
+            ? (int)Math.Ceiling((PlanEnvelopeRules.EasyPaceShareOfRecent * easy) - 1e-9)
+            : null;
+        return referencePaceSecondsPerKm is { } r && fromHistory is { } h ? Math.Max(r, h) : referencePaceSecondsPerKm ?? fromHistory;
     }
 
     public static PlanEnvelope Build(
@@ -132,6 +146,7 @@ public static class PlanEnvelopeBuilder
             taperWeeks,
             maxSessions,
             referencePaceSecondsPerKm,
+            EasyPaceMin(referencePaceSecondsPerKm, history),
             Math.Round(v0, 1, MidpointRounding.AwayFromZero),
             weeks,
             PlanEnvelopeRules.AllowedRunTypeCodes);

@@ -3919,7 +3919,8 @@
       "EffortKind": {
         "enum": [
           "Race",
-          "Training"
+          "Training",
+          "RecentTraining"
         ]
       },
       "EntraClientConfig": {
@@ -3949,12 +3950,16 @@
           "kind",
           "distanceMeters",
           "durationSeconds",
-          "elevationGainMeters"
+          "elevationGainMeters",
+          "runCount"
         ],
         "type": "object",
         "properties": {
           "runId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "date": {
@@ -3978,6 +3983,10 @@
               "number"
             ],
             "format": "double"
+          },
+          "runCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -4349,6 +4358,8 @@
           "language",
           "horizonCapped",
           "outdated",
+          "ambitiousTarget",
+          "trainsTowardSeconds",
           "pendingCount",
           "dismissedCount",
           "acceptedCount"
@@ -4397,6 +4408,16 @@
           },
           "outdated": {
             "type": "boolean"
+          },
+          "ambitiousTarget": {
+            "type": "boolean"
+          },
+          "trainsTowardSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           },
           "pendingCount": {
             "type": "integer",

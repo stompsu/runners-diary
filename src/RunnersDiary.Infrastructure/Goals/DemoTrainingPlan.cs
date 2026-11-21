@@ -75,7 +75,7 @@ public sealed class DemoTrainingPlan(IOptions<GuestOptions> options, DemoTextLoc
                 template.Goal.Surface, null, null, null, null, GoalStatus.Active),
             today, null, now);
         var generationId = Guid.CreateVersion7();
-        goal.RecordPlan(new GoalPlanRecord(generationId, now, template.Notes, null, Goal.DemoModelDeployment, null, target.AddDays(-1), false, language), now);
+        goal.RecordPlan(new GoalPlanRecord(generationId, now, template.Notes, null, Goal.DemoModelDeployment, null, target.AddDays(-1), false, language, sheet.Goal.PredictedDurationSeconds), now);
         var trailGoal = TrainingPlanValidator.IsTrailGoal(sheet);
         var suggestions = result.Kept.Select(s => TrainingSuggestion.Create(userId, goal.Id, generationId, s, now, trailGoal)).ToList();
         return new DemoPlanRows(goal, suggestions);

@@ -213,6 +213,9 @@ namespace RunnersDiary.Infrastructure.Persistence.Migrations
                     b.Property<bool>("PlanOutdated")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("PlanPredictedDurationSeconds")
+                        .HasColumnType("int");
+
                     b.Property<short?>("PlanPromptVersion")
                         .HasColumnType("smallint");
 

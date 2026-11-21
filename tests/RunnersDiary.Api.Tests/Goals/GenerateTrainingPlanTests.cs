@@ -102,6 +102,37 @@ public sealed class GenerateTrainingPlanTests(ContainersApiFactory factory) : IA
     private Task<List<AiGeneration>> LedgerAsync(TestActor actor) => factory.LedgerAsync(actor.UserId!.Value);
 
     [Fact]
+    public async Task A_plan_for_an_over_ambitious_target_stores_the_prediction_and_reports_what_it_trains_toward()
+    {
+        factory.SkipIfDockerUnavailable();
+        var client = new ScriptedChatClient().ReplyValid(9_000, 3_500);
+        using var host = Host(client);
+        var user = host.EntraUser("plan-ambitious-" + Guid.NewGuid().ToString("N")[..6]);
+        await user.GetUserIdAsync();
+        _actors.Add(user);
+        for (var i = 0; i < 10; i++)
+        {
+            var run = await user.Client.PostAsJsonAsync(
+                U("/api/runs"), Json.Run(Ahead(-2 - (3 * i)), r => { r["distanceMeters"] = 8_000; r["durationSeconds"] = 2_880; r["rpe"] = 3; }), Ct);
+            Assert.Equal(HttpStatusCode.Created, run.StatusCode);
+        }
+
+        var goal = await user.CreateGoalAsync(g =>
+        {
+            g["type"] = "Performance";
+            g["distanceMeters"] = 21_097.5;
+            g["targetDurationSeconds"] = 6_000;
+            g["targetDate"] = Ahead(84);
+        });
+
+        var body = await GenerateOkAsync(user, Id(goal));
+
+        var plan = body.GetProperty("goal").GetProperty("plan");
+        Assert.True(plan.GetProperty("ambitiousTarget").GetBoolean());
+        Assert.Equal(7_245, plan.GetProperty("trainsTowardSeconds").GetInt32()); // the fallback prediction of 10 x 8 km at 6:00/km
+    }
+
+    [Fact]
     public async Task Generate_stores_a_valid_plan_returns_it_and_records_a_plan_ledger_row()
     {
         factory.SkipIfDockerUnavailable();

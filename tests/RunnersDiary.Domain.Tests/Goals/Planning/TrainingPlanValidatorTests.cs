@@ -592,15 +592,15 @@ public sealed class TrainingPlanValidatorTests
     [Theory]
     [InlineData("tempo", 229, true)]   // below 0.85 x 270 = 229.5
     [InlineData("tempo", 230, false)]
-    [InlineData("easy", 269, true)]    // easy faster than the reference
-    [InlineData("recovery", 269, true)]
-    [InlineData("easy", 270, false)]
+    [InlineData("racePace", 261, true)]  // below 0.97 x 270 = 261.9
+    [InlineData("racePace", 262, false)]
+    [InlineData("easy", 269, false)]     // easy/recovery below the bound are clamped (easyPace), not dropped
     [InlineData("steady", 250, false)]
     public void Paces_are_bounded_by_the_reference_pace(string intensity, int min, bool violation)
     {
         var sheet = Sheet();
         var sessions = Good(sheet);
-        var type = intensity switch { "tempo" => "tempo", "recovery" => "recovery", "steady" => "progression", _ => "easy" };
+        var type = intensity switch { "tempo" => "tempo", "recovery" => "recovery", "steady" => "progression", "racePace" => "racePace", _ => "easy" };
         sessions[0] = sessions[0] with { RunType = type, Intensity = intensity, PaceMinSecondsPerKm = min, PaceMaxSecondsPerKm = min + 30 };
 
         var result = Validate(sheet, sessions);
@@ -610,6 +610,23 @@ public sealed class TrainingPlanValidatorTests
         Assert.Equal(violation ? 1 : 0, result.DroppedCount);
         Assert.Equal(violation, result.Repairs.Any(r => r.Rule == PlanRuleCode.Pace && r.Action == PlanRepairAction.Drop && r.Location == "2026-11-17"));
         Assert.Equal(!violation, result.Kept.Any(k => k.Date == new DateOnly(2026, 11, 17)));
+    }
+
+    [Fact]
+    public void An_easy_session_below_the_easy_pace_bound_is_clamped_not_dropped_and_recorded()
+    {
+        var sheet = Sheet();
+        var sessions = Good(sheet);
+        sessions[0] = sessions[0] with { PaceMinSecondsPerKm = 250, PaceMaxSecondsPerKm = 330, DurationSeconds = null };
+
+        var result = Validate(sheet, sessions);
+
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal(0, result.DroppedCount);
+        var kept = Assert.Single(result.Kept, k => k.Date == new DateOnly(2026, 11, 17));
+        Assert.Equal((270, 330), (kept.TargetPaceMinSecondsPerKm, kept.TargetPaceMaxSecondsPerKm)); // easy bound = the reference pace 270
+        var repair = Assert.Single(result.Repairs, r => r.Rule == PlanRuleCode.EasyPace);
+        Assert.Equal((PlanRepairAction.Clamp, 250, 270), (repair.Action, repair.From, repair.To));
     }
 
     [Fact]
@@ -746,7 +763,7 @@ public sealed class TrainingPlanValidatorTests
     public void Every_rule_code_has_a_stable_wire_name()
     {
         Assert.Equal(
-            ["schema", "dateRange", "sessionsPerDay", "phase", "weeklyVolume", "longRun", "frequency", "hardSessions", "taperIntensity", "pace", "emptyWeek", "markup", "forbiddenTopic", "empty", "genderedForm", "wrongLanguage"],
+            ["schema", "dateRange", "sessionsPerDay", "phase", "weeklyVolume", "longRun", "frequency", "hardSessions", "taperIntensity", "pace", "emptyWeek", "markup", "forbiddenTopic", "empty", "genderedForm", "wrongLanguage", "easyPace"],
             Enum.GetValues<PlanRuleCode>().Select(c => c.ToCode()));
     }
 }

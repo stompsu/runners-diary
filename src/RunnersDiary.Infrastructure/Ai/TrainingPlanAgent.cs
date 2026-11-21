@@ -192,6 +192,7 @@ public sealed class TrainingPlanAgent
             PlanRuleCode.WeeklyVolume =>
                 $"week {v.Location}: your running sessions add up to {value} m, its availableDistanceMeters is {limit} m",
             PlanRuleCode.LongRun => $"{v.Location}: a {value} m session, that week's maxLongRunMeters is {limit} m",
+            PlanRuleCode.EasyPace => $"{v.Location}: an easy or recovery session with paceMinSecondsPerKm {value}, the envelope's easyPaceMinSecondsPerKm is {limit}",
             PlanRuleCode.Schema when v.Location.EndsWith(".paceMaxSecondsPerKm", StringComparison.Ordinal) =>
                 $"{v.Location}: the pace range is {value} s/km wide, at most {limit} is allowed",
             _ => null,

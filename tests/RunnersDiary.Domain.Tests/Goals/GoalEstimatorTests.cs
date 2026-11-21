@@ -80,9 +80,16 @@ public sealed class GoalEstimatorTests
     public void Minimum_weeks_by_distance(double meters, int weeks) => Assert.Equal(weeks, GoalEstimator.MinimumWeeks(meters));
 
     [Fact]
-    public void Without_any_effort_the_estimate_warns_noRecentEffort()
+    public void Without_any_usable_training_run_the_estimate_warns_noRecentEffort()
     {
-        var e = Estimate(Spec("2027-02-14", 21_097.5), withRace: false);
+        // Fewer than 3 training runs in the last 6 weeks (no race, no hard run): no fallback either.
+        var facts = new List<RunFact>
+        {
+            InsightsTestData.Run("2026-11-11", "easy", 10_000, 3_000, rpe: 3, id: 1),
+            InsightsTestData.Run("2026-11-13", "easy", 10_000, 3_000, rpe: 3, id: 2),
+            InsightsTestData.Run("2026-09-01", "easy", 10_000, 3_000, rpe: 3, id: 3), // outside the 42 days
+        };
+        var e = Estimate(Spec("2027-02-14", 10_000), withRace: false, facts: facts);
 
         Assert.Null(e.Prediction);
         Assert.Equal([EstimateWarningCode.NoRecentEffort], e.Warnings.Select(w => w.Code));
@@ -110,10 +117,11 @@ public sealed class GoalEstimatorTests
         facts.Add(InsightsTestData.Run("2026-07-27", "tempo", 8_000, 2_400, rpe: 9, id: 54)); // 112 days ago: the window is the last 112 days, today included
         facts.Add(InsightsTestData.Run("2026-11-20", "tempo", 8_000, 2_400, rpe: 9, status: RunStatus.Planned, id: 52));
 
-        Assert.Null(Estimate(Spec("2027-02-14", 10_000), withRace: false, facts).Prediction);
+        // Not hard efforts: only the M9.1 fallback from ordinary training runs applies.
+        Assert.Equal(EffortKind.RecentTraining, Estimate(Spec("2027-02-14", 10_000), withRace: false, facts).Prediction!.Basis.Kind);
 
         facts.Add(InsightsTestData.Run("2026-07-28", "tempo", 8_000, 2_400, rpe: 9, id: 53)); // 111 days ago: inside
-        Assert.NotNull(Estimate(Spec("2027-02-14", 10_000), withRace: false, facts).Prediction);
+        Assert.Equal(EffortKind.Training, Estimate(Spec("2027-02-14", 10_000), withRace: false, facts).Prediction!.Basis.Kind);
     }
 
     [Fact]
@@ -123,10 +131,10 @@ public sealed class GoalEstimatorTests
         var planned = InsightsTestData.Race("2026-12-01", RaceDistanceCategory.TenK, result: null, status: RunStatus.Planned, id: 902);
 
         var e = GoalEstimator.Estimate(Spec("2027-02-14", 10_000), Today, ThirtyKmWeeks(), [old, planned]);
-        Assert.Null(e.Prediction);
+        Assert.Equal(EffortKind.RecentTraining, e.Prediction!.Basis.Kind); // no race basis: the fallback
 
         var yearAgo = InsightsTestData.Race("2025-11-17", RaceDistanceCategory.TenK, result: 3_000, distance: 10_000, id: 903);
-        Assert.NotNull(GoalEstimator.Estimate(Spec("2027-02-14", 10_000), Today, ThirtyKmWeeks(), [yearAgo]).Prediction);
+        Assert.Equal(EffortKind.Race, GoalEstimator.Estimate(Spec("2027-02-14", 10_000), Today, ThirtyKmWeeks(), [yearAgo]).Prediction!.Basis.Kind);
     }
 
     [Fact]
@@ -223,5 +231,44 @@ public sealed class GoalEstimatorTests
         facts.Add(InsightsTestData.Run("2026-11-16", "easy", 50_000, 3_600, id: 62)); // this week (Monday today)
 
         Assert.Equal(30_000, Estimate(Spec("2027-02-14", 10_000), withRace: false, facts).RecentWeeklyDistanceMeters);
+    }
+
+    [Fact]
+    public void The_estimate_of_an_easy_only_diary_uses_the_recent_training_fallback_and_warns_when_the_target_is_much_faster()
+    {
+        // The M9.1 scenario: 10 x 8 km at 6:00/km, half marathon in 1:40.
+        var facts = Enumerable.Range(0, 10)
+            .Select(i => InsightsTestData.Run(Today.AddDays(-2 - (3 * i)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), "easy", 8_000, 2_880, rpe: 3, id: 100 + i))
+            .ToList();
+
+        var e = GoalEstimator.Estimate(Spec("2026-12-20", 21_097.5, seconds: 6_000), Today, facts, []);
+
+        Assert.Equal(7_245, e.Prediction!.DurationSeconds);
+        Assert.Equal(343, e.Prediction.PaceSecondsPerKm);
+        Assert.Equal(PredictionConfidence.Low, e.Prediction.Confidence);
+        Assert.Equal(EffortKind.RecentTraining, e.Prediction.Basis.Kind);
+        Assert.Null(e.Prediction.Basis.RunId);
+        Assert.Equal(10, e.Prediction.Basis.RunCount);
+        var warning = Assert.Single(e.Warnings, w => w.Code == EstimateWarningCode.TargetMuchFasterThanPredicted);
+        Assert.Equal(17.2, warning.Value);
+        Assert.DoesNotContain(e.Warnings, w => w.Code == EstimateWarningCode.NoRecentEffort);
+    }
+
+    [Fact]
+    public void The_fallback_uses_only_completed_training_runs_of_the_last_42_days()
+    {
+        var facts = new List<RunFact>
+        {
+            InsightsTestData.Run("2026-11-10", "easy", 8_000, 2_880, id: 1),
+            InsightsTestData.Run("2026-11-12", "easy", 8_000, 2_880, id: 2),
+            InsightsTestData.Run("2026-10-06", "easy", 8_000, 2_880, id: 3), // today - 41: inside
+            InsightsTestData.Run("2026-10-05", "easy", 8_000, 2_880, id: 4), // today - 42: outside
+            InsightsTestData.Run("2026-11-14", "easy", 8_000, 2_880, status: RunStatus.Planned, id: 5),
+            InsightsTestData.Run("2026-11-14", "crossTraining", 8_000, 2_880, id: 6),
+        };
+
+        var runs = GoalEstimator.RecentTrainingRuns(facts, Today);
+
+        Assert.Equal([1, 2, 3], runs.Select(r => (int)r.RunId!.Value.ToByteArray()[0]).Order());
     }
 }
