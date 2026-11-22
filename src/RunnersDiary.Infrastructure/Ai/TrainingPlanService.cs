@@ -148,7 +148,7 @@ public sealed partial class TrainingPlanService(
         // 10. Commit. The model's work is paid for: a client that went away does not discard it.
         var record = new GoalPlanRecord(
             Guid.CreateVersion7(), run.CreatedAt, run.Plan!.Notes, checked((short)run.PromptVersion), run.ModelDeployment!, run.ModelId,
-            inputs.Envelope.PlanEnd, inputs.Envelope.HorizonCapped, language);
+            inputs.Envelope.PlanEnd, inputs.Envelope.HorizonCapped, language, inputs.Sheet.Goal.PredictedDurationSeconds);
         var committed = await CommitAsync(goal, inputs, run.Plan, record, replaceOtherGoals, CancellationToken.None);
         if (committed.Status != PlanGenerateStatus.Ok)
         {

@@ -115,13 +115,17 @@
     "basisRun": "Na podstawie ostatniego mocnego wysiłku: {{distance}}, {{date}}. Realny czas to około {{time}} ({{pace}}).",
     "useAsTarget": "Użyj jako celu",
     "lowConfidence": "Niska pewność: wysiłek, na którym oparto szacunek, dość mocno różni się od tego celu.",
-    "none": "Nie ma jeszcze ostatnich zawodów ani mocnego wysiłku, na których można oprzeć czas.",
+    "none": "Za mało ostatnich biegów, żeby oszacować czas: dodaj start, mocny trening albo co najmniej 3 biegi po 3 km lub więcej z ostatnich 6 tygodni.",
     "loading": "Sprawdzanie twoich ostatnich treningów…",
     "failed": "Nie udało się teraz sprawdzić, co jest realne.",
-    "weekly": "Ostatni dystans tygodniowy: {{distance}}."
+    "weekly": "Ostatni dystans tygodniowy: {{distance}}.",
+    "basisTraining_one": "Na podstawie {{count}} ostatniego treningu realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie.",
+    "basisTraining_few": "Na podstawie {{count}} ostatnich treningów realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie.",
+    "basisTraining_many": "Na podstawie {{count}} ostatnich treningów realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie.",
+    "basisTraining_other": "Na podstawie {{count}} ostatnich treningów realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie."
   },
   "warnings": {
-    "noRecentEffort": "Brak zawodów lub mocnego wysiłku w ostatnim roku, więc nie ma podstawy do prognozy czasu.",
+    "noRecentEffort": "Brak startu lub mocnego treningu w ostatnim roku i mniej niż 3 biegów po 3 km lub więcej w ostatnich 6 tygodniach, więc nie ma podstaw do oszacowania czasu.",
     "targetMuchFasterThanPredicted": "Ten cel jest o około {{value}} % szybszy, niż sugeruje twoja ostatnia forma. To ambitny cel.",
     "tooLittleTime_one": "Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje {{value}} tygodnia.",
     "tooLittleTime_few": "Do zwykle zalecanego czasu przygotowań do tego dystansu brakuje {{value}} tygodni.",
@@ -184,7 +188,12 @@
     "noOpen": "Brak otwartych sugestii. Wygeneruj ponownie, aby dostać nowy zestaw.",
     "showDismissed": "Pokaż odrzucone",
     "weekLabel": "Tydzień {{week}}, od: {{start}}",
-    "counts": "Otwarte: {{pending}}, odrzucone: {{dismissed}}, zaakceptowane: {{accepted}}"
+    "counts": "Otwarte: {{pending}}, odrzucone: {{dismissed}}, zaakceptowane: {{accepted}}",
+    "ambitiousTitle": "Ten cel wydaje się bardzo ambitny",
+    "ambitiousBody": "Na podstawie ostatnich biegów plan prowadzi do ok. {{time}}. Wynik {{target}} (termin: {{date}}) wymagałby dużego skoku formy.",
+    "ambitiousUse": "Ustaw ok. {{time}} jako cel",
+    "ambitiousUseFailed": "Nie udało się zmienić celu. Odśwież stronę i spróbuj ponownie.",
+    "ambitiousUseDone": "Cel zmieniony. Wygeneruj plan ponownie, aby do niego pasował."
   },
   "replace": {
     "title": "Zastąpić pozostałe sugestie?",

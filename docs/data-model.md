@@ -418,6 +418,7 @@ User-owned: `IUserOwned`, **`Owner` filter**, owner of a new row = the current u
 | `PlanModelId` | `varchar(100)` | yes | Provider-reported, truncated. |
 | `PlanHorizonEnd` | `date` | yes | Last plannable day of the generation. |
 | `PlanLanguage` | `varchar(8)` | yes | **M10.** Language of `PlanNotes` and the suggestion descriptions; NULL = English (plans before M10). See [Added in M10](#added-in-m10-polish-localisation). |
+| `PlanPredictedDurationSeconds` | `int` | yes | **M9.1.** The prediction this plan was built for (seconds); NULL = none or a plan before M9.1. See [Added in M9.1](#added-in-m91-realistic-plan-paces). |
 | `PlanHorizonCapped` | `bit` | no | No SQL default (EF always writes it; the previous release never writes `Goals`). |
 | `PlanOutdated` | `bit` | no | No SQL default. Set when a plan-relevant field of a goal **with a plan** changes (ADR 0039 §1) and on goals whose suggestions were replaced by `replaceOtherGoals`; cleared by a new plan. |
 | `CreatedAt` / `UpdatedAt` | `datetime2(0)` | no | UTC. |
@@ -490,6 +491,19 @@ Index change (migration `AiGenerationsFeatureIndex`): **`IX_AiGenerations_Create
 - **Not a column:** the language of an AI summary was already part of the `AiSummaries` key (M6: user + period + compare + language), so a Polish summary is its own row; nothing changed there. Suggestion descriptions carry no language of their own (the goal's `PlanLanguage` covers the whole generation).
 - **Seed content (not schema):** `seed/demo/i18n/pl.json` maps the English demo texts (run notes, gear, weather, rating comments, goal title, plan notes and session descriptions; run titles optional) to Polish; applied at guest seeding when the guest's language is `pl`. Seeded texts are the guest's data and are not re-seeded on a language switch.
 - **Guest deletion:** unchanged (both columns live on rows that already cascade).
+
+## Added in M9.1 (realistic plan paces)
+
+**Implemented 2026-11-21/22 on `realistic-plan-paces`; reviewed; live eval G-RP1 passed; awaiting the PR and gate G-RP2 (the migration job applies it).**
+- [M9.1 plan](plans/M9.1-realistic-plan-paces.md) §3.5 and §7; ADRs [0039](adr/0039-training-goals-and-realistic-target-estimate.md) and [0040](adr/0040-training-plan-generation.md), both amended 2026-11-21/22.
+- One migration, **`20261121183448_PlanPredictedDuration`**, additive: one nullable column, no default, no index, no check constraint. Compatible with the previous release (ADR 0032 expand rule): older images never read or write it, so an image rollback stays safe.
+
+| Table | Column | SQL type | Null | Written by | Notes |
+|---|---|---|---|---|---|
+| `Goals` | `PlanPredictedDurationSeconds` | `int` | yes | `Goal.RecordPlan(…)` (`GoalPlanRecord.PredictedDurationSeconds`) on every model plan and the guest demo plan: the on-course prediction's duration at generation time (any basis, incl. `RecentTraining`) | NULL = no prediction, or a plan stored before M9.1. Read only by the API mapping: `GoalDto.plan.ambitiousTarget` = `TargetDurationSeconds < 0.95 × PlanPredictedDurationSeconds` (both non-NULL; `GoalEstimator.IsAmbitiousTarget`), `trainsTowardSeconds` = this value when ambitious, else null. A regeneration overwrites it. |
+
+- **Not stored:** the flag itself (computed on read; a target change sets `PlanOutdated`, so the comparison stays exact for any plan that is not outdated), the fitness or easy pace, and the envelope (recomputed per generation). No history read on `GET /api/goals`.
+- **Guest deletion:** unchanged (the column lives on `Goals`, which already cascades).
 
 ## Deferred (by milestone)
 

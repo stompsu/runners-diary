@@ -4,6 +4,11 @@ using RunnersDiary.Domain.Runs;
 namespace RunnersDiary.Domain.Goals.Planning;
 
 /// <summary>The goal as the model sees it: planning fields only. Never the title, event name, notes or location (ADR 0040 §3).</summary>
+/// <param name="PredictionBasis">v3 (M9.1): what the prediction came from (a race, a hard training run or the recent-training fallback); null without a prediction. Never the basis run id.</param>
+/// <param name="PredictionConfidence">v3: the prediction's confidence; null without a prediction.</param>
+/// <param name="FitnessPaceSecondsPerKm">v3: the prediction's FLAT-basis pace (same prediction for the goal distance with no climbing; the pace current fitness supports on flat ground); null without a prediction.</param>
+/// <param name="AmbitiousTarget">v3: the target is more than 5 % faster than the prediction (<see cref="GoalEstimator.IsAmbitiousTarget"/>).</param>
+/// <param name="TargetFarBeyondPrediction">v3: the target is more than 15 % faster than the prediction (<see cref="IsFarBeyondPrediction"/>); only then may the notes say the target does not look realistic by its date (prompt v4).</param>
 public sealed record PlanGoalFacts(
     GoalType Type,
     double DistanceMeters,
@@ -13,7 +18,23 @@ public sealed record PlanGoalFacts(
     int? TargetDurationSeconds,
     int? TargetPaceSecondsPerKm,
     int? PredictedDurationSeconds,
-    int WeeksToGoal);
+    int WeeksToGoal,
+    EffortKind? PredictionBasis = null,
+    PredictionConfidence? PredictionConfidence = null,
+    int? FitnessPaceSecondsPerKm = null,
+    bool AmbitiousTarget = false,
+    bool TargetFarBeyondPrediction = false)
+{
+    /// <summary>The share of the predicted time below which the target is "far beyond" the prediction: more than 15 % faster (prompt v4).</summary>
+    public const double FarBeyondShareOfPrediction = 0.85;
+
+    /// <summary>
+    /// The target is more than 15 % faster than the predicted time (target &lt; 0.85 x predicted): the plan notes may then say plainly that it does
+    /// not look realistic by its date (user decision on M9.1 review L3); a target 5-15 % faster is only "ambitious".
+    /// </summary>
+    public static bool IsFarBeyondPrediction(int? targetDurationSeconds, int? predictedDurationSeconds) =>
+        targetDurationSeconds is { } target && predictedDurationSeconds is { } predicted && target < FarBeyondShareOfPrediction * predicted;
+}
 
 public sealed record PlanHistoryWeek(
     DateOnly Start,
@@ -30,15 +51,18 @@ public sealed record PlanAcwrFact(double? Value, AcwrBand? Band);
 
 public sealed record PlanRaceFact(DateOnly Date, double DistanceMeters, int DurationSeconds, string RunType);
 
+/// <param name="RecentEasyPaceSecondsPerKm">v3 (M9.1): <see cref="TrainingHistory.RecentEasyPaceSecondsPerKm"/>, the runner's recent easy pace.</param>
 public sealed record PlanHistoryFacts(
     IReadOnlyList<PlanHistoryWeek> Weeks,
     IReadOnlyList<DayOfWeek> UsualWeekdays,
     double SessionsPerWeek,
     PlanAcwrFact LatestAcwr,
-    IReadOnlyList<PlanRaceFact> Races);
+    IReadOnlyList<PlanRaceFact> Races,
+    double? RecentEasyPaceSecondsPerKm = null);
 
 /// <summary>
-/// The plan fact sheet (v1 ADR 0040 §3; v2 = caps rounded down to 500 m, ADR 0040 amendment "plan reliability"): the only data the plan model sees. Metrics, dates and codes only: no title, event name, notes,
+/// The plan fact sheet (v1 ADR 0040 §3; v2 = caps rounded down to 500 m, ADR 0040 amendment "plan reliability"; v3 = M9.1 fitness facts and the
+/// easy-pace bound, ADR 0040 amendment 2026-11-21): the only data the plan model sees. Metrics, dates and codes only: no title, event name, notes,
 /// location, run titles, gear, weather, heart rate, ids or names. A change to the projection or to the envelope constants bumps
 /// <see cref="CurrentVersion"/>.
 /// </summary>
@@ -52,8 +76,12 @@ public sealed record PlanFactSheet(
     IReadOnlyList<DismissedHint> Dismissed,
     PlanEnvelope Envelope)
 {
-    /// <summary>v2: the envelope caps are rounded down to 500 m (<see cref="PlanEnvelopeRules.CapStepMeters"/>); the shape is unchanged.</summary>
-    public const int CurrentVersion = 2;
+    /// <summary>
+    /// v3 (M9.1): <c>goal.predictionBasis</c>, <c>predictionConfidence</c>, <c>fitnessPaceSecondsPerKm</c>, <c>ambitiousTarget</c>;
+    /// <c>history.recentEasyPaceSecondsPerKm</c>; <c>envelope.easyPaceMinSecondsPerKm</c> (envelope v3: the reference pace is the slower of target and
+    /// fitness). v2: the envelope caps are rounded down to 500 m (<see cref="PlanEnvelopeRules.CapStepMeters"/>).
+    /// </summary>
+    public const int CurrentVersion = 3;
     public const int MaxCommitments = 200;
     public const int MaxDismissed = 60;
     public const int MaxRaces = 6;

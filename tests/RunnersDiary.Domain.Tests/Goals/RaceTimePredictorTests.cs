@@ -111,4 +111,78 @@ public sealed class RaceTimePredictorTests
     [InlineData(20_001, PredictionConfidence.Low)]
     public void Confidence_is_high_only_for_a_race_within_half_to_double_the_distance(double goalMeters, PredictionConfidence expected) =>
         Assert.Equal(expected, RaceTimePredictor.Predict(goalMeters, null, [Race(10_000, 3_000)])!.Confidence);
+
+    private static EffortFact Easy(double meters, int seconds, double? gain = null, int id = 200, int day = 0) =>
+        new(new Guid(id, 0, 0, new byte[8]), Day.AddDays(day), EffortKind.Training, meters, seconds, gain);
+
+    private static List<EffortFact> Runs(int count, double meters, int seconds) =>
+        [.. Enumerable.Range(0, count).Select(i => Easy(meters, seconds, id: 200 + i, day: i))];
+
+    [Fact]
+    public void Fallback_from_ten_easy_runs_matches_the_documented_worked_example()
+    {
+        // 10 x 8 km at 6:00/km: p = 360, E_b = 8,000, T_b = 0.90 x 2880 = 2592 s; Riegel to 21,097.5 m = 7,245 s, 343 s/km.
+        var p = RaceTimePredictor.Predict(21_097.5, null, [], Runs(10, 8_000, 2_880));
+
+        Assert.NotNull(p);
+        Assert.Equal(7_245, p.DurationSeconds);
+        Assert.Equal(343, p.PaceSecondsPerKm);
+        Assert.Equal(PredictionConfidence.Low, p.Confidence);
+        Assert.Equal(EffortKind.RecentTraining, p.Basis.Kind);
+        Assert.Null(p.Basis.RunId);
+        Assert.Equal(10, p.Basis.RunCount);
+        Assert.Equal(8_000, p.Basis.DistanceMeters);
+        Assert.Equal(2_592, p.Basis.DurationSeconds);
+        Assert.Equal(0, p.Basis.ElevationGainMeters);
+        Assert.Equal(Day.AddDays(9), p.Basis.Date); // the latest run used
+    }
+
+    [Fact]
+    public void Fallback_needs_three_usable_runs()
+    {
+        Assert.Null(RaceTimePredictor.Predict(10_000, null, [], Runs(2, 8_000, 2_880)));
+        Assert.NotNull(RaceTimePredictor.Predict(10_000, null, [], Runs(3, 8_000, 2_880)));
+        // Runs under 3 km, without a time or with an effort pace outside 150-900 s/km do not count.
+        List<EffortFact> unusable = [.. Runs(2, 8_000, 2_880), Easy(2_999, 900, id: 1), Easy(8_000, 0, id: 2), Easy(8_000, 8_000 * 901 / 1000 + 100, id: 3), Easy(8_000, 1_000, id: 4)];
+        Assert.Null(RaceTimePredictor.Predict(10_000, null, [], unusable));
+    }
+
+    [Fact]
+    public void A_race_or_a_hard_effort_replaces_the_fallback()
+    {
+        var runs = Runs(10, 8_000, 2_880);
+
+        var race = RaceTimePredictor.Predict(10_000, null, [Race(10_000, 3_000)], runs);
+        var hard = RaceTimePredictor.Predict(10_000, null, [Hard(10_000, 3_100)], runs);
+
+        Assert.Equal(EffortKind.Race, race!.Basis.Kind);
+        Assert.Equal(EffortKind.Training, hard!.Basis.Kind);
+    }
+
+    [Fact]
+    public void Fallback_uses_medians_so_an_outlier_does_not_move_it()
+    {
+        // Odd count: the middle value. 5 runs: paces 300, 360, 360, 360, 600 -> median 360.
+        var odd = RaceTimePredictor.FromRecentTraining(8_000, null, [Easy(8_000, 2_400, id: 1), Easy(8_000, 2_880, id: 2), Easy(8_000, 2_880, id: 3), Easy(8_000, 2_880, id: 4), Easy(8_000, 4_800, id: 5)]);
+        Assert.Equal(2_592, odd!.Basis.DurationSeconds);
+
+        // Even count: the mean of the two middle values. Distances 6 km and 10 km at 6:00/km -> E_b = 8,000, p = 360.
+        var even = RaceTimePredictor.FromRecentTraining(8_000, null, [Easy(6_000, 2_160, id: 1), Easy(6_000, 2_160, id: 2), Easy(10_000, 3_600, id: 3), Easy(10_000, 3_600, id: 4)]);
+        Assert.Equal(8_000, even!.Basis.DistanceMeters);
+        Assert.Equal(2_592, even.Basis.DurationSeconds);
+        Assert.Equal(2_592, even.DurationSeconds); // goal = E_b: no extrapolation
+    }
+
+    [Fact]
+    public void Fallback_counts_elevation_as_km_effort()
+    {
+        // 8 km + 200 m climb = E 10,000 in 3,000 s: effort pace 300 s/km; T_b = 0.90 x 300 x 10 = 2,700 s; goal 10 km flat = E_b: 2,700 s.
+        var runs = Enumerable.Range(0, 3).Select(i => Easy(8_000, 3_000, gain: 200, id: 300 + i, day: i)).ToList();
+
+        var p = RaceTimePredictor.FromRecentTraining(10_000, null, runs);
+
+        Assert.Equal(2_700, p!.DurationSeconds);
+        Assert.Equal(270, p.PaceSecondsPerKm);
+        Assert.Equal(200, p.Basis.ElevationGainMeters);
+    }
 }

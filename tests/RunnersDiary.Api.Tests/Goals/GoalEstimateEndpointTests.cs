@@ -77,6 +77,52 @@ public sealed class GoalEstimateEndpointTests(ContainersApiFactory factory)
     }
 
     [Fact]
+    public async Task An_easy_only_diary_gets_the_recent_training_fallback_and_the_target_warning()
+    {
+        factory.SkipIfDockerUnavailable();
+        var user = factory.EntraUser("estimate-easy-only");
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await user.Client.PostAsJsonAsync(
+                U("/api/runs"), Json.Run(Ahead(-3 - (4 * i)), r => { r["distanceMeters"] = 8_000; r["durationSeconds"] = 2_880; r["rpe"] = 3; }), Ct);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        }
+
+        var estimate = await (await EstimateAsync(user, b =>
+        {
+            b["type"] = "Performance";
+            b["distanceMeters"] = 21_097.5;
+            b["targetDurationSeconds"] = 6_000;
+            b["targetDate"] = Ahead(90);
+        })).ReadAsync();
+
+        var prediction = estimate.GetProperty("prediction");
+        Assert.Equal(7_245, prediction.GetProperty("durationSeconds").GetInt32());
+        Assert.Equal(343, prediction.GetProperty("paceSecondsPerKm").GetInt32());
+        Assert.Equal("Low", prediction.GetProperty("confidence").GetString());
+        var basis = prediction.GetProperty("basis");
+        Assert.Equal("RecentTraining", basis.GetProperty("kind").GetString());
+        Assert.Equal(JsonValueKind.Null, basis.GetProperty("runId").ValueKind);
+        Assert.Equal(5, basis.GetProperty("runCount").GetInt32());
+        var warnings = estimate.GetProperty("warnings").EnumerateArray().ToDictionary(w => w.GetProperty("code").GetString()!, w => w.GetProperty("value"));
+        Assert.Equal(17.2, warnings["targetMuchFasterThanPredicted"].GetDouble());
+        Assert.DoesNotContain("noRecentEffort", warnings.Keys);
+    }
+
+    [Fact]
+    public async Task A_race_basis_reports_a_single_run()
+    {
+        factory.SkipIfDockerUnavailable();
+        var user = factory.EntraUser("estimate-race-count");
+        await user.CreateRaceResultAsync();
+
+        var basis = (await (await EstimateAsync(user)).ReadAsync()).GetProperty("prediction").GetProperty("basis");
+
+        Assert.Equal(1, basis.GetProperty("runCount").GetInt32());
+        Assert.Equal(JsonValueKind.String, basis.GetProperty("runId").ValueKind);
+    }
+
+    [Fact]
     public async Task The_demo_history_of_a_guest_gives_a_prediction_from_a_demo_race()
     {
         factory.SkipIfDockerUnavailable();

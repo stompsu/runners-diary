@@ -90,6 +90,28 @@ internal static class PlanSheets
         return (facts, races);
     }
 
+    /// <summary>
+    /// The M9.1 user scenario (plan §3.1, §5): ten flat easy runs of 8 km at 6:00/km in the four complete weeks before <paramref name="today"/>
+    /// (Tuesday, Thursday and Saturday in the first and third week, Tuesday and Saturday in the others), RPE 4; no race, no hard run.
+    /// </summary>
+    public static List<RunFact> EasyOnlyLog(DateOnly today)
+    {
+        var monday = IsoWeek.MondayOf(today);
+        var facts = new List<RunFact>();
+        var id = 0;
+        for (var w = 4; w >= 1; w--)
+        {
+            var start = monday.AddDays(-7 * w);
+            var days = w % 2 == 0 ? new[] { 1, 3, 5 } : [1, 5];
+            foreach (var day in days)
+            {
+                facts.Add(new RunFact(new Guid(500 + ++id, 0, 0, new byte[8]), start.AddDays(day), RunStatus.Completed, 20, 8_000, 2_880, 0, 4, Surface.Road, null));
+            }
+        }
+
+        return facts;
+    }
+
     /// <summary>A planned run (a commitment) on <paramref name="date"/>.</summary>
     public static RunFact Planned(DateOnly date, short type = 20, double? meters = 8_000, int index = 0) =>
         new(new Guid(900 + index, 0, 0, new byte[8]), date, RunStatus.Planned, type, meters, null, null, null, Surface.Road, null);

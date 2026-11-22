@@ -39,6 +39,8 @@ internal static class GoalMapping
                     Language = RunnersDiary.Domain.Localization.SupportedLanguages.OrDefault(g.PlanLanguage),
                     HorizonCapped = g.PlanHorizonCapped,
                     Outdated = g.PlanOutdated,
+                    AmbitiousTarget = IsAmbitious(g),
+                    TrainsTowardSeconds = IsAmbitious(g) ? g.PlanPredictedDurationSeconds : null,
                     PendingCount = view.PendingCount,
                     DismissedCount = view.DismissedCount,
                     AcceptedCount = view.AcceptedCount,
@@ -49,6 +51,12 @@ internal static class GoalMapping
             UpdatedAt = g.UpdatedAt,
         };
     }
+
+    /// <summary>
+    /// M9.1: the target is more than 5 % faster than the realistic time this plan was built for (the ADR 0039 §4 threshold). Computed from the stored
+    /// prediction; plans before M9.1 have none and map to false.
+    /// </summary>
+    internal static bool IsAmbitious(Goal g) => GoalEstimator.IsAmbitiousTarget(g.TargetDurationSeconds, g.PlanPredictedDurationSeconds);
 
     public static GoalEstimateResponse ToResponse(GoalEstimate e) => new()
     {
@@ -67,6 +75,7 @@ internal static class GoalMapping
                 Basis = new EstimateBasisDto
                 {
                     RunId = p.Basis.RunId,
+                    RunCount = p.Basis.RunCount,
                     Date = p.Basis.Date,
                     Kind = p.Basis.Kind,
                     DistanceMeters = p.Basis.DistanceMeters,

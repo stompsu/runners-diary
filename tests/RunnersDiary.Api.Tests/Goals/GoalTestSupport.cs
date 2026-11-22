@@ -145,12 +145,13 @@ internal static class GoalTestSupport
         });
 
     /// <summary>Writes plan metadata on the goal as a finished generation would (model source unless <paramref name="demo"/>).</summary>
-    public static async Task SeedPlanAsync(this WebApplicationFactory<Program> factory, TestActor actor, Guid goalId, bool demo = false) =>
+    public static async Task SeedPlanAsync(
+        this WebApplicationFactory<Program> factory, TestActor actor, Guid goalId, bool demo = false, int? predictedDurationSeconds = null) =>
         await factory.WithUserDbAsync(actor, async (db, _) =>
         {
             var goal = await db.Goals.SingleAsync(g => g.Id == goalId, Ct);
             goal.RecordPlan(
-                new GoalPlanRecord(Guid.NewGuid(), DateTimeOffset.UtcNow, "A short plan.", demo ? null : 1, demo ? RunnersDiary.Domain.Goals.Goal.DemoModelDeployment : "test-deployment", demo ? null : "test-model-1", Today.AddDays(50), false),
+                new GoalPlanRecord(Guid.NewGuid(), DateTimeOffset.UtcNow, "A short plan.", demo ? null : 1, demo ? RunnersDiary.Domain.Goals.Goal.DemoModelDeployment : "test-deployment", demo ? null : "test-model-1", Today.AddDays(50), false, null, predictedDurationSeconds),
                 DateTimeOffset.UtcNow);
             await db.SaveChangesAsync(Ct);
             return 0;

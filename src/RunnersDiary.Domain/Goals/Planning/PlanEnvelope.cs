@@ -29,6 +29,7 @@ public sealed record PlanEnvelope(
     int TaperWeeks,
     int MaxSessionsPerWeek,
     int? ReferencePaceSecondsPerKm,
+    int? EasyPaceMinSecondsPerKm,
     double BaseVolumeMeters,
     IReadOnlyList<PlanWeek> Weeks,
     IReadOnlyList<string> AllowedRunTypes)

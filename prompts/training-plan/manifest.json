@@ -1,6 +1,6 @@
 {
-  "current": 3,
-  "planFactSheetVersion": 2,
+  "current": 4,
+  "planFactSheetVersion": 3,
   "versions": {
     "1": {
       "file": "v1.md",
@@ -15,6 +15,14 @@
     "3": {
       "file": "v3.md",
       "sha256": "602fe20e856f54bbb1feb59853b588c1cefed0d0440ddf302d22e1765a3530cb",
+      "denyList": {
+        "en": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"],
+        "pl": ["kontuzj*", "uraz*", "przetrenow*", "diagnoz*", "medyczn*", "chorob*", "zachorow*", "chory", "chora", "chore", "chorego", "chorej", "chorzy", "sercow*", "zawal", "zawalu", "zawalem", "zawaly", "zawalow", "zawalom", "zawalami", "zawalach", "lekarz*", "lekark*", "lekarsk*", "fizjoterap*", "bol", "bolu", "bolem", "bole", "bolow", "bolom", "bolami", "bolach", "boli", "bola", "bolal", "bolala", "bolalo", "bolaly", "bolec", "bolesn*", "obolal*", "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*", "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach", "zlaman* zmeczeniow*", "zlaman* kosc*", "zlaman* przeciazeniow*", "zlaman* nog*", "peknieci*", "pekniet*", "naderw*", "zapaln*", "rehabilitac*", "ortoped*", "szpital*", "dolegliwos*", "ryzyko", "ryzyka", "ryzyku", "ryzykiem"]
+      }
+    },
+    "4": {
+      "file": "v4.md",
+      "sha256": "f280c814830668d7a5812af87bbdf92e7c1e6f642419c92dc41db7a679891d7a",
       "denyList": {
         "en": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"],
         "pl": ["kontuzj*", "uraz*", "przetrenow*", "diagnoz*", "medyczn*", "chorob*", "zachorow*", "chory", "chora", "chore", "chorego", "chorej", "chorzy", "sercow*", "zawal", "zawalu", "zawalem", "zawaly", "zawalow", "zawalom", "zawalami", "zawalach", "lekarz*", "lekark*", "lekarsk*", "fizjoterap*", "bol", "bolu", "bolem", "bole", "bolow", "bolom", "bolami", "bolach", "boli", "bola", "bolal", "bolala", "bolalo", "bolaly", "bolec", "bolesn*", "obolal*", "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*", "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach", "zlaman* zmeczeniow*", "zlaman* kosc*", "zlaman* przeciazeniow*", "zlaman* nog*", "peknieci*", "pekniet*", "naderw*", "zapaln*", "rehabilitac*", "ortoped*", "szpital*", "dolegliwos*", "ryzyko", "ryzyka", "ryzyku", "ryzykiem"]

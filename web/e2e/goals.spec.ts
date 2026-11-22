@@ -135,6 +135,32 @@ test('keyboard path: cell, Enter, Accept; Edit & accept with a changed distance'
   })
 })
 
+test('an ambitious target is flagged on the plan and Use as target moves it to what the plan trains toward', async ({
+  page,
+}) => {
+  const { fake, token } = await start(page, { planGeneration: true })
+  const goal = fake.addGoal(token, {
+    title: 'Autumn 10K',
+    type: 'Performance',
+    targetDurationSeconds: 2400,
+    targetDate: '2026-12-20',
+  })
+  await fake.handle(
+    new Request(`http://localhost/api/goals/${goal.id}/plan`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  await page.goto(`/goals/${goal.id}`)
+  const notice = page.getByRole('region', { name: 'This target seems very ambitious' })
+  await expect(notice).toContainText('this plan trains toward ~0:50:00. 0:40:00 by')
+  expect(await seriousViolationsIn(page, '[data-testid="plan-ambitious"]')).toEqual([])
+  await notice.getByRole('button', { name: 'Use ~0:50:00 as target' }).click()
+  await expect(page.getByTestId('plan-outdated')).toBeVisible()
+  await expect(notice).toHaveCount(0)
+  expect(fake.goalsOf(token)[0]!.targetDurationSeconds).toBe(3000)
+})
+
 test('a second goal asks before replacing the first plan', async ({ page }) => {
   const { fake, token } = await start(page)
   const first = fake.addGoal(token, { title: 'Spring half', targetDate: '2027-03-20' })

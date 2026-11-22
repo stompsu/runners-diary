@@ -111,13 +111,15 @@
     "basisRun": "Based on a recent hard effort of {{distance}} on {{date}}, about {{time}} looks realistic ({{pace}}).",
     "useAsTarget": "Use as target",
     "lowConfidence": "Low confidence: the effort it is based on is quite different from this goal.",
-    "none": "There is no recent race or hard effort to base a time on yet.",
+    "none": "Not enough recent runs to estimate a time: log a race, a hard effort, or at least 3 runs of 3 km or more in the last 6 weeks.",
     "loading": "Checking your recent runs…",
     "failed": "Could not check what is realistic right now.",
-    "weekly": "Recent weekly distance: {{distance}}."
+    "weekly": "Recent weekly distance: {{distance}}.",
+    "basisTraining_one": "Based on {{count}} recent training run, about {{time}} looks realistic ({{pace}}). A rough estimate.",
+    "basisTraining_other": "Based on {{count}} recent training runs, about {{time}} looks realistic ({{pace}}). A rough estimate."
   },
   "warnings": {
-    "noRecentEffort": "No race or hard effort in the last year, so there is no basis for a time prediction.",
+    "noRecentEffort": "No race or hard effort in the last year and fewer than 3 runs of 3 km or more in the last 6 weeks, so there is no basis for a time estimate.",
     "targetMuchFasterThanPredicted": "This target is about {{value}} % faster than your recent form suggests. It is ambitious.",
     "tooLittleTime_one": "There is {{value}} week less than usually recommended for this distance.",
     "tooLittleTime_other": "There are {{value}} weeks less than usually recommended for this distance.",
@@ -176,7 +178,12 @@
     "noOpen": "No open suggestions. Regenerate to get a new set.",
     "showDismissed": "Show dismissed",
     "weekLabel": "Week {{week}}, from {{start}}",
-    "counts": "{{pending}} open, {{dismissed}} dismissed, {{accepted}} accepted"
+    "counts": "{{pending}} open, {{dismissed}} dismissed, {{accepted}} accepted",
+    "ambitiousTitle": "This target seems very ambitious",
+    "ambitiousBody": "Based on your recent runs, this plan trains toward ~{{time}}. {{target}} by {{date}} would need a big jump in fitness.",
+    "ambitiousUse": "Use ~{{time}} as target",
+    "ambitiousUseFailed": "Could not change the target. Reload the page and try again.",
+    "ambitiousUseDone": "Target updated. Regenerate the plan to match it."
   },
   "replace": {
     "title": "Replace the other suggestions?",
