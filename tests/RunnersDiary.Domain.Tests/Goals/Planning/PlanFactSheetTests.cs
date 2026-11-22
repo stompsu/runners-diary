@@ -60,6 +60,12 @@ public sealed class PlanFactSheetTests
         Assert.Equal(sheet.Goal.PredictedDurationSeconds, goal.GetProperty("predictedDurationSeconds").GetInt32());
         Assert.Equal(9, goal.GetProperty("weeksToGoal").GetInt32()); // 69 days
         Assert.False(goal.TryGetProperty("elevationGainMeters", out _));
+        // v3 (M9.1): the prediction comes from the 10K race (2,900 s); the 2,700 s target is more than 5 % faster.
+        Assert.Equal("race", goal.GetProperty("predictionBasis").GetString());
+        Assert.Equal("high", goal.GetProperty("predictionConfidence").GetString());
+        Assert.Equal(290, goal.GetProperty("fitnessPaceSecondsPerKm").GetInt32());
+        Assert.True(goal.GetProperty("ambitiousTarget").GetBoolean());
+        Assert.False(goal.TryGetProperty("runId", out _));
 
         var history = root.GetProperty("history");
         var weeks = history.GetProperty("weeks");
@@ -74,6 +80,7 @@ public sealed class PlanFactSheetTests
         Assert.True(last.GetProperty("load").GetDouble() > 0);
         Assert.Equal(["tuesday"], history.GetProperty("usualWeekdays").EnumerateArray().Select(e => e.GetString()));
         Assert.Equal(0.7, history.GetProperty("sessionsPerWeek").GetDouble());
+        Assert.Equal(sheet.History.RecentEasyPaceSecondsPerKm, history.GetProperty("recentEasyPaceSecondsPerKm").GetDouble());
         Assert.Equal(JsonValueKind.Object, history.GetProperty("latestAcwr").ValueKind);
         var race = Assert.Single(history.GetProperty("races").EnumerateArray());
         Assert.Equal("2026-11-07", race.GetProperty("date").GetString());
@@ -98,6 +105,8 @@ public sealed class PlanFactSheetTests
         Assert.False(envelope.GetProperty("horizonCapped").GetBoolean());
         // M9.1: the slower of the target pace (270) and the fitness pace (the 10K race prediction, 290).
         Assert.Equal(290, envelope.GetProperty("referencePaceSecondsPerKm").GetInt32());
+        Assert.Equal(sheet.Envelope.EasyPaceMinSecondsPerKm, envelope.GetProperty("easyPaceMinSecondsPerKm").GetInt32());
+        Assert.True(sheet.Envelope.EasyPaceMinSecondsPerKm >= 290);
         Assert.Equal(13, envelope.GetProperty("allowedRunTypes").GetArrayLength());
         var week1 = envelope.GetProperty("weeks")[0];
         Assert.Equal("2026-11-16", week1.GetProperty("start").GetString());
@@ -105,6 +114,30 @@ public sealed class PlanFactSheetTests
         Assert.Equal(sheet.Envelope.Weeks[0].MaxDistanceMeters, week1.GetProperty("maxDistanceMeters").GetDouble());
         Assert.Equal(25_000, week1.GetProperty("fixedDistanceMeters").GetDouble()); // 10 km Thursday + 15 km Sunday
     }
+
+    [Fact]
+    public void Without_a_prediction_the_v3_goal_members_are_omitted_and_the_target_is_not_ambitious()
+    {
+        var (sheet, bytes) = Sheet(facts: [], races: []);
+        var goal = Parse(bytes).GetProperty("goal");
+
+        Assert.Null(sheet.Goal.PredictedDurationSeconds);
+        foreach (var member in new[] { "predictedDurationSeconds", "predictionBasis", "predictionConfidence", "fitnessPaceSecondsPerKm" })
+        {
+            Assert.False(goal.TryGetProperty(member, out _), member);
+        }
+
+        Assert.False(goal.GetProperty("ambitiousTarget").GetBoolean());
+        Assert.False(Parse(bytes).GetProperty("history").TryGetProperty("recentEasyPaceSecondsPerKm", out _));
+    }
+
+    [Theory]
+    [InlineData(2_754, 2_900, true)]
+    [InlineData(2_755, 2_900, false)] // exactly 0.95 x 2,900: not faster than the threshold
+    [InlineData(null, 2_900, false)]
+    [InlineData(2_000, null, false)]
+    public void The_ambitious_target_rule_is_the_estimate_threshold(int? target, int? predicted, bool expected) =>
+        Assert.Equal(expected, GoalEstimator.IsAmbitiousTarget(target, predicted));
 
     [Fact]
     public void The_same_inputs_give_identical_bytes_and_fingerprints_and_a_change_changes_them()

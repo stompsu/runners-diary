@@ -8,7 +8,7 @@ using RunnersDiary.Infrastructure.Ai;
 namespace RunnersDiary.Ai.Tests.Plans;
 
 /// <summary>
-/// Live mode of the plan evals (ADR 0040 §7, gate G-P3), <b>off by default and never in CI; it costs money</b>: the six cases three times
+/// Live mode of the plan evals (ADR 0040 §7, gate G-P3), <b>off by default and never in CI; it costs money</b>: every case of <see cref="PlanEvalCases"/> (nine since M9.1, incl. the easy-only half marathon scenario) three times
 /// against a real Foundry deployment through the real plan pipeline (agent, validator, retry). Run locally after <c>az login</c>:
 /// <code>
 /// RD_AI_LIVE_EVAL=1 RD_AI_ENDPOINT=https://&lt;resource&gt;.openai.azure.com/ RD_AI_DEPLOYMENT=&lt;deployment&gt; \

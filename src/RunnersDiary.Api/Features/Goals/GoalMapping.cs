@@ -56,8 +56,7 @@ internal static class GoalMapping
     /// M9.1: the target is more than 5 % faster than the realistic time this plan was built for (the ADR 0039 §4 threshold). Computed from the stored
     /// prediction; plans before M9.1 have none and map to false.
     /// </summary>
-    internal static bool IsAmbitious(Goal g) =>
-        g.TargetDurationSeconds is { } target && g.PlanPredictedDurationSeconds is { } predicted && target < GoalEstimator.TargetFasterThreshold * predicted;
+    internal static bool IsAmbitious(Goal g) => GoalEstimator.IsAmbitiousTarget(g.TargetDurationSeconds, g.PlanPredictedDurationSeconds);
 
     public static GoalEstimateResponse ToResponse(GoalEstimate e) => new()
     {

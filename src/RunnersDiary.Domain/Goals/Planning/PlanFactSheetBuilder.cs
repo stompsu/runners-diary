@@ -57,6 +57,7 @@ public static class PlanFactSheetBuilder
             .Select(r => new PlanRaceFact(r.Date, (r.DistanceMeters ?? r.OfficialDistanceMeters)!.Value, r.ResultTimeSeconds!.Value, r.RunTypeCode))
             .ToList();
 
+        var prediction = estimate.Prediction;
         return new PlanFactSheet(
             PlanFactSheet.CurrentVersion,
             today,
@@ -69,9 +70,14 @@ public static class PlanFactSheetBuilder
                 goal.TargetDate,
                 goal.TargetDurationSeconds,
                 goal.TargetPaceSecondsPerKm,
-                estimate.Prediction?.DurationSeconds,
-                estimate.WeeksToGoal),
-            new PlanHistoryFacts(weeks, history.UsualWeekdays, history.SessionsPerWeek, new PlanAcwrFact(latest.Value, latest.Band), races),
+                prediction?.DurationSeconds,
+                estimate.WeeksToGoal,
+                prediction?.Basis.Kind,
+                prediction?.Confidence,
+                prediction?.PaceSecondsPerKm,
+                GoalEstimator.IsAmbitiousTarget(goal.TargetDurationSeconds, prediction?.DurationSeconds)),
+            new PlanHistoryFacts(
+                weeks, history.UsualWeekdays, history.SessionsPerWeek, new PlanAcwrFact(latest.Value, latest.Band), races, history.RecentEasyPaceSecondsPerKm),
             [.. commitments.OrderBy(c => c.Date).ThenBy(c => c.Kind).Take(PlanFactSheet.MaxCommitments)],
             [.. dismissed.OrderBy(d => d.Date).ThenBy(d => d.RunTypeId).Take(PlanFactSheet.MaxDismissed)],
             envelope);

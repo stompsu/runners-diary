@@ -78,6 +78,18 @@ public static class PlanFactSheetJson
         Number(w, "targetDurationSeconds", g.TargetDurationSeconds);
         Number(w, "targetPaceSecondsPerKm", g.TargetPaceSecondsPerKm);
         Number(w, "predictedDurationSeconds", g.PredictedDurationSeconds);
+        if (g.PredictionBasis is { } basis)
+        {
+            w.WriteString("predictionBasis", BasisCode(basis));
+        }
+
+        if (g.PredictionConfidence is { } confidence)
+        {
+            w.WriteString("predictionConfidence", Lower(confidence.ToString()));
+        }
+
+        Number(w, "fitnessPaceSecondsPerKm", g.FitnessPaceSecondsPerKm);
+        w.WriteBoolean("ambitiousTarget", g.AmbitiousTarget);
         w.WriteNumber("weeksToGoal", g.WeeksToGoal);
         w.WriteEndObject();
     }
@@ -110,6 +122,7 @@ public static class PlanFactSheetJson
 
         w.WriteEndArray();
         w.WriteNumber("sessionsPerWeek", h.SessionsPerWeek);
+        Number(w, "recentEasyPaceSecondsPerKm", h.RecentEasyPaceSecondsPerKm);
         w.WriteStartObject("latestAcwr");
         Number(w, "value", h.LatestAcwr.Value);
         Band(w, "band", h.LatestAcwr.Band);
@@ -161,6 +174,7 @@ public static class PlanFactSheetJson
         w.WriteBoolean("horizonCapped", e.HorizonCapped);
         w.WriteNumber("maxSessionsPerWeek", e.MaxSessionsPerWeek);
         Number(w, "referencePaceSecondsPerKm", e.ReferencePaceSecondsPerKm);
+        Number(w, "easyPaceMinSecondsPerKm", e.EasyPaceMinSecondsPerKm);
         w.WriteStartArray("allowedRunTypes");
         foreach (var code in e.AllowedRunTypes)
         {
@@ -208,6 +222,15 @@ public static class PlanFactSheetJson
             w.WriteString(name, Lower(b.ToString()));
         }
     }
+
+    /// <summary>v3 basis codes: <c>race</c>, <c>hardTraining</c> (a single RPE ≥ 8 run), <c>recentTraining</c> (the M9.1 fallback).</summary>
+    private static string BasisCode(EffortKind kind) => kind switch
+    {
+        EffortKind.Race => "race",
+        EffortKind.Training => "hardTraining",
+        EffortKind.RecentTraining => "recentTraining",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+    };
 
     private static string Date(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 

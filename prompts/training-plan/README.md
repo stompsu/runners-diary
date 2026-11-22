@@ -23,4 +23,8 @@ A change to the fact sheet or to the envelope constants bumps `planFactSheetVers
 The plan's language is the fact sheet's `language` (named in the user message too); v3 writes `notes` and `description` in it and has a Polish
 section (glossary terms of `docs/i18n.md`, gender-neutral). The rule-based fake (`Ai:UseFake`) writes Polish texts for a `pl` sheet.
 
+v4 (M9.1, fact sheet v3, ADR 0040 amendment 2026-11-21) builds every pace from `envelope.referencePaceSecondsPerKm` (the pace current fitness
+supports) and `envelope.easyPaceMinSecondsPerKm`, never from the target; with `goal.ambitiousTarget` the notes call the target "ambitious"
+("ambitny"), never "unrealistic". Its deny lists are those of v3.
+
 The demo example plan (`seed/demo/training-plan.json`) is not a prompt file; it is checked against the demo data for every "today" by `DemoTrainingPlanFixtureTests`.

@@ -75,6 +75,28 @@ public sealed class DemoTrainingPlanFixtureTests
         Assert.Empty(result.Repairs); // the fake writer must not rely on the repair step
     }
 
+    /// <summary>
+    /// M9.1: the demo goal is a trail goal, so the fake writes no paces for it. A road half marathon with an ambitious target 10 weeks out on the same
+    /// demo diary gets pace ranges, and the fake still needs no repair (no <c>pace</c> drop, no <c>easyPace</c> clamp) on every day.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DemoFacts.EveryDayOf2028), MemberType = typeof(DemoFacts))]
+    public void The_fake_plan_with_paces_is_repair_free_for_a_road_goal_on_the_demo_data_on_every_day(DateOnly today)
+    {
+        var (facts, races) = DemoFacts.Facts(today);
+        var goal = new GoalSpec(GoalType.Performance, 21_097.5, null, IsoWeek.MondayOf(today).AddDays(76), 5_400, Surface.Road);
+        var sheet = PlanSheets.Build(goal, today, facts, races);
+        var draft = RuleBasedFakePlanWriter.Write(PlanFactSheetJson.ToJson(sheet));
+
+        var result = TrainingPlanValidator.Validate(TrainingPlanDraftJson.ToJson(draft), sheet, PlanValidationPolicy.Default);
+
+        Assert.NotNull(sheet.Envelope.EasyPaceMinSecondsPerKm);
+        Assert.Contains(draft.Sessions, s => s.PaceMinSecondsPerKm is not null);
+        Assert.True(result.IsValid, $"{today:yyyy-MM-dd}: {string.Join(", ", result.Violations)}");
+        Assert.Equal(0, result.DroppedCount);
+        Assert.Empty(result.Repairs);
+    }
+
     [Fact]
     public void A_broken_fixture_fails_to_parse()
     {

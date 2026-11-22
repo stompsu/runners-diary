@@ -211,7 +211,7 @@ export function estimateGoal(account: Account, today: string, body: S['EstimateG
   const durationSeconds = basis
     ? Math.round(runSeconds(basis)! * Math.pow(ratio, 1.06))
     : fromTraining
-      ? Math.round(trainingPace * 0.93 * body.distanceMeters)
+      ? Math.round(trainingPace * 0.9 * body.distanceMeters)
       : 0
   const minimumWeeks =
     body.distanceMeters < 15_000 ? 4 : body.distanceMeters < 30_000 ? 8 : body.distanceMeters <= 42_200 ? 12 : 16
@@ -378,7 +378,7 @@ function otherGoalWithPending(account: Account, goalId: string): GoalDto | null 
   return null
 }
 
-/** What the plan trains toward: the estimate's time, and "ambitious" when the target is over 10 % faster. */
+/** What the plan trains toward: the estimate's time, and "ambitious" when the target is over 5 % faster (as the API: target < 0.95 × predicted). */
 function ambition(account: Account, goal: GoalDto, today: string) {
   const prediction = estimateGoal(account, today, {
     type: goal.type,
@@ -388,7 +388,7 @@ function ambition(account: Account, goal: GoalDto, today: string) {
     targetDurationSeconds: goal.targetDurationSeconds,
   }).prediction
   const target = goal.targetDurationSeconds
-  const ambitiousTarget = prediction != null && target != null && target < 0.9 * prediction.durationSeconds
+  const ambitiousTarget = prediction != null && target != null && target < 0.95 * prediction.durationSeconds
   return {
     ambitiousTarget,
     trainsTowardSeconds: ambitiousTarget ? prediction.durationSeconds : null,

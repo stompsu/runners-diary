@@ -19,6 +19,13 @@ public static class GoalEstimator
     public const double LowVolumeShare = 0.5;
     public const int PlanHorizonDays = 112;
 
+    /// <summary>
+    /// The target is more than 5 % faster than the predicted time (<see cref="TargetFasterThreshold"/>, the <c>targetMuchFasterThanPredicted</c>
+    /// threshold): the "very ambitious target" rule of the plan fact sheet and of <c>GoalDto.plan.ambitiousTarget</c> (ADR 0040 amendment 2026-11-21).
+    /// </summary>
+    public static bool IsAmbitiousTarget(int? targetDurationSeconds, int? predictedDurationSeconds) =>
+        targetDurationSeconds is { } target && predictedDurationSeconds is { } predicted && target < TargetFasterThreshold * predicted;
+
     /// <summary>Weeks a goal needs at least: under 15 km 4, under 30 km 8, up to 42.2 km 12, longer 16.</summary>
     public static int MinimumWeeks(double distanceMeters) =>
         distanceMeters < 15_000 ? 4 : distanceMeters < 30_000 ? 8 : distanceMeters <= 42_200 ? 12 : 16;

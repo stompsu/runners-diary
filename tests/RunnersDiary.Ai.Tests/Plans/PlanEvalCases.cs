@@ -35,6 +35,14 @@ internal static class PlanEvalCases
     public const string Collisions = "collisions-with-planned-runs";
     public const string CappedHorizon = "capped-horizon-30-weeks";
     public const string DenseDiary = "dense-diary-like-demo";
+    public const string EasyOnlyHalf4Weeks = "easy-only-hm-sub-1-40-4-weeks";
+    public const string EasyOnlyHalf12Weeks = "easy-only-hm-sub-1-40-12-weeks";
+
+    /// <summary>The M9.1 scenario's numbers (plan §3.1, §5): the fallback prediction 7,245 s at 343 s/km; 0.85 x 343 and 0.97 x 343, rounded up.</summary>
+    public const int EasyOnlyPredictedSeconds = 7_245;
+    public const int EasyOnlyReferencePace = 343;
+    public const int EasyOnlyPaceFloor = 292;
+    public const int EasyOnlyRacePaceFloor = 333;
 
     private static readonly DateOnly Today = PlanSheets.Today;
 
@@ -84,7 +92,8 @@ internal static class PlanEvalCases
             },
             (plan, sheet) => AssertEveryFullTrainingWeekHasRunning(plan, sheet));
 
-        // 2. An over-ambitious 10K: under 40:00 in 6 weeks with a 48:00 race result. The estimate warns; paces stay bounded by the target pace.
+        // 2. An over-ambitious 10K: under 40:00 in 6 weeks with a 48:00 race result. The estimate warns; since M9.1 the reference pace is the
+        //    fitness pace (the race prediction, 276 s/km), not the 239 s/km target pace, and no session is faster than fitness allows.
         var tenK = new GoalSpec(GoalType.Performance, 10_000, null, new DateOnly(2026, 12, 27), 2_390, Surface.Road);
         var tenKCase = new PlanEvalCase(
             Ambitious10k,
@@ -93,8 +102,12 @@ internal static class PlanEvalCases
             {
                 var estimate = GoalEstimator.Estimate(tenK, Today, log, races);
                 Assert.Contains(estimate.Warnings, w => w.Code == EstimateWarningCode.TargetMuchFasterThanPredicted);
-                Assert.Equal(239, sheet.Envelope.ReferencePaceSecondsPerKm);
+                Assert.Equal(239, sheet.Goal.TargetPaceSecondsPerKm);
+                Assert.Equal(276, sheet.Goal.FitnessPaceSecondsPerKm);
+                Assert.Equal(sheet.Goal.FitnessPaceSecondsPerKm, sheet.Envelope.ReferencePaceSecondsPerKm); // the slower of 239 and 276
                 Assert.True(sheet.Goal.PredictedDurationSeconds > 2_700);
+                Assert.Equal((EffortKind.Race, PredictionConfidence.High, true), (sheet.Goal.PredictionBasis, sheet.Goal.PredictionConfidence, sheet.Goal.AmbitiousTarget));
+                Assert.True(sheet.Envelope.EasyPaceMinSecondsPerKm >= sheet.Envelope.ReferencePaceSecondsPerKm);
             },
             (draft, sheet) =>
             {
@@ -105,9 +118,11 @@ internal static class PlanEvalCases
                 sessions[i] = sessions[i] with { DistanceMeters = Math.Min(59_000, Math.Ceiling(week.MaxLongRunMeters * 1.6)), DurationSeconds = null };
                 return (draft with { Sessions = sessions }, PlanRuleCode.LongRun);
             },
-            (plan, sheet) => Assert.All(
-                plan.Kept.Where(s => s.TargetPaceMinSecondsPerKm is not null),
-                s => Assert.True(s.TargetPaceMinSecondsPerKm >= 0.85 * sheet.Envelope.ReferencePaceSecondsPerKm!.Value)));
+            (plan, sheet) =>
+            {
+                AssertPacesWithinFitnessBounds(plan, sheet);
+                AssertAmbitiousWording(plan);
+            });
 
         // 3. Trail 44 km / 1,000 m in 14 weeks: the long-run ceiling is min(0.6 x 44 km, 50 km) = 26.4 km.
         var trail = new GoalSpec(GoalType.Distance, 44_000, 1_000, new DateOnly(2027, 2, 21), null, Surface.Trail);
@@ -238,7 +253,119 @@ internal static class PlanEvalCases
                 Assert.DoesNotContain(plan.Kept, s => blocked.Contains(s.Date));
             });
 
-        return [halfCase, tenKCase, trailCase, closeCase, collisionCase, cappedCase, denseCase];
+        // 8./9. The M9.1 user scenario (plan §3.1, §5): an easy-only diary (10 x 8 km at 6:00/km), half marathon target 1:40:00 (284 s/km) in 4 and
+        //    12 weeks. The fallback prediction from recent training (7,245 s, 343 s/km) is the reference pace; the target is ambitious.
+        var easyLog = PlanSheets.EasyOnlyLog(Today);
+        var easyHalf4 = new GoalSpec(GoalType.Performance, 21_097.5, null, new DateOnly(2026, 12, 13), 6_000, Surface.Road);
+        var easyHalf12 = easyHalf4 with { TargetDate = new DateOnly(2027, 2, 7) };
+        var easy4Case = new PlanEvalCase(
+            EasyOnlyHalf4Weeks,
+            PlanSheets.Build(easyHalf4, Today, easyLog, []),
+            sheet =>
+            {
+                AssertEasyOnlyInputs(sheet, easyHalf4, easyLog);
+                Assert.Equal(4, sheet.Envelope.Weeks.Count);
+            },
+            (draft, sheet) =>
+            {
+                // Two hard sessions on consecutive days in the first week.
+                var first = sheet.Envelope.PlanStart;
+                var phase = WeekOf(sheet, first).Phase.ToWire();
+                var sessions = draft.Sessions.Where(s => Date(s.Date) != first && Date(s.Date) != first.AddDays(1)).ToList();
+                sessions.Add(new DraftSession(D(first), "tempo", "tempo", phase, 5_000, null, 300, 320, "Tempo run."));
+                sessions.Add(new DraftSession(D(first.AddDays(1)), "intervals", "interval", phase, 5_000, null, 300, 320, "Intervals."));
+                return (draft with { Sessions = [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)] }, PlanRuleCode.HardSessions);
+            },
+            AssertEasyOnlyPlan);
+        var easy12Case = new PlanEvalCase(
+            EasyOnlyHalf12Weeks,
+            PlanSheets.Build(easyHalf12, Today, easyLog, []),
+            sheet =>
+            {
+                AssertEasyOnlyInputs(sheet, easyHalf12, easyLog);
+                Assert.Equal(12, sheet.Envelope.Weeks.Count);
+                Assert.False(sheet.Envelope.HorizonCapped);
+            },
+            (draft, sheet) =>
+            {
+                // Triple one week's cap across its sessions (weekly volume, beyond what the repair step scales down).
+                var week = sheet.Envelope.Weeks[5];
+                var inWeek = draft.Sessions.Count(s => InWeek(s, week));
+                var each = Math.Min(59_000, Math.Floor(week.MaxDistanceMeters * 3 / inWeek));
+                return (draft with { Sessions = [.. draft.Sessions.Select(s => InWeek(s, week) ? s with { DistanceMeters = each, DurationSeconds = null } : s)] }, PlanRuleCode.WeeklyVolume);
+            },
+            AssertEasyOnlyPlan);
+
+        return [halfCase, tenKCase, trailCase, closeCase, collisionCase, cappedCase, denseCase, easy4Case, easy12Case];
+    }
+
+    /// <summary>The deterministic inputs of the M9.1 scenario (plan §5): fallback prediction, fitness reference pace, easy-pace bound, the flag, fact sheet v3.</summary>
+    private static void AssertEasyOnlyInputs(PlanFactSheet sheet, GoalSpec goal, IReadOnlyList<RunFact> log)
+    {
+        var estimate = GoalEstimator.Estimate(goal, Today, log, []);
+        var warning = Assert.Single(estimate.Warnings, w => w.Code == EstimateWarningCode.TargetMuchFasterThanPredicted);
+        Assert.Equal(17.2, warning.Value);
+        Assert.DoesNotContain(estimate.Warnings, w => w.Code == EstimateWarningCode.NoRecentEffort);
+        Assert.Equal(3, sheet.FactSheetVersion);
+        Assert.Equal(PlanEnvelopeRules.Version, sheet.Envelope.Version);
+        Assert.Equal(EasyOnlyPredictedSeconds, sheet.Goal.PredictedDurationSeconds); // what TrainingPlanService stores as PlanPredictedDurationSeconds
+        Assert.Equal(EasyOnlyReferencePace, sheet.Goal.FitnessPaceSecondsPerKm);
+        Assert.Equal((EffortKind.RecentTraining, PredictionConfidence.Low), (sheet.Goal.PredictionBasis, sheet.Goal.PredictionConfidence));
+        Assert.Equal(284, sheet.Goal.TargetPaceSecondsPerKm);
+        Assert.True(sheet.Goal.AmbitiousTarget);
+        Assert.Equal(360, sheet.History.RecentEasyPaceSecondsPerKm);
+        Assert.Equal(EasyOnlyReferencePace, sheet.Envelope.ReferencePaceSecondsPerKm);
+        Assert.Equal(EasyOnlyReferencePace, sheet.Envelope.EasyPaceMinSecondsPerKm); // max(343, ceil(0.95 x 360) = 342)
+
+        using var json = System.Text.Json.JsonDocument.Parse(PlanFactSheetJson.ToJson(sheet));
+        var root = json.RootElement;
+        Assert.Equal("recentTraining", root.GetProperty("goal").GetProperty("predictionBasis").GetString());
+        Assert.Equal("low", root.GetProperty("goal").GetProperty("predictionConfidence").GetString());
+        Assert.True(root.GetProperty("goal").GetProperty("ambitiousTarget").GetBoolean());
+        Assert.Equal(EasyOnlyReferencePace, root.GetProperty("envelope").GetProperty("easyPaceMinSecondsPerKm").GetInt32());
+        Assert.Equal(360, root.GetProperty("history").GetProperty("recentEasyPaceSecondsPerKm").GetDouble());
+    }
+
+    /// <summary>Every accepted plan of the M9.1 scenario (after repair): no pace from the target.</summary>
+    private static void AssertEasyOnlyPlan(PlanValidation plan, PlanFactSheet sheet)
+    {
+        Assert.DoesNotContain(plan.Kept, s => s.TargetPaceMinSecondsPerKm < EasyOnlyPaceFloor);
+        Assert.DoesNotContain(plan.Kept, s => s.Intensity == TrainingIntensity.RacePace && s.TargetPaceMinSecondsPerKm < EasyOnlyRacePaceFloor);
+        Assert.DoesNotContain(plan.Kept, s => s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && s.TargetPaceMinSecondsPerKm < EasyOnlyReferencePace);
+        AssertPacesWithinFitnessBounds(plan, sheet);
+        AssertAmbitiousWording(plan);
+    }
+
+    /// <summary>
+    /// No kept session is faster than fitness allows (ADR 0040 amendment 2026-11-21): faster bound at least 0.85 x the reference pace, race pace at
+    /// least 0.97 x it, easy and recovery at least the easy-pace bound.
+    /// </summary>
+    public static void AssertPacesWithinFitnessBounds(PlanValidation plan, PlanFactSheet sheet)
+    {
+        var e = sheet.Envelope;
+        foreach (var s in plan.Kept.Where(s => s.TargetPaceMinSecondsPerKm is not null))
+        {
+            var min = s.TargetPaceMinSecondsPerKm!.Value;
+            if (e.ReferencePaceSecondsPerKm is { } reference)
+            {
+                Assert.True(min >= TrainingPlanValidator.MinPaceShareOfReference * reference, $"{s.Date}: {min} < 0.85 x {reference}");
+                Assert.True(s.Intensity != TrainingIntensity.RacePace || min >= TrainingPlanValidator.MinRacePaceShareOfReference * reference, $"{s.Date}: race pace {min} < 0.97 x {reference}");
+            }
+
+            if (e.EasyPaceMinSecondsPerKm is { } easyMin && s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery)
+            {
+                Assert.True(min >= easyMin, $"{s.Date}: easy {min} < {easyMin}");
+            }
+        }
+    }
+
+    /// <summary>The ambitious target is "ambitious", never "unrealistic" (prompt v4); checked on every accepted plan's notes, en and pl.</summary>
+    private static void AssertAmbitiousWording(PlanValidation plan)
+    {
+        foreach (var word in new[] { "unrealistic", "impossible", "nierealn", "niemożliw" })
+        {
+            Assert.DoesNotContain(word, plan.Notes ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     public static bool InWeek(DraftSession session, PlanWeek week) => Date(session.Date) is var d && d >= week.Start && d <= week.Start.AddDays(6);

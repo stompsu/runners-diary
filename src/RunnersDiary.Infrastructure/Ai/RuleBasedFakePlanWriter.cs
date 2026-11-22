@@ -14,7 +14,10 @@ namespace RunnersDiary.Infrastructure.Ai;
 /// (base: a steady progression run; build/peak: a tempo run, only where no hard commitment is adjacent and outside the last three days before
 /// the goal). At most <c>maxSessionsPerWeek</c> minus the week's running commitments, at most three. Distances share 85 % of the week's
 /// available distance (long 45 %, quality 25 %, easy the rest; with fewer sessions long 60 % / 100 %), each capped at the long-run cap and
-/// rounded down to 100 m. Paces follow the reference pace (easy +45..+90 s, steady +20..+60 s, tempo +0..+20 s per km), none on trail goals.</para>
+/// rounded down to 100 m. Paces follow the reference pace (easy +45..+90 s, steady +20..+60 s, tempo +0..+20 s per km), none on trail goals; the faster
+/// bound of an easy session (long runs included) is never below the envelope's <c>easyPaceMinSecondsPerKm</c> (M9.1), so the <c>easyPace</c> clamp never
+/// has to repair the fake's plan.</para>
+/// <para>With <c>goal.ambitiousTarget</c> the notes add one sentence that the plan builds toward what recent runs support (prompt v4, M9.1).</para>
 /// <para>Notes and descriptions are in the fact sheet's <c>language</c> (<c>en</c> or <c>pl</c>, ADR 0043 §5); any other value gets English.</para>
 /// </summary>
 public static class RuleBasedFakePlanWriter
@@ -36,8 +39,11 @@ public static class RuleBasedFakePlanWriter
         var planEnd = Date(envelope.GetProperty("planEnd"));
         var maxSessions = envelope.GetProperty("maxSessionsPerWeek").GetInt32();
         int? reference = envelope.TryGetProperty("referencePaceSecondsPerKm", out var r) ? r.GetInt32() : null;
+        int? easyMin = envelope.TryGetProperty("easyPaceMinSecondsPerKm", out var em) ? em.GetInt32() : null;
+        var paces = new Paces(reference, easyMin);
         var target = Date(goal.GetProperty("targetDate"));
         var trail = goal.TryGetProperty("surface", out var surface) && surface.GetString() == "trail";
+        var ambitious = goal.TryGetProperty("ambitiousTarget", out var a) && a.ValueKind == JsonValueKind.True;
         var usual = root.GetProperty("history").GetProperty("usualWeekdays").EnumerateArray()
             .Select(d => Enum.Parse<DayOfWeek>(d.GetString()!, ignoreCase: true)).ToHashSet();
 
@@ -124,33 +130,33 @@ public static class RuleBasedFakePlanWriter
             var easyMeters = easyDay is null ? 0 : Round(Math.Min(budget - longMeters - qualityMeters, longCap));
 
             var week_ = new List<DraftSession>();
-            Add(week_, longDay, "long", "easy", phase, longMeters, reference, trail, 45,
+            Add(week_, longDay, "long", "easy", phase, longMeters, paces, trail, 45,
                 trail ? texts.LongTrail : texts.Long);
             if (easyDay is { } e)
             {
-                Add(week_, e, "easy", "easy", phase, easyMeters, reference, trail, 45, texts.Easy);
+                Add(week_, e, "easy", "easy", phase, easyMeters, paces, trail, 45, texts.Easy);
             }
 
             if (qualityDay is { } q)
             {
                 if (hardQuality)
                 {
-                    Add(week_, q, "tempo", "tempo", phase, qualityMeters, reference, trail, 0, texts.Tempo);
+                    Add(week_, q, "tempo", "tempo", phase, qualityMeters, paces, trail, 0, texts.Tempo);
                 }
                 else
                 {
-                    Add(week_, q, "progression", "steady", phase, qualityMeters, reference, trail, 20, texts.Progression);
+                    Add(week_, q, "progression", "steady", phase, qualityMeters, paces, trail, 20, texts.Progression);
                 }
             }
 
             sessions.AddRange(week_);
         }
 
-        return new TrainingPlanDraft(texts.Notes, [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
+        return new TrainingPlanDraft(texts.NotesFor(ambitious), [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
     }
 
     private static void Add(
-        List<DraftSession> sessions, DateOnly date, string runType, string intensity, string phase, double meters, int? reference, bool trail,
+        List<DraftSession> sessions, DateOnly date, string runType, string intensity, string phase, double meters, Paces paces, bool trail,
         int paceOffset, string description)
     {
         if (meters < TrainingSuggestion.MinDistanceMeters)
@@ -160,10 +166,11 @@ public static class RuleBasedFakePlanWriter
 
         int? min = null;
         int? max = null;
+        var reference = paces.Reference;
         if (reference is { } r && !trail)
         {
             var spread = intensity == "tempo" ? 20 : intensity == "steady" ? 40 : 45;
-            var low = r + paceOffset;
+            var low = intensity is "easy" or "recovery" && paces.EasyMin is { } easyMin ? Math.Max(r + paceOffset, easyMin) : r + paceOffset;
             var high = low + spread;
             if (low >= 150 && high <= 900)
             {
@@ -180,6 +187,9 @@ public static class RuleBasedFakePlanWriter
             Math.Min(meters, TrainingSuggestion.MaxDistanceMeters), durationSeconds, min, max, description));
     }
 
+    /// <summary>The envelope's reference pace and easy-pace bound (M9.1), both seconds per km.</summary>
+    private readonly record struct Paces(int? Reference, int? EasyMin);
+
     private static double Round(double meters) => Math.Max(0, Math.Floor(meters / 100) * 100);
 
     private static DateOnly Date(JsonElement element) =>
@@ -187,8 +197,11 @@ public static class RuleBasedFakePlanWriter
 }
 
 /// <summary>The fixed texts of <see cref="RuleBasedFakePlanWriter"/> per language.</summary>
-internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail, string Easy, string Tempo, string Progression)
+internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail, string Easy, string Tempo, string Progression, string Ambitious)
 {
+    /// <summary>The plan notes; with an ambitious target (<c>goal.ambitiousTarget</c>, M9.1) one more sentence says what the plan builds toward.</summary>
+    public string NotesFor(bool ambitiousTarget) => ambitiousTarget ? Notes + " " + Ambitious : Notes;
+
     public const string EnglishNotes =
         "A gradual plan toward your goal: easy running, a weekly long run and one quality session in the build and peak weeks, then a lighter taper.";
 
@@ -198,7 +211,8 @@ internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail
         "Long run on hilly trails at an easy effort; walk the steep climbs.",
         "Easy run at a comfortable effort.",
         "Tempo run: warm up, a sustained block at tempo effort, cool down.",
-        "Progression run: start easy and finish at a steady effort.");
+        "Progression run: start easy and finish at a steady effort.",
+        "Your target is ambitious, so the plan builds toward what your recent runs support.");
 
     /// <summary>Glossary terms of <c>docs/i18n.md</c>; imperatives and noun phrases only (gender-neutral).</summary>
     public static FakePlanTexts Polish { get; } = new(
@@ -207,5 +221,6 @@ internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail
         "Długie wybieganie po pagórkowatych szlakach w spokojnym tempie; strome podejścia pokonuj marszem.",
         "Bieg spokojny w komfortowym tempie.",
         "Bieg tempowy: rozgrzewka, dłuższy odcinek w równym, mocnym tempie, schłodzenie.",
-        "Bieg z narastającą prędkością: zacznij spokojnie i zakończ w równym tempie.");
+        "Bieg z narastającą prędkością: zacznij spokojnie i zakończ w równym tempie.",
+        "Cel jest ambitny, dlatego plan rozwija formę od poziomu, na który wskazują ostatnie biegi.");
 }

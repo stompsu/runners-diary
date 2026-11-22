@@ -231,6 +231,78 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         c.AssertPlan(result.Plan!, sheet);
     }
 
+    /// <summary>The fake writer never relies on the repair step (M9.1: incl. the <c>easyPace</c> clamp), in every eval case and language.</summary>
+    [Theory]
+    [MemberData(nameof(PlanEvalCases.Names), MemberType = typeof(PlanEvalCases))]
+    public void The_fake_plan_needs_no_repair(string name)
+    {
+        var c = PlanEvalCases.Get(name);
+        foreach (var sheet in new[] { c.Sheet, c.Sheet with { Language = "pl" } })
+        {
+            var result = TrainingPlanValidator.Validate(FakeJson(sheet), sheet, PlanValidationPolicy.Default.ForLanguage(sheet.Language));
+
+            Assert.True(result.IsValid, $"{name} ({sheet.Language}): {string.Join(", ", result.Violations)}");
+            Assert.Empty(result.Repairs);
+            Assert.Equal(0, result.DroppedCount);
+        }
+    }
+
+    /// <summary>M9.1: when the easy-pace bound is slower than the fake's usual easy pace (reference + 45 s), every easy session starts at the bound.</summary>
+    [Fact]
+    public void The_fake_plan_starts_easy_sessions_at_a_binding_easy_pace_bound()
+    {
+        var c = PlanEvalCases.Get(PlanEvalCases.HalfMarathon10Weeks);
+        var reference = c.Sheet.Envelope.ReferencePaceSecondsPerKm!.Value;
+        var sheet = c.Sheet with { Envelope = c.Sheet.Envelope with { EasyPaceMinSecondsPerKm = reference + 70 } };
+
+        var draft = FakeDraft(sheet);
+        var result = TrainingPlanValidator.Validate(draft, sheet, PlanValidationPolicy.Default);
+
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Empty(result.Repairs);
+        var easy = draft.Sessions.Where(s => s.Intensity == "easy").ToList();
+        Assert.NotEmpty(easy);
+        Assert.All(easy, s => Assert.Equal((reference + 70, reference + 115), (s.PaceMinSecondsPerKm, s.PaceMaxSecondsPerKm)));
+        Assert.Contains(draft.Sessions, s => s.Intensity == "tempo" && s.PaceMinSecondsPerKm == reference); // hard sessions still follow the reference pace
+    }
+
+    /// <summary>
+    /// The M9.1 scenario end to end with a model that still trains toward the 1:40 target (284 s/km): the tempo at the target pace and a race-pace
+    /// session faster than 0.97 x 343 are dropped, the easy runs at 5:00/km are slowed to the 343 s/km bound, all in one attempt; what is kept
+    /// passes the case's checks.
+    /// </summary>
+    [Fact]
+    public async Task A_plan_built_from_the_target_pace_is_repaired_to_the_fitness_bounds()
+    {
+        var c = PlanEvalCases.Get(PlanEvalCases.EasyOnlyHalf12Weeks);
+        var sheet = c.Sheet;
+        var sessions = FakeDraft(sheet).Sessions.ToList();
+        var tempos = Enumerable.Range(0, sessions.Count).Where(i => sessions[i].Intensity == "tempo").ToList();
+        Assert.True(tempos.Count >= 2);
+        sessions[tempos[0]] = sessions[tempos[0]] with { PaceMinSecondsPerKm = 284, PaceMaxSecondsPerKm = 300 };
+        sessions[tempos[1]] = sessions[tempos[1]] with { RunType = "racePace", Intensity = "racePace", PaceMinSecondsPerKm = 300, PaceMaxSecondsPerKm = 320 };
+        var easy = Enumerable.Range(0, sessions.Count).Where(i => sessions[i].RunType == "easy").ToList();
+        foreach (var i in easy)
+        {
+            sessions[i] = sessions[i] with { PaceMinSecondsPerKm = 300, PaceMaxSecondsPerKm = 345 };
+        }
+
+        var draft = new TrainingPlanDraft("A plan toward your target.", sessions);
+        var harness = new PlanHarness(new ScriptedChatClient().Reply(TrainingPlanDraftJson.ToJson(draft), 9_000, 4_000));
+
+        var result = await harness.Generate(sheet);
+
+        Assert.True(result.Status == GenerationStatus.Succeeded, $"{result.Status} {result.Failure}: {string.Join(", ", result.AttemptDetails?.SelectMany(a => a.Violations) ?? [])}");
+        Assert.Equal(1, result.Attempts);
+        Assert.Equal(2, result.Plan!.DroppedCount);
+        var repairs = Assert.Single(result.AttemptDetails!).Repairs;
+        Assert.Equal(2, repairs.Count(r => r.Rule == PlanRuleCode.Pace && r.Action == PlanRepairAction.Drop));
+        Assert.Equal(easy.Count, repairs.Count(r => r.Rule == PlanRuleCode.EasyPace));
+        Assert.All(repairs, r => Assert.True(TrainingPlanAgent.IsSafeLocation(r.Location), r.Location));
+        Assert.All(result.Plan.Kept.Where(s => s.RunTypeId == 20), s => Assert.Equal((343, 345), (s.TargetPaceMinSecondsPerKm, s.TargetPaceMaxSecondsPerKm)));
+        c.AssertPlan(result.Plan, sheet);
+    }
+
     [Fact]
     public async Task Plan_switch_off_or_no_model_is_unavailable_without_a_call()
     {

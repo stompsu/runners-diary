@@ -74,12 +74,13 @@ public sealed class PolishFakeModelTests
         Assert.True(result.Status == GenerationStatus.Succeeded, $"{name}: {result.Status} {result.Failure}");
         Assert.Equal(1, result.Attempts);
         c.AssertPlan(result.Plan!, polishSheet);
-        Assert.Equal(FakePlanTexts.Polish.Notes, result.Plan!.Notes);
+        Assert.Equal(FakePlanTexts.Polish.NotesFor(c.Sheet.Goal.AmbitiousTarget), result.Plan!.Notes);
 
         var english = RuleBasedFakePlanWriter.Write(PlanFactSheetJson.ToJson(c.Sheet));
         var polish = RuleBasedFakePlanWriter.Write(PlanFactSheetJson.ToJson(polishSheet));
         Assert.Equal(english.Sessions.Select(s => s with { Description = "" }), polish.Sessions.Select(s => s with { Description = "" }));
-        Assert.Equal(RuleBasedFakePlanWriter.Notes, english.Notes);
+        Assert.Equal(FakePlanTexts.English.NotesFor(c.Sheet.Goal.AmbitiousTarget), english.Notes);
+        Assert.StartsWith(RuleBasedFakePlanWriter.Notes, english.Notes, StringComparison.Ordinal);
         Assert.Empty(LanguageCheck.EnglishWords(polish.Sessions.Select(s => s.Description).Append(polish.Notes)));
         Assert.All(polish.Sessions, s => Assert.True(s.Description.Length <= 120, s.Description));
     }
