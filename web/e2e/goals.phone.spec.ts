@@ -79,3 +79,27 @@ test('the goal form and the goal page are usable on a phone', async ({ page }) =
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
   expect(await seriousViolations(page)).toEqual([])
 })
+
+test('the ambitious-target notice fits 360 px and its button is touch-sized', async ({ page }) => {
+  const fake = await mockApi(page, { goalsEnabled: true, planGeneration: true })
+  const token = await restoreGuest(page, fake, { seed: HISTORY })
+  const goal = fake.addGoal(token, {
+    title: 'Autumn 10K',
+    type: 'Performance',
+    targetDurationSeconds: 2400,
+    targetDate: '2026-12-20',
+  })
+  await fake.handle(
+    new Request(`http://localhost/api/goals/${goal.id}/plan`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  await page.goto(`/goals/${goal.id}`)
+  const notice = page.getByRole('region', { name: 'This target seems very ambitious' })
+  await expect(notice).toBeVisible()
+  expect((await notice.getByRole('button').boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  expect(await notice.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0)
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
+  expect(await seriousViolations(page)).toEqual([])
+})

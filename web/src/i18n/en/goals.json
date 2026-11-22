@@ -114,7 +114,9 @@
     "none": "There is no recent race or hard effort to base a time on yet.",
     "loading": "Checking your recent runs…",
     "failed": "Could not check what is realistic right now.",
-    "weekly": "Recent weekly distance: {{distance}}."
+    "weekly": "Recent weekly distance: {{distance}}.",
+    "basisTraining_one": "Based on {{count}} recent training run, about {{time}} looks realistic ({{pace}}). A rough estimate.",
+    "basisTraining_other": "Based on {{count}} recent training runs, about {{time}} looks realistic ({{pace}}). A rough estimate."
   },
   "warnings": {
     "noRecentEffort": "No race or hard effort in the last year, so there is no basis for a time prediction.",
@@ -176,7 +178,12 @@
     "noOpen": "No open suggestions. Regenerate to get a new set.",
     "showDismissed": "Show dismissed",
     "weekLabel": "Week {{week}}, from {{start}}",
-    "counts": "{{pending}} open, {{dismissed}} dismissed, {{accepted}} accepted"
+    "counts": "{{pending}} open, {{dismissed}} dismissed, {{accepted}} accepted",
+    "ambitiousTitle": "This target seems very ambitious",
+    "ambitiousBody": "Based on your recent runs, this plan trains toward ~{{time}}. {{target}} by {{date}} would need a big jump in fitness.",
+    "ambitiousUse": "Use ~{{time}} as target",
+    "ambitiousUseFailed": "Could not change the target. Reload the page and try again.",
+    "ambitiousUseDone": "Target updated. Regenerate the plan to match it."
   },
   "replace": {
     "title": "Replace the other suggestions?",

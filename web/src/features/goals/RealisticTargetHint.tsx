@@ -48,12 +48,18 @@ export function RealisticTargetHint({
           {data.prediction ? (
             <>
               <p>
-                {t(data.prediction.basis.kind === 'Race' ? 'estimate.based' : 'estimate.basisRun', {
-                  distance: formatDistance(data.prediction.basis.distanceMeters, locale, 1),
-                  date: dayLabel(data.prediction.basis.date, locale),
-                  time: formatDuration(data.prediction.durationSeconds),
-                  pace: formatPaceValue(data.prediction.paceSecondsPerKm),
-                })}
+                {data.prediction.basis.kind === 'RecentTraining'
+                  ? t('estimate.basisTraining', {
+                      count: data.prediction.basis.runCount,
+                      time: formatDuration(data.prediction.durationSeconds),
+                      pace: formatPaceValue(data.prediction.paceSecondsPerKm),
+                    })
+                  : t(data.prediction.basis.kind === 'Race' ? 'estimate.based' : 'estimate.basisRun', {
+                      distance: formatDistance(data.prediction.basis.distanceMeters, locale, 1),
+                      date: dayLabel(data.prediction.basis.date, locale),
+                      time: formatDuration(data.prediction.durationSeconds),
+                      pace: formatPaceValue(data.prediction.paceSecondsPerKm),
+                    })}
               </p>
               {data.prediction.confidence === 'Low' ? (
                 <p className="text-muted-foreground">{t('estimate.lowConfidence')}</p>

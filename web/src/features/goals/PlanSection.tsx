@@ -16,6 +16,7 @@ import { otherGoalWithPending } from './goalFormat'
 import { goalProblem, isAbort, planProblemMessage, type GoalProblem } from './goalProblems'
 import { useGenerateTrainingPlan, useGoalSuggestions, useInvalidateGoals } from './goalQueries'
 import type { GoalDto, TrainingPlanResponse } from './goalTypes'
+import { AmbitiousTargetNotice } from './AmbitiousTargetNotice'
 import { ReplaceOtherGoalDialog } from './ReplaceOtherGoalDialog'
 import { SuggestionWeekList } from './SuggestionWeekList'
 import '@/i18n/lazyBundles'
@@ -214,6 +215,7 @@ export function PlanSection({ goal, goals, today }: { goal: GoalDto; goals: read
               {t('plan.outdated')}
             </output>
           ) : null}
+          {plan.ambitiousTarget && !plan.outdated ? <AmbitiousTargetNotice goal={goal} /> : null}
           {plan.horizonCapped ? <p className="text-muted-foreground">{t('plan.horizonCapped')}</p> : null}
           {result && result.droppedCount > 0 ? (
             <p className="text-xs text-muted-foreground" data-testid="plan-dropped">

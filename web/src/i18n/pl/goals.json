@@ -118,7 +118,11 @@
     "none": "Nie ma jeszcze ostatnich zawodów ani mocnego wysiłku, na których można oprzeć czas.",
     "loading": "Sprawdzanie twoich ostatnich treningów…",
     "failed": "Nie udało się teraz sprawdzić, co jest realne.",
-    "weekly": "Ostatni dystans tygodniowy: {{distance}}."
+    "weekly": "Ostatni dystans tygodniowy: {{distance}}.",
+    "basisTraining_one": "Na podstawie {{count}} ostatniego treningu realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie.",
+    "basisTraining_few": "Na podstawie {{count}} ostatnich treningów realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie.",
+    "basisTraining_many": "Na podstawie {{count}} ostatnich treningów realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie.",
+    "basisTraining_other": "Na podstawie {{count}} ostatnich treningów realny wydaje się wynik ok. {{time}} ({{pace}}). To przybliżone oszacowanie."
   },
   "warnings": {
     "noRecentEffort": "Brak zawodów lub mocnego wysiłku w ostatnim roku, więc nie ma podstawy do prognozy czasu.",
@@ -184,7 +188,12 @@
     "noOpen": "Brak otwartych sugestii. Wygeneruj ponownie, aby dostać nowy zestaw.",
     "showDismissed": "Pokaż odrzucone",
     "weekLabel": "Tydzień {{week}}, od: {{start}}",
-    "counts": "Otwarte: {{pending}}, odrzucone: {{dismissed}}, zaakceptowane: {{accepted}}"
+    "counts": "Otwarte: {{pending}}, odrzucone: {{dismissed}}, zaakceptowane: {{accepted}}",
+    "ambitiousTitle": "Ten cel wydaje się bardzo ambitny",
+    "ambitiousBody": "Na podstawie ostatnich biegów plan prowadzi do ok. {{time}}. Wynik {{target}} (termin: {{date}}) wymagałby dużego skoku formy.",
+    "ambitiousUse": "Ustaw ok. {{time}} jako cel",
+    "ambitiousUseFailed": "Nie udało się zmienić celu. Odśwież stronę i spróbuj ponownie.",
+    "ambitiousUseDone": "Cel zmieniony. Wygeneruj plan ponownie, aby do niego pasował."
   },
   "replace": {
     "title": "Zastąpić pozostałe sugestie?",

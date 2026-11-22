@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
+import i18n from 'i18next'
 import { setLanguage } from '@/i18n/language'
 import { getFakeApi, resetFakeApi } from '@/test/fake'
 import { typeId, type RunWriteRequest } from '@/test/fakeApi'
@@ -117,5 +118,33 @@ describe('Goals in Polish', () => {
     expect(
       within(screen.getByRole('form', { name: 'Nowy cel' })).getByRole('button', { name: 'Zapisz cel' }),
     ).toBeEnabled()
+  })
+
+  it('shows the ambitious-target notice in Polish', async () => {
+    const { user } = await open(
+      '/goals/:id',
+      (token) =>
+        getFakeApi().addGoal(token, {
+          title: 'Jesienna dycha',
+          type: 'Performance',
+          targetDurationSeconds: 2400,
+          targetDate: '2026-12-20',
+        }).id,
+    )
+    await user.click(await screen.findByRole('button', { name: 'Wygeneruj sugestie' }))
+    const notice = await screen.findByTestId('plan-ambitious')
+    expect(within(notice).getByRole('heading', { level: 3, name: 'Ten cel wydaje się bardzo ambitny' })).toBeVisible()
+    expect(notice).toHaveTextContent(
+      /Na podstawie ostatnich biegów plan prowadzi do ok\. 0:50:00\. Wynik 0:40:00 \(termin: .*2026\) wymagałby dużego skoku formy\./,
+    )
+    expect(within(notice).getByRole('button', { name: 'Ustaw ok. 0:50:00 jako cel' })).toBeVisible()
+  })
+
+  it('has the Polish plural forms of the recent-training hint', async () => {
+    await open('/goals')
+    const text = (count: number) =>
+      i18n.getFixedT('pl', 'goals')('estimate.basisTraining', { count, time: '0:50:00', pace: '5:00' })
+    expect(text(1)).toContain('Na podstawie 1 ostatniego treningu')
+    for (const n of [2, 4, 5, 12, 22, 25]) expect(text(n)).toContain(`Na podstawie ${n} ostatnich treningów`)
   })
 })

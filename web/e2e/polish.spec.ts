@@ -161,6 +161,38 @@ test('goals: the list, a goal with a generated plan, and the new-goal form are P
   await expectPolishScreen(page)
 })
 
+test('goals: the ambitious-target notice and the recent-training hint are Polish and fit the screen', async ({
+  page,
+}) => {
+  const fake = await mockApi(page, { goalsEnabled: true, planGeneration: true })
+  const token = await restoreGuest(page, fake, { seed: HISTORY })
+  const goal = fake.addGoal(token, {
+    title: 'Jesienna dycha',
+    type: 'Performance',
+    targetDurationSeconds: 2400,
+    targetDate: '2026-12-20',
+  })
+  await fake.handle(
+    new Request(`http://localhost/api/goals/${goal.id}/plan`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  await page.goto(`/goals/${goal.id}`)
+  const notice = page.getByRole('region', { name: 'Ten cel wydaje się bardzo ambitny' })
+  await expect(notice).toContainText('Na podstawie ostatnich biegów plan prowadzi do ok. 0:5')
+  await expect(notice).toContainText('wymagałby dużego skoku formy.')
+  await expect(notice.getByRole('button', { name: /^Ustaw ok\. 0:5\d:\d{2} jako cel$/ })).toBeVisible()
+  expect(await notice.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0)
+  await expectPolishScreen(page)
+
+  await page.goto('/goals/new')
+  await expect(page.getByTestId('estimate-hint')).toContainText(
+    'Na podstawie 4 ostatnich treningów realny wydaje się wynik ok.',
+  )
+  await expectPolishScreen(page)
+})
+
 test('diary with race proposals and suggested trainings: bubbles, legend, race details and day panel are Polish', async ({
   page,
 }) => {

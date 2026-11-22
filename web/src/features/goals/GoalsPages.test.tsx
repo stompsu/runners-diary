@@ -100,6 +100,22 @@ describe('Goal form', () => {
     expect(await screen.findByRole('heading', { level: 1, name: '10K' })).toBeInTheDocument()
   })
 
+  it('bases the hint on recent training runs when there is no race, with a plural count', async () => {
+    resetFakeApi({
+      goalsEnabled: true,
+      guestSeed: HISTORY.filter((run) => run.race === undefined),
+    })
+    signInForTest('guest')
+    renderRoute('/goals/new', { session: 'none' })
+    const hint = await screen.findByTestId('estimate-hint')
+    await waitFor(() =>
+      expect(hint).toHaveTextContent(
+        /Based on 3 recent training runs, about \d+:\d{2}:\d{2} looks realistic \(.+\)\. A rough estimate\./,
+      ),
+    )
+    expect(within(hint).getByRole('button', { name: 'Use as target' })).toBeVisible()
+  })
+
   it('shows warnings politely and never blocks saving', async () => {
     const { user, token } = await open('/goals/new')
     await user.clear(await screen.findByLabelText('Target time (h:mm:ss)'))
@@ -435,6 +451,64 @@ describe('Goal detail and plan section', () => {
     expect((await screen.findAllByTestId('plan-outdated'))[0]).toHaveTextContent(
       'The goal changed since this plan was made',
     )
+  })
+
+  describe('ambitious-target notice (M9.1)', () => {
+    const ambitious = { type: 'Performance', targetDurationSeconds: 2400 } as const
+
+    it('shows for an ambitious target, formats its values and Use as target sends the plan time', async () => {
+      const { user, token, goal } = await detail({}, ambitious)
+      await user.click(await generateButton())
+      const notice = await screen.findByTestId('plan-ambitious')
+      expect(within(notice).getByRole('heading', { level: 3, name: 'This target seems very ambitious' })).toBeVisible()
+      expect(notice).toHaveTextContent(
+        'Based on your recent runs, this plan trains toward ~0:50:00. 0:40:00 by Tuesday, January 12, 2027 would need a big jump in fitness.',
+      )
+      expect(screen.queryByText(/unrealistic/i)).toBeNull()
+      const requests = recordRequests()
+      await user.click(within(notice).getByRole('button', { name: 'Use ~0:50:00 as target' }))
+      await waitFor(() => expect(getFakeApi().goalsOf(token)[0]!.targetDurationSeconds).toBe(3000))
+      expect(requests.find((r) => r.method === 'PUT' && r.path === `/api/goals/${goal.id}`)?.body).toMatchObject({
+        targetDurationSeconds: 3000,
+        type: 'Performance',
+      })
+      // The target changed, so the plan is outdated and the notice gives way to that note.
+      expect((await screen.findAllByTestId('plan-outdated'))[0]).toBeVisible()
+      await waitFor(() => expect(screen.queryByTestId('plan-ambitious')).toBeNull())
+    })
+
+    it('is hidden when the target is within reach', async () => {
+      const { user } = await detail({}, { type: 'Performance', targetDurationSeconds: 3000 })
+      await user.click(await generateButton())
+      await screen.findAllByRole('region', { name: /^Week \d+, from/ })
+      expect(screen.queryByTestId('plan-ambitious')).toBeNull()
+    })
+
+    it('is hidden once the plan is outdated', async () => {
+      const { user, token, goal, unmount } = await detail({}, ambitious)
+      await user.click(await generateButton())
+      await screen.findByTestId('plan-ambitious')
+      unmount()
+      const current = getFakeApi().goalsOf(token)[0]!
+      await getFakeApi().handle(
+        new Request(`http://localhost/api/goals/${goal.id}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: current.type,
+            title: current.title,
+            targetDate: current.targetDate,
+            distanceMeters: 15_000,
+            targetDurationSeconds: 2400,
+            status: 'Active',
+            version: current.version,
+          }),
+        }),
+      )
+      renderRoute(`/goals/${goal.id}`, { session: 'none' })
+      expect((await screen.findAllByTestId('plan-outdated'))[0]).toBeVisible()
+      expect(screen.queryByTestId('plan-ambitious')).toBeNull()
+    })
   })
 
   it('deletes a goal after confirmation', async () => {

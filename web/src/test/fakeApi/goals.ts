@@ -190,8 +190,29 @@ export function estimateGoal(account: Account, today: string, body: S['EstimateG
       Math.abs(Math.log(goalEffort / effort(a.distanceMeters!, a.elevationGainMeters))) -
         Math.abs(Math.log(goalEffort / effort(b.distanceMeters!, b.elevationGainMeters))) || compare(b.date, a.date),
   )[0]
+  // Like the API's fallback: no race or hard effort, but at least 3 recent training runs -> a rough estimate from them.
+  const trainingRuns = basis
+    ? []
+    : [...account.runs.values()].filter(
+        (run) =>
+          run.status === 'Completed' &&
+          runningTypes.has(run.runTypeId) &&
+          (run.distanceMeters ?? 0) >= 3000 &&
+          run.durationSeconds != null &&
+          diffDays(run.date, today) >= 0 &&
+          diffDays(run.date, today) <= 41,
+      )
+  const fromTraining = trainingRuns.length >= 3
+  const trainingPace = fromTraining
+    ? trainingRuns.reduce((sum, run) => sum + run.durationSeconds!, 0) /
+      trainingRuns.reduce((sum, run) => sum + run.distanceMeters!, 0)
+    : 0
   const ratio = basis ? goalEffort / effort(basis.distanceMeters!, basis.elevationGainMeters) : 0
-  const durationSeconds = basis ? Math.round(runSeconds(basis)! * Math.pow(ratio, 1.06)) : 0
+  const durationSeconds = basis
+    ? Math.round(runSeconds(basis)! * Math.pow(ratio, 1.06))
+    : fromTraining
+      ? Math.round(trainingPace * 0.93 * body.distanceMeters)
+      : 0
   const minimumWeeks =
     body.distanceMeters < 15_000 ? 4 : body.distanceMeters < 30_000 ? 8 : body.distanceMeters <= 42_200 ? 12 : 16
 
@@ -224,21 +245,37 @@ export function estimateGoal(account: Account, today: string, body: S['EstimateG
     term: goalTerm(body.targetDate, today),
     minimumWeeks,
     recentWeeklyDistanceMeters,
-    prediction: basis
+    prediction: fromTraining
       ? {
           durationSeconds,
           paceSecondsPerKm: Math.round(durationSeconds / (body.distanceMeters / 1000)),
-          confidence: basis.race && ratio >= 0.5 && ratio <= 2 ? 'High' : 'Low',
+          confidence: 'Low',
           basis: {
-            runId: basis.id,
-            date: basis.date,
-            kind: 'Race',
-            distanceMeters: basis.distanceMeters!,
-            durationSeconds: runSeconds(basis)!,
-            elevationGainMeters: basis.elevationGainMeters,
+            runId: null,
+            date: [...trainingRuns].sort((a, b) => compare(b.date, a.date))[0]!.date,
+            kind: 'RecentTraining',
+            distanceMeters: Math.round(trainingRuns.reduce((s, r) => s + r.distanceMeters!, 0) / trainingRuns.length),
+            durationSeconds: Math.round(trainingRuns.reduce((s, r) => s + r.durationSeconds!, 0) / trainingRuns.length),
+            elevationGainMeters: null,
+            runCount: trainingRuns.length,
           },
         }
-      : null,
+      : basis
+        ? {
+            durationSeconds,
+            paceSecondsPerKm: Math.round(durationSeconds / (body.distanceMeters / 1000)),
+            confidence: basis.race && ratio >= 0.5 && ratio <= 2 ? 'High' : 'Low',
+            basis: {
+              runId: basis.id,
+              date: basis.date,
+              kind: 'Race',
+              distanceMeters: basis.distanceMeters!,
+              durationSeconds: runSeconds(basis)!,
+              elevationGainMeters: basis.elevationGainMeters,
+              runCount: 1,
+            },
+          }
+        : null,
     warnings,
   }
 }
@@ -341,6 +378,23 @@ function otherGoalWithPending(account: Account, goalId: string): GoalDto | null 
   return null
 }
 
+/** What the plan trains toward: the estimate's time, and "ambitious" when the target is over 10 % faster. */
+function ambition(account: Account, goal: GoalDto, today: string) {
+  const prediction = estimateGoal(account, today, {
+    type: goal.type,
+    distanceMeters: goal.distanceMeters,
+    elevationGainMeters: goal.elevationGainMeters,
+    targetDate: goal.targetDate,
+    targetDurationSeconds: goal.targetDurationSeconds,
+  }).prediction
+  const target = goal.targetDurationSeconds
+  const ambitiousTarget = prediction != null && target != null && target < 0.9 * prediction.durationSeconds
+  return {
+    ambitiousTarget,
+    trainsTowardSeconds: ambitiousTarget ? prediction.durationSeconds : null,
+  }
+}
+
 async function generatePlan(
   ctx: GoalRouteContext,
   account: Account,
@@ -406,6 +460,7 @@ async function generatePlan(
       horizonEnd: plan.horizonEnd,
       horizonCapped: plan.capped,
       outdated: false,
+      ...ambition(account, goal, ctx.today),
       pendingCount: 0,
       dismissedCount: 0,
       acceptedCount: 0,
