@@ -190,7 +190,7 @@ export function estimateGoal(account: Account, today: string, body: S['EstimateG
       Math.abs(Math.log(goalEffort / effort(a.distanceMeters!, a.elevationGainMeters))) -
         Math.abs(Math.log(goalEffort / effort(b.distanceMeters!, b.elevationGainMeters))) || compare(b.date, a.date),
   )[0]
-  // Like the API's fallback: no race or hard effort, but at least 3 recent training runs -> a rough estimate from them.
+  // Simplified stand-in for the API's fallback (mean pace x 0.9, no Riegel): no race or hard effort, but at least 3 recent training runs.
   const trainingRuns = basis
     ? []
     : [...account.runs.values()].filter(

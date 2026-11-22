@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import type { GoalDto } from './goalTypes'
  */
 export function AmbitiousTargetNotice({ goal }: { goal: GoalDto }) {
   const { t, i18n } = useTranslation('goals')
+  const titleId = useId()
   const update = useUpdateGoal()
   const invalidate = useInvalidateGoals()
   const [failed, setFailed] = useState(false)
@@ -42,11 +43,11 @@ export function AmbitiousTargetNotice({ goal }: { goal: GoalDto }) {
 
   return (
     <section
-      aria-labelledby="ambitious-title"
+      aria-labelledby={titleId}
       className="flex flex-col gap-2 rounded-md border border-amber-500/60 p-3"
       data-testid="plan-ambitious"
     >
-      <h3 id="ambitious-title" className="font-medium">
+      <h3 id={titleId} className="font-medium">
         {t('plan.ambitiousTitle')}
       </h3>
       <p className="break-words">
