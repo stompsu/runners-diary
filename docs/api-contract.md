@@ -639,6 +639,7 @@ GoalWriteRequest = { type: GoalType; title: string; targetDate: string; distance
 GoalDto = (GoalWriteRequest fields without version) & { id: string; status: GoalStatus; term: GoalTerm; raceRunDate: string | null;
   plan: { source: "Model" | "Demo"; generatedAt: string; generationId: string; notes: string | null; promptVersion: number | null;
           model: string | null; horizonEnd: string; horizonCapped: boolean; outdated: boolean;
+          ambitiousTarget: boolean; trainsTowardSeconds: number | null /* M9.1 */;
           pendingCount: number; dismissedCount: number; acceptedCount: number } | null;
   version: string; createdAt: string; updatedAt: string }
 GoalListResponse = { items: GoalDto[] }   // Active first, then targetDate
@@ -648,8 +649,9 @@ EstimateGoalRequest = { type: GoalType; distanceMeters: number; elevationGainMet
 GoalEstimateResponse = { today: string; daysToGoal: number; weeksToGoal: number; term: GoalTerm; minimumWeeks: number;
   recentWeeklyDistanceMeters: number;
   prediction: { durationSeconds: number; paceSecondsPerKm: number; confidence: "High" | "Low";
-                basis: { runId: string; date: string; kind: "Race" | "Training"; distanceMeters: number; durationSeconds: number;
-                         elevationGainMeters: number | null } } | null;
+                basis: { runId: string | null /* M9.1: null for RecentTraining */; date: string;
+                         kind: "Race" | "Training" | "RecentTraining" /* M9.1 */; distanceMeters: number; durationSeconds: number;
+                         elevationGainMeters: number | null; runCount: number /* M9.1 */ } } | null;
   warnings: { code: string /* "noRecentEffort" | "targetMuchFasterThanPredicted" | "tooLittleTime" | "lowWeeklyVolume" | "beyondPlanHorizon";
                               a plain string in OpenAPI, not an enum */; value: number | null }[] }
 
@@ -716,6 +718,34 @@ GoalDto.plan += { language: string }                 // "en" | "pl"; plans store
 - A Polish summary or plan that breaks a Polish-only validator rule (`genderedForm`, `wrongLanguage`, ADR 0043 amendment) is retried once like any other violation; a second invalid answer is the existing 502 `summary-failed` / `plan-failed` (`reason: "invalidOutput"`). No new problem type, status code or extension.
 - The guest demo plan in `pl` comes from the seed translation map; `client-config` is unchanged (no language flag: `pl` is released in the SPA build).
 
+## Added in M9.1 (realistic plan paces)
+
+**Implemented 2026-11-21/22 on `realistic-plan-paces`** (OpenAPI document and `web/src/api/generated/schema.d.ts` regenerated); reviewed; live eval G-RP1 passed; awaiting the PR and gate G-RP2 (deploy). **No new endpoint, policy, problem type or limit.** All changes are additive except one nullability (`basis.runId`); the SPA is the only client, does not read `runId`, and its schema is regenerated in the same PR.
+- Sources: [M9.1 plan](plans/M9.1-realistic-plan-paces.md) §3.1, §3.4, §3.5 and §7; ADRs [0039](adr/0039-training-goals-and-realistic-target-estimate.md) (fallback prediction) and [0040](adr/0040-training-plan-generation.md) (fitness-based paces), both amended 2026-11-21/22.
+
+| Method & path | operationId | Change |
+|---|---|---|
+| `POST /api/goals/estimate` | `estimateGoal` | With no race and no RPE ≥ 8 run, a `Low`-confidence **fallback prediction** from recent training runs (≥ 3 completed Training-category runs in the last 42 days, ≥ 3 km, treadmill excluded): basis `kind: "RecentTraining"`, `runId: null`, `runCount` = runs used. `targetMuchFasterThanPredicted` can now fire for easy-only diaries; `noRecentEffort` only when fewer than 3 usable runs. |
+| `GET /api/goals`, `GET /api/goals/{goalId}`, plan responses | `listGoals`, `getGoal`, `generateTrainingPlan` | `GoalDto.plan.ambitiousTarget`, `trainsTowardSeconds` (computed in the mapping from the stored `PlanPredictedDurationSeconds`; no history read). |
+| `POST /api/goals/{goalId}/plan` | `generateTrainingPlan` | Same request and outcomes; plans now train from current fitness (prompt `training-plan` v4, fact sheet v3, envelope v3) and store the prediction they were built for. `plan.promptVersion` is 4 for new model plans. |
+
+### Shapes (M9.1)
+
+```ts
+EstimateBasisDto = { runId: string | null;   // CHANGED: null for kind "RecentTraining" (median of several runs)
+  date: string;                               // RecentTraining: the latest run used
+  kind: "Race" | "Training" | "RecentTraining";   // NEW value (EffortKind, PascalCase)
+  distanceMeters: number; durationSeconds: number; elevationGainMeters: number | null;   // RecentTraining: medians, T_b
+  runCount: number }                          // NEW: 1 for Race / Training
+GoalDto.plan += {
+  ambitiousTarget: boolean;           // targetDurationSeconds < 0.95 × stored prediction (both non-null); false otherwise,
+                                      //   incl. plans stored before M9.1
+  trainsTowardSeconds: number | null  // the stored prediction when ambitiousTarget, else null
+}
+```
+
+**Behaviour:** the SPA shows the "very ambitious target" notice when `ambitiousTarget && !outdated` (a target change sets `outdated`, so the stale comparison is never shown); **Use as target** is the existing `PUT` with `targetDurationSeconds = trainsTowardSeconds`. Existing plans are unchanged until regenerated. Model-written `plan.notes` may call the target "ambitious"; "does not look realistic" only when the target is more than 15 % faster than the prediction (fact sheet `goal.targetFarBeyondPrediction`); never "impossible" (prompt rule, ADR 0040 amendment).
+
 ## Planned for later milestones
 
-Nothing planned. M9 and M10 (above) are implemented; M9's gates G-P1…G-P4 changed no contract, and neither did the real Foundry deployment (M7 Part B, gate G7). M10's G-L2 (deploy) changes none either.
+Nothing planned. M9, M9.1 and M10 (above) are implemented; M9's gates G-P1…G-P4 changed no contract, and neither did the real Foundry deployment (M7 Part B, gate G7). M10's G-L2 (deploy) changes none either.

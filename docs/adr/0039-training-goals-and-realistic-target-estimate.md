@@ -1,6 +1,6 @@
 # 0039 – Training goals: model, rules, and the realistic-target estimate
 
-**Status:** Accepted (M9 plan approved 2026-11-16; amended 2026-11-16 after the implementation and the review, and 2026-11-21 for M9.1 "realistic plan paces", see the end; **the §2 `raceRunId` rule is refined for an unchanged link; §4 "no candidate → no prediction" and the basis shape are refined by the M9.1 amendment**)
+**Status:** Accepted (M9 plan approved 2026-11-16; amended 2026-11-16 after the implementation and the review, and 2026-11-21/22 for M9.1 "realistic plan paces" (fallback prediction; flat fitness pace and the treadmill filter from the review), see the end; **the §2 `raceRunId` rule is refined for an unchanged link; §4 "no candidate → no prediction" and the basis shape are refined by the M9.1 amendment**)
 **Date:** 2026-11-16
 **Related:** [0008](0008-run-date-and-time-storage.md) (dates), [0010](0010-current-user-and-data-scoping.md) (scoping), [0012](0012-request-validation.md), [0013](0013-persistence-model-and-migrations.md), [0024](0024-training-metrics-definitions-v1.md) (metrics), [0036](0036-race-catalogue-model-and-race-runs.md) (race runs), [0040](0040-training-plan-generation.md), [0041](0041-training-suggestions-storage-and-calendar.md), [M9 plan](../plans/M9-adaptive-training-plan.md)
 
