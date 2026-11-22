@@ -90,6 +90,7 @@ public static class PlanFactSheetJson
 
         Number(w, "fitnessPaceSecondsPerKm", g.FitnessPaceSecondsPerKm);
         w.WriteBoolean("ambitiousTarget", g.AmbitiousTarget);
+        w.WriteBoolean("targetFarBeyondPrediction", g.TargetFarBeyondPrediction);
         w.WriteNumber("weeksToGoal", g.WeeksToGoal);
         w.WriteEndObject();
     }

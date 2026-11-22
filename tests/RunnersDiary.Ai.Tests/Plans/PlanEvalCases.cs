@@ -107,6 +107,7 @@ internal static class PlanEvalCases
                 Assert.Equal(sheet.Goal.FitnessPaceSecondsPerKm, sheet.Envelope.ReferencePaceSecondsPerKm); // the slower of 239 and 276
                 Assert.True(sheet.Goal.PredictedDurationSeconds > 2_700);
                 Assert.Equal((EffortKind.Race, PredictionConfidence.High, true), (sheet.Goal.PredictionBasis, sheet.Goal.PredictionConfidence, sheet.Goal.AmbitiousTarget));
+                Assert.False(sheet.Goal.TargetFarBeyondPrediction); // under 15 % faster: "ambitious" only
                 Assert.True(sheet.Envelope.EasyPaceMinSecondsPerKm >= sheet.Envelope.ReferencePaceSecondsPerKm);
             },
             (draft, sheet) =>
@@ -121,7 +122,7 @@ internal static class PlanEvalCases
             (plan, sheet) =>
             {
                 AssertPacesWithinFitnessBounds(plan, sheet);
-                AssertAmbitiousWording(plan);
+                AssertAmbitiousWording(plan, sheet);
             });
 
         // 3. Trail 44 km / 1,000 m in 14 weeks: the long-run ceiling is min(0.6 x 44 km, 50 km) = 26.4 km.
@@ -313,6 +314,7 @@ internal static class PlanEvalCases
         Assert.Equal((EffortKind.RecentTraining, PredictionConfidence.Low), (sheet.Goal.PredictionBasis, sheet.Goal.PredictionConfidence));
         Assert.Equal(284, sheet.Goal.TargetPaceSecondsPerKm);
         Assert.True(sheet.Goal.AmbitiousTarget);
+        Assert.True(sheet.Goal.TargetFarBeyondPrediction); // 17.2 % faster than the prediction (> 15 %)
         Assert.Equal(360, sheet.History.RecentEasyPaceSecondsPerKm);
         Assert.Equal(EasyOnlyReferencePace, sheet.Envelope.ReferencePaceSecondsPerKm);
         Assert.Equal(EasyOnlyReferencePace, sheet.Envelope.EasyPaceMinSecondsPerKm); // max(343, ceil(0.95 x 360) = 342)
@@ -322,6 +324,7 @@ internal static class PlanEvalCases
         Assert.Equal("recentTraining", root.GetProperty("goal").GetProperty("predictionBasis").GetString());
         Assert.Equal("low", root.GetProperty("goal").GetProperty("predictionConfidence").GetString());
         Assert.True(root.GetProperty("goal").GetProperty("ambitiousTarget").GetBoolean());
+        Assert.True(root.GetProperty("goal").GetProperty("targetFarBeyondPrediction").GetBoolean());
         Assert.Equal(EasyOnlyReferencePace, root.GetProperty("envelope").GetProperty("easyPaceMinSecondsPerKm").GetInt32());
         Assert.Equal(360, root.GetProperty("history").GetProperty("recentEasyPaceSecondsPerKm").GetDouble());
     }
@@ -333,7 +336,7 @@ internal static class PlanEvalCases
         Assert.DoesNotContain(plan.Kept, s => s.Intensity == TrainingIntensity.RacePace && s.TargetPaceMinSecondsPerKm < EasyOnlyRacePaceFloor);
         Assert.DoesNotContain(plan.Kept, s => s.Intensity is TrainingIntensity.Easy or TrainingIntensity.Recovery && s.TargetPaceMinSecondsPerKm < EasyOnlyReferencePace);
         AssertPacesWithinFitnessBounds(plan, sheet);
-        AssertAmbitiousWording(plan);
+        AssertAmbitiousWording(plan, sheet);
     }
 
     /// <summary>
@@ -359,12 +362,25 @@ internal static class PlanEvalCases
         }
     }
 
-    /// <summary>The ambitious target is "ambitious", never "unrealistic" (prompt v4); checked on every accepted plan's notes, en and pl.</summary>
-    private static void AssertAmbitiousWording(PlanValidation plan)
+    /// <summary>
+    /// Prompt v4 (user decision on M9.1 review L3): an ambitious target is "ambitious"; only a target far beyond the prediction
+    /// (<c>goal.targetFarBeyondPrediction</c>, more than 15 % faster) may be called not realistic by its date; "impossible" never. Checked on every
+    /// accepted plan's notes, en and pl.
+    /// </summary>
+    private static void AssertAmbitiousWording(PlanValidation plan, PlanFactSheet sheet)
     {
-        foreach (var word in new[] { "unrealistic", "impossible", "nierealn", "niemożliw" })
+        var notes = plan.Notes ?? string.Empty;
+        foreach (var word in new[] { "impossib", "niemożliw", "niemozliw" })
         {
-            Assert.DoesNotContain(word, plan.Notes ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(word, notes, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (!sheet.Goal.TargetFarBeyondPrediction)
+        {
+            foreach (var word in new[] { "unrealistic", "not realistic", "not look realistic", "n't look realistic", "nierealn", "nie wygląda realnie", "nie wyglada realnie" })
+            {
+                Assert.DoesNotContain(word, notes, StringComparison.OrdinalIgnoreCase);
+            }
         }
     }
 

@@ -28,7 +28,17 @@ public enum PredictionConfidence : byte
 }
 
 /// <summary>A predicted time for the goal, the basis it came from and how far it was extrapolated.</summary>
-public sealed record TimePrediction(int DurationSeconds, int PaceSecondsPerKm, PredictionConfidence Confidence, EffortFact Basis);
+/// <param name="PaceSecondsPerKm">The predicted time per real kilometre of the goal course (climbing included on a hilly goal).</param>
+/// <param name="FlatPaceSecondsPerKm">
+/// M9.1: the same prediction for the goal distance with no climbing (elevation 0), per kilometre: the pace the runner's fitness supports on flat ground.
+/// Equals <see cref="PaceSecondsPerKm"/> on a flat goal; null only for predictions built without it (then <see cref="FitnessPaceSecondsPerKm"/> falls back).
+/// </param>
+public sealed record TimePrediction(
+    int DurationSeconds, int PaceSecondsPerKm, PredictionConfidence Confidence, EffortFact Basis, int? FlatPaceSecondsPerKm = null)
+{
+    /// <summary>The flat-basis pace that plans are built from (ADR 0040 amendment): <see cref="FlatPaceSecondsPerKm"/>, else <see cref="PaceSecondsPerKm"/>.</summary>
+    public int FitnessPaceSecondsPerKm => FlatPaceSecondsPerKm ?? PaceSecondsPerKm;
+}
 
 /// <summary>
 /// Riegel prediction over "km-effort" (ADR 0039 §4): <c>E = distance + 10 × elevation gain</c> (100 m of climb ≈ 1 km flat) on both the basis and
@@ -84,10 +94,12 @@ public static class RaceTimePredictor
         var ratio = goalEffort / EffortDistance(basis.DistanceMeters, basis.ElevationGainMeters);
         var seconds = (int)Math.Round(basis.DurationSeconds * Math.Pow(ratio, RiegelExponent), MidpointRounding.AwayFromZero);
         var pace = (int)Math.Round(seconds / (distanceMeters / 1000), MidpointRounding.AwayFromZero);
+        var flatSeconds = basis.DurationSeconds * Math.Pow(distanceMeters / EffortDistance(basis.DistanceMeters, basis.ElevationGainMeters), RiegelExponent);
+        var flatPace = (int)Math.Round(flatSeconds / (distanceMeters / 1000), MidpointRounding.AwayFromZero);
         var confidence = basis.Kind == EffortKind.Race && ratio is >= HighConfidenceMinRatio and <= HighConfidenceMaxRatio
             ? PredictionConfidence.High
             : PredictionConfidence.Low;
-        return new TimePrediction(seconds, pace, confidence, basis);
+        return new TimePrediction(seconds, pace, confidence, basis, flatPace);
     }
 
     /// <summary>
@@ -127,7 +139,9 @@ public static class RaceTimePredictor
             (int)Math.Round(baseSeconds, MidpointRounding.AwayFromZero),
             Median(usable.Select(x => x.Run.ElevationGainMeters ?? 0)),
             usable.Count);
-        return new TimePrediction(seconds, pace, PredictionConfidence.Low, basis);
+        var flatSeconds = baseSeconds * Math.Pow(distanceMeters / medianEffort, RiegelExponent);
+        var flatPace = (int)Math.Round(flatSeconds / (distanceMeters / 1000), MidpointRounding.AwayFromZero);
+        return new TimePrediction(seconds, pace, PredictionConfidence.Low, basis, flatPace);
     }
 
     /// <summary>The median; an even count takes the mean of the two middle values.</summary>

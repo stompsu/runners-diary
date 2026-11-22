@@ -33,16 +33,20 @@ public static class PlanEnvelopeBuilder
     }
 
     /// <summary>
-    /// The reference pace (ADR 0040 amendment 2026-11-21): the slower (larger s/km) of the target pace and the fitness pace; the fitness pace is the
-    /// prediction's pace (any basis), else 0.90 × the mean pace of the last 4 complete weeks. Whichever exists when only one does; null when none.
+    /// The reference pace (ADR 0040 amendment 2026-11-21, climbing basis 2026-11-22): the slower (larger s/km) of the target pace and the fitness pace,
+    /// both on a FLAT basis so a hilly goal does not inflate the pace of every session. Fitness: the prediction's flat pace (the same Riegel for the goal
+    /// distance with no climbing, any basis), else 0.90 × the mean pace of the last 4 complete weeks (a real, flat pace). Target: its on-course pace
+    /// × <c>distance / effort distance</c> (the climbing share removed; unchanged on a flat goal). Whichever exists when only one does; null when none.
     /// </summary>
     public static int? ReferencePace(GoalSpec goal, TimePrediction? prediction, TrainingHistory history)
     {
         ArgumentNullException.ThrowIfNull(goal);
         ArgumentNullException.ThrowIfNull(history);
-        int? fitness = prediction?.PaceSecondsPerKm
+        int? fitness = prediction?.FitnessPaceSecondsPerKm
             ?? (history.MeanPaceSecondsPerKm is { } mean ? (int)Math.Round(PlanEnvelopeRules.ReferencePaceFromMeanPace * mean, MidpointRounding.AwayFromZero) : null);
-        var target = goal.TargetPaceSecondsPerKm;
+        int? target = goal.TargetPaceSecondsPerKm is { } onCourse
+            ? (int)Math.Round(onCourse * goal.DistanceMeters / RaceTimePredictor.EffortDistance(goal.DistanceMeters, goal.ElevationGainMeters), MidpointRounding.AwayFromZero)
+            : null;
         return target is { } t && fitness is { } f ? Math.Max(t, f) : target ?? fitness;
     }
 

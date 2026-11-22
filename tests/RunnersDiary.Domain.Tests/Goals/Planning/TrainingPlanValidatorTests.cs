@@ -595,6 +595,8 @@ public sealed class TrainingPlanValidatorTests
     [InlineData("racePace", 261, true)]  // below 0.97 x 270 = 261.9
     [InlineData("racePace", 262, false)]
     [InlineData("easy", 269, false)]     // easy/recovery below the bound are clamped (easyPace), not dropped
+    [InlineData("easy", 200, false)]     // ... even far below 0.85 x ref: exempt from the pace drop (M9.1 review)
+    [InlineData("recovery", 200, false)]
     [InlineData("steady", 250, false)]
     public void Paces_are_bounded_by_the_reference_pace(string intensity, int min, bool violation)
     {
@@ -610,6 +612,24 @@ public sealed class TrainingPlanValidatorTests
         Assert.Equal(violation ? 1 : 0, result.DroppedCount);
         Assert.Equal(violation, result.Repairs.Any(r => r.Rule == PlanRuleCode.Pace && r.Action == PlanRepairAction.Drop && r.Location == "2026-11-17"));
         Assert.Equal(!violation, result.Kept.Any(k => k.Date == new DateOnly(2026, 11, 17)));
+    }
+
+    [Theory]
+    [InlineData("easy", "easy")]
+    [InlineData("recovery", "recovery")]
+    public void An_easy_or_recovery_session_far_below_085_of_the_reference_is_clamped_and_never_dropped(string intensity, string type)
+    {
+        var sheet = Sheet(referencePace: 343); // drop threshold for other sessions: 291.55
+        var sessions = Good(sheet);
+        sessions[0] = sessions[0] with { RunType = type, Intensity = intensity, PaceMinSecondsPerKm = 284, PaceMaxSecondsPerKm = 330, DurationSeconds = null };
+
+        var result = Validate(sheet, sessions);
+
+        Assert.True(result.IsValid, string.Join(", ", result.Violations));
+        Assert.Equal(0, result.DroppedCount);
+        Assert.DoesNotContain(result.Repairs, r => r.Rule == PlanRuleCode.Pace);
+        Assert.Equal(343, Assert.Single(result.Kept, k => k.Date == new DateOnly(2026, 11, 17)).TargetPaceMinSecondsPerKm);
+        Assert.Contains(result.Repairs, r => r.Rule == PlanRuleCode.EasyPace && r.Action == PlanRepairAction.Clamp && r.From == 284 && r.To == 343);
     }
 
     [Fact]

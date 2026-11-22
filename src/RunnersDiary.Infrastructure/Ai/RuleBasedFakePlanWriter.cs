@@ -17,7 +17,8 @@ namespace RunnersDiary.Infrastructure.Ai;
 /// rounded down to 100 m. Paces follow the reference pace (easy +45..+90 s, steady +20..+60 s, tempo +0..+20 s per km), none on trail goals; the faster
 /// bound of an easy session (long runs included) is never below the envelope's <c>easyPaceMinSecondsPerKm</c> (M9.1), so the <c>easyPace</c> clamp never
 /// has to repair the fake's plan.</para>
-/// <para>With <c>goal.ambitiousTarget</c> the notes add one sentence that the plan builds toward what recent runs support (prompt v4, M9.1).</para>
+/// <para>With <c>goal.ambitiousTarget</c> the notes add one sentence that the plan builds toward what recent runs support (prompt v4, M9.1); with
+/// <c>goal.targetFarBeyondPrediction</c> too, that sentence says the target does not look realistic by its date.</para>
 /// <para>Notes and descriptions are in the fact sheet's <c>language</c> (<c>en</c> or <c>pl</c>, ADR 0043 §5); any other value gets English.</para>
 /// </summary>
 public static class RuleBasedFakePlanWriter
@@ -44,6 +45,7 @@ public static class RuleBasedFakePlanWriter
         var target = Date(goal.GetProperty("targetDate"));
         var trail = goal.TryGetProperty("surface", out var surface) && surface.GetString() == "trail";
         var ambitious = goal.TryGetProperty("ambitiousTarget", out var a) && a.ValueKind == JsonValueKind.True;
+        var farBeyond = goal.TryGetProperty("targetFarBeyondPrediction", out var fb) && fb.ValueKind == JsonValueKind.True;
         var usual = root.GetProperty("history").GetProperty("usualWeekdays").EnumerateArray()
             .Select(d => Enum.Parse<DayOfWeek>(d.GetString()!, ignoreCase: true)).ToHashSet();
 
@@ -152,7 +154,7 @@ public static class RuleBasedFakePlanWriter
             sessions.AddRange(week_);
         }
 
-        return new TrainingPlanDraft(texts.NotesFor(ambitious), [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
+        return new TrainingPlanDraft(texts.NotesFor(ambitious, farBeyond), [.. sessions.OrderBy(s => s.Date, StringComparer.Ordinal)]);
     }
 
     private static void Add(
@@ -197,10 +199,15 @@ public static class RuleBasedFakePlanWriter
 }
 
 /// <summary>The fixed texts of <see cref="RuleBasedFakePlanWriter"/> per language.</summary>
-internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail, string Easy, string Tempo, string Progression, string Ambitious)
+internal sealed record FakePlanTexts(
+    string Notes, string Long, string LongTrail, string Easy, string Tempo, string Progression, string Ambitious, string FarBeyond)
 {
-    /// <summary>The plan notes; with an ambitious target (<c>goal.ambitiousTarget</c>, M9.1) one more sentence says what the plan builds toward.</summary>
-    public string NotesFor(bool ambitiousTarget) => ambitiousTarget ? Notes + " " + Ambitious : Notes;
+    /// <summary>
+    /// The plan notes; with an ambitious target (<c>goal.ambitiousTarget</c>, M9.1) one more sentence says what the plan builds toward, and a target
+    /// far beyond the prediction (<c>goal.targetFarBeyondPrediction</c>) is said not to look realistic by its date (prompt v4).
+    /// </summary>
+    public string NotesFor(bool ambitiousTarget, bool farBeyondPrediction = false) =>
+        !ambitiousTarget ? Notes : Notes + " " + (farBeyondPrediction ? FarBeyond : Ambitious);
 
     public const string EnglishNotes =
         "A gradual plan toward your goal: easy running, a weekly long run and one quality session in the build and peak weeks, then a lighter taper.";
@@ -212,7 +219,8 @@ internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail
         "Easy run at a comfortable effort.",
         "Tempo run: warm up, a sustained block at tempo effort, cool down.",
         "Progression run: start easy and finish at a steady effort.",
-        "Your target is ambitious, so the plan builds toward what your recent runs support.");
+        "Your target is ambitious, so the plan builds toward what your recent runs support.",
+        "Your target does not look realistic by this date, so the plan builds toward what your recent runs support.");
 
     /// <summary>Glossary terms of <c>docs/i18n.md</c>; imperatives and noun phrases only (gender-neutral).</summary>
     public static FakePlanTexts Polish { get; } = new(
@@ -222,5 +230,6 @@ internal sealed record FakePlanTexts(string Notes, string Long, string LongTrail
         "Bieg spokojny w komfortowym tempie.",
         "Bieg tempowy: rozgrzewka, dłuższy odcinek w równym, mocnym tempie, schłodzenie.",
         "Bieg z narastającą prędkością: zacznij spokojnie i zakończ w równym tempie.",
-        "Cel jest ambitny, dlatego plan rozwija formę od poziomu, na który wskazują ostatnie biegi.");
+        "Cel jest ambitny, dlatego plan rozwija formę od poziomu, na który wskazują ostatnie biegi.",
+        "Cel nie wygląda realnie na ten termin, dlatego plan rozwija formę od poziomu, na który wskazują ostatnie biegi.");
 }

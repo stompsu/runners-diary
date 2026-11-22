@@ -74,8 +74,9 @@ public static class PlanFactSheetBuilder
                 estimate.WeeksToGoal,
                 prediction?.Basis.Kind,
                 prediction?.Confidence,
-                prediction?.PaceSecondsPerKm,
-                GoalEstimator.IsAmbitiousTarget(goal.TargetDurationSeconds, prediction?.DurationSeconds)),
+                prediction?.FitnessPaceSecondsPerKm,
+                GoalEstimator.IsAmbitiousTarget(goal.TargetDurationSeconds, prediction?.DurationSeconds),
+                PlanGoalFacts.IsFarBeyondPrediction(goal.TargetDurationSeconds, prediction?.DurationSeconds)),
             new PlanHistoryFacts(
                 weeks, history.UsualWeekdays, history.SessionsPerWeek, new PlanAcwrFact(latest.Value, latest.Band), races, history.RecentEasyPaceSecondsPerKm),
             [.. commitments.OrderBy(c => c.Date).ThenBy(c => c.Kind).Take(PlanFactSheet.MaxCommitments)],

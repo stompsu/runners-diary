@@ -22,7 +22,7 @@ public sealed class TrainingPlanRepairTests
         {
             Session(week1.Start, 6_000, phase: TrainingPhase.Peak),
             Session(week1.Start.AddDays(2), Math.Ceiling(week1.MaxLongRunMeters * 1.1), 4_000),
-            Session(week1.Start.AddDays(4), 5_000, paceMin: 200, paceMax: 250),
+            Session(week1.Start.AddDays(4), 5_000, intensity: TrainingIntensity.Tempo, paceMin: 200, paceMax: 250), // too-fast hard session: dropped (easy ones are clamped)
             Session(eve, 5_000, intensity: TrainingIntensity.Tempo, phase: TrainingPhase.Taper),
         };
         sessions.AddRange(VolumeDays.Select(d => Session(week3.Start.AddDays(d), each, (int)(each * 0.36), phase: TrainingPhase.Base)));
@@ -233,7 +233,7 @@ public sealed class TrainingPlanRepairTests
         [
             Session(day, 6_000, 1_800),                                                    // easy without a pace range: not checked
             Session(day.AddDays(2), 6_000, 1_800, TrainingIntensity.Steady, paceMin: 300, paceMax: 330),
-            Session(day.AddDays(4), 6_000, null, paceMin: 200, paceMax: 220),             // under 0.85 x ref: the pace drop comes first
+            Session(day.AddDays(4), 6_000, null, TrainingIntensity.Tempo, paceMin: 200, paceMax: 220),           // under 0.85 x ref: the pace drop comes first
         ];
 
         var result = TrainingPlanRepair.Apply(sessions, sheet);
@@ -243,6 +243,28 @@ public sealed class TrainingPlanRepairTests
         Assert.Equal(300, result.Sessions[1].TargetPaceMinSecondsPerKm);
         Assert.Contains(result.Repairs, r => r.Rule == PlanRuleCode.Pace && r.Action == PlanRepairAction.Drop);
         Assert.DoesNotContain(result.Repairs, r => r.Rule == PlanRuleCode.EasyPace);
+    }
+
+    [Fact]
+    public void Easy_and_recovery_runs_far_below_the_pace_drop_threshold_are_clamped_while_a_tempo_there_is_dropped()
+    {
+        var (sheet, day) = EasySheet(343); // 0.85 x 343 = 291.55
+        PlannedSession[] sessions =
+        [
+            Session(day, 8_000, 2_272, paceMin: 284, paceMax: 300),                                          // easy at the target pace
+            Session(day.AddDays(1), 5_000, 1_420, TrainingIntensity.Recovery, paceMin: 284, paceMax: 300),
+            Session(day.AddDays(3), 6_000, 1_704, TrainingIntensity.Tempo, paceMin: 284, paceMax: 300),
+        ];
+
+        var result = TrainingPlanRepair.Apply(sessions, sheet);
+
+        Assert.Equal(1, result.Dropped);
+        Assert.Equal(2, result.Sessions.Count);
+        Assert.All(result.Sessions, s => Assert.Equal(343, s.TargetPaceMinSecondsPerKm));
+        Assert.Equal(2, result.Repairs.Count(r => r.Rule == PlanRuleCode.EasyPace && r.Action == PlanRepairAction.Clamp));
+        var pace = Assert.Single(result.Repairs, r => r.Rule == PlanRuleCode.Pace);
+        Assert.Equal(PlanRepairAction.Drop, pace.Action);
+        Assert.Equal(TrainingPlanValidator.Format(day.AddDays(3)), pace.Location);
     }
 
     [Fact]

@@ -144,9 +144,9 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         sessions.RemoveAll(s => s.Date == PlanEvalCases.D(eve));
         sessions.Add(new DraftSession(PlanEvalCases.D(eve), "tempo", "tempo", "taper", 4_000, null, null, null, "Short tempo run."));
 
-        // pace: an easy run faster than the reference pace (313 s/km).
+        // pace: a hard session faster than 0.85 x the reference pace (313 s/km) is dropped (easy runs are clamped instead, M9.1).
         var fast = sessions.FindIndex(easy + 1, s => s.RunType == "easy");
-        sessions[fast] = sessions[fast] with { PaceMinSecondsPerKm = 250, PaceMaxSecondsPerKm = 300 };
+        sessions[fast] = sessions[fast] with { RunType = "tempo", Intensity = "tempo", PaceMinSecondsPerKm = 250, PaceMaxSecondsPerKm = 300 };
 
         // longRun: the long run of week 2 is 10 % above its cap (tolerance is 5 %).
         var week2 = e.Weeks[1];
@@ -175,7 +175,7 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
 
         Assert.True(result.Status == GenerationStatus.Succeeded, $"{result.Status} {result.Failure}: {string.Join(", ", result.AttemptDetails?.SelectMany(a => a.Violations) ?? [])}");
         Assert.Equal(1, result.Attempts);
-        Assert.Equal(2, result.Plan!.DroppedCount); // the tempo eve and the too-fast easy run
+        Assert.Equal(2, result.Plan!.DroppedCount); // the tempo eve and the too-fast tempo run
         Assert.Equal(sessions.Count - 2, result.Plan.Kept.Count);
         var repairs = Assert.Single(result.AttemptDetails!).Repairs;
         Assert.Equivalent(
@@ -268,7 +268,7 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
 
     /// <summary>
     /// The M9.1 scenario end to end with a model that still trains toward the 1:40 target (284 s/km): the tempo at the target pace and a race-pace
-    /// session faster than 0.97 x 343 are dropped, the easy runs at 5:00/km are slowed to the 343 s/km bound, all in one attempt; what is kept
+    /// session faster than 0.97 x 343 are dropped, the easy runs at the 284 s/km target pace (far below the 0.85 x 343 drop threshold, which must not apply to them) are slowed to the 343 s/km bound, all in one attempt; what is kept
     /// passes the case's checks.
     /// </summary>
     [Fact]
@@ -284,7 +284,7 @@ public sealed class PlanEvalTests(ITestOutputHelper output)
         var easy = Enumerable.Range(0, sessions.Count).Where(i => sessions[i].RunType == "easy").ToList();
         foreach (var i in easy)
         {
-            sessions[i] = sessions[i] with { PaceMinSecondsPerKm = 300, PaceMaxSecondsPerKm = 345 };
+            sessions[i] = sessions[i] with { PaceMinSecondsPerKm = 284, PaceMaxSecondsPerKm = 345 };
         }
 
         var draft = new TrainingPlanDraft("A plan toward your target.", sessions);

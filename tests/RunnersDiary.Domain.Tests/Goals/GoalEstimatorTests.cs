@@ -255,6 +255,43 @@ public sealed class GoalEstimatorTests
     }
 
     [Fact]
+    public void The_fallback_excludes_treadmill_runs_but_keeps_trail_runs()
+    {
+        var facts = new List<RunFact>
+        {
+            InsightsTestData.Run("2026-11-10", "easy", 8_000, 2_880, surface: Surface.Treadmill, id: 1),
+            InsightsTestData.Run("2026-11-11", "easy", 8_000, 2_880, surface: Surface.Trail, id: 2),
+            InsightsTestData.Run("2026-11-12", "easy", 8_000, 2_880, surface: Surface.Road, id: 3),
+        };
+
+        var runs = GoalEstimator.RecentTrainingRuns(facts, Today);
+
+        Assert.Equal([2, 3], runs.Select(r => (int)r.RunId!.Value.ToByteArray()[0]).Order());
+
+        // Three treadmill runs alone are no basis (fewer than 3 usable runs).
+        var belt = Enumerable.Range(0, 3).Select(i => InsightsTestData.Run($"2026-11-1{i}", "easy", 8_000, 2_880, surface: Surface.Treadmill, id: 10 + i)).ToList();
+        Assert.Null(Estimate(Spec("2027-02-14", 10_000), withRace: false, belt).Prediction);
+    }
+
+    [Fact]
+    public void The_flat_fitness_pace_of_a_hilly_goal_is_the_flat_prediction_while_the_duration_keeps_the_climbing()
+    {
+        var facts = Enumerable.Range(0, 10)
+            .Select(i => InsightsTestData.Run(Today.AddDays(-2 - (3 * i)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), "easy", 8_000, 2_880, rpe: 3, id: 100 + i))
+            .ToList();
+
+        var hilly = GoalEstimator.Estimate(Spec("2026-12-20", 21_097.5, seconds: 6_000, gain: 400), Today, facts, []).Prediction!;
+        var flat = GoalEstimator.Estimate(Spec("2026-12-20", 21_097.5, seconds: 6_000), Today, facts, []).Prediction!;
+
+        Assert.Equal(7_245, flat.DurationSeconds);
+        Assert.Equal(343, flat.FlatPaceSecondsPerKm);
+        Assert.Equal(343, hilly.FlatPaceSecondsPerKm);
+        Assert.Equal(343, hilly.FitnessPaceSecondsPerKm);
+        Assert.True(hilly.DurationSeconds > 8_500); // the estimate still includes the climbing
+        Assert.True(hilly.PaceSecondsPerKm > 400);
+    }
+
+    [Fact]
     public void The_fallback_uses_only_completed_training_runs_of_the_last_42_days()
     {
         var facts = new List<RunFact>

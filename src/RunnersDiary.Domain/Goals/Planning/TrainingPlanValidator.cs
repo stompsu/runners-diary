@@ -162,10 +162,11 @@ public static class TrainingPlanValidator
 
     /// <summary>
     /// The target pace's faster bound is faster than the reference pace allows: under 85 % of it for any session, under 97 % of it for a
-    /// <c>racePace</c> session (M9.1). The easy/recovery bound is <see cref="IsEasyTooFast"/>.
+    /// <c>racePace</c> session (M9.1). Easy and recovery sessions are exempt: their bound is <see cref="IsEasyTooFast"/>, which is repaired by a
+    /// clamp (dropping them would empty weeks).
     /// </summary>
     internal static bool IsTooFast(PlannedSession s, int? reference) =>
-        reference is { } r && s.TargetPaceMinSecondsPerKm is { } min
+        reference is { } r && s.Intensity is not (TrainingIntensity.Easy or TrainingIntensity.Recovery) && s.TargetPaceMinSecondsPerKm is { } min
         && (min < MinPaceShareOfReference * r || (s.Intensity == TrainingIntensity.RacePace && min < MinRacePaceShareOfReference * r));
 
     /// <summary>An easy or recovery session whose faster pace bound is under the envelope's <c>easyPaceMinSecondsPerKm</c> (M9.1).</summary>

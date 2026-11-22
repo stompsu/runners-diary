@@ -98,7 +98,8 @@ public sealed class PlanPromptManifestTests
 
     /// <summary>
     /// M9.1 (ADR 0040 amendment 2026-11-21): v4 is v3 with the pace rule and the "how ambitious" line replaced and the fitness facts explained; every
-    /// other line of v3, the whole Polish section included, is carried over unchanged. The ambitious target is "ambitious", never "unrealistic".
+    /// other line of v3, the whole Polish section included, is carried over unchanged. The ambitious target is "ambitious"; only a target far beyond the
+    /// prediction (<c>goal.targetFarBeyondPrediction</c>) may be called not realistic, and none "impossible" (user decision on review L3).
     /// </summary>
     /// <summary>The starts of the two v3 lines v4 replaces (M9.1 plan §3.7).</summary>
     private static readonly string[] M91ReplacedLines = ["- Paces: with `referencePaceSecondsPerKm`", "- `goal.weeksToGoal`, the goal's"];
@@ -118,7 +119,8 @@ public sealed class PlanPromptManifestTests
         foreach (var term in new[]
         {
             "fitnessPaceSecondsPerKm", "predictionBasis", "predictionConfidence", "recentEasyPaceSecondsPerKm", "`recentTraining`",
-            "never use the target pace in a session", "Call the target ambitious, never unrealistic", "\"ambitny\"", "\"nierealny\"",
+            "never use the target pace in a session", "Call the target ambitious by default", "`goal.targetFarBeyondPrediction`", "more than 15 % faster", "does not look realistic", "Never call it impossible",
+            "\"ambitny\"", "\"nie wygląda realnie\"", "Never write \"niemożliwy\"",
         })
         {
             Assert.Contains(term, v4, StringComparison.Ordinal);

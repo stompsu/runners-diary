@@ -238,6 +238,24 @@ public sealed class PlanEnvelopeBuilderTests
     }
 
     [Fact]
+    public void Reference_pace_of_a_hilly_goal_is_on_a_flat_basis_for_both_fitness_and_target()
+    {
+        // Easy-only runner, 10 x 8 km at 6:00/km (flat); hilly half marathon with 400 m of climbing.
+        var runs = Enumerable.Range(0, 10)
+            .Select(i => new EffortFact(Guid.NewGuid(), Today.AddDays(-2 - (3 * i)), EffortKind.Training, 8_000, 2_880, null)).ToList();
+        var prediction = RaceTimePredictor.Predict(21_097.5, 400, [], runs)!;
+        Assert.True(prediction.PaceSecondsPerKm > 400); // on-course pace includes the climbing
+        Assert.Equal(343, prediction.FlatPaceSecondsPerKm); // the flat half marathon is 7,245 s
+
+        var hilly = new GoalSpec(GoalType.Performance, 21_097.5, 400, Today.AddDays(90), 6_000, Surface.Road); // 284 s/km on the course
+        var hillySlow = new GoalSpec(GoalType.Performance, 21_097.5, 400, Today.AddDays(90), 9_000, Surface.Road); // 427 s/km on the course
+        var flatBasis = 9_000 / 21.0975 * (21_097.5 / 25_097.5);
+
+        Assert.Equal(343, PlanEnvelopeBuilder.ReferencePace(hilly, prediction, History())); // fitness (flat) beats the target (flat 239)
+        Assert.Equal((int)Math.Round(flatBasis), PlanEnvelopeBuilder.ReferencePace(hillySlow, prediction, History())); // 359: slower target, flat basis
+    }
+
+    [Fact]
     public void Easy_pace_bound_is_the_slower_of_the_reference_and_ninety_five_percent_of_the_recent_easy_pace()
     {
         static TrainingHistory WithEasy(double? easy) => History() with { RecentEasyPaceSecondsPerKm = easy };

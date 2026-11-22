@@ -65,6 +65,7 @@ public sealed class PlanFactSheetTests
         Assert.Equal("high", goal.GetProperty("predictionConfidence").GetString());
         Assert.Equal(290, goal.GetProperty("fitnessPaceSecondsPerKm").GetInt32());
         Assert.True(goal.GetProperty("ambitiousTarget").GetBoolean());
+        Assert.False(goal.GetProperty("targetFarBeyondPrediction").GetBoolean()); // 2,700 is 6.9 % faster than 2,900, not more than 15 %
         Assert.False(goal.TryGetProperty("runId", out _));
 
         var history = root.GetProperty("history");
@@ -128,6 +129,7 @@ public sealed class PlanFactSheetTests
         }
 
         Assert.False(goal.GetProperty("ambitiousTarget").GetBoolean());
+        Assert.False(goal.GetProperty("targetFarBeyondPrediction").GetBoolean());
         Assert.False(Parse(bytes).GetProperty("history").TryGetProperty("recentEasyPaceSecondsPerKm", out _));
     }
 
@@ -138,6 +140,16 @@ public sealed class PlanFactSheetTests
     [InlineData(2_000, null, false)]
     public void The_ambitious_target_rule_is_the_estimate_threshold(int? target, int? predicted, bool expected) =>
         Assert.Equal(expected, GoalEstimator.IsAmbitiousTarget(target, predicted));
+
+    /// <summary>Prompt v4 (M9.1 review L3, user decision): "does not look realistic" only for a target more than 15 % faster than the prediction.</summary>
+    [Theory]
+    [InlineData(2_464, 2_900, true)]
+    [InlineData(2_465, 2_900, false)] // exactly 0.85 x 2,900
+    [InlineData(2_700, 2_900, false)] // ambitious, not far beyond
+    [InlineData(null, 2_900, false)]
+    [InlineData(2_000, null, false)]
+    public void The_far_beyond_rule_is_fifteen_percent(int? target, int? predicted, bool expected) =>
+        Assert.Equal(expected, PlanGoalFacts.IsFarBeyondPrediction(target, predicted));
 
     [Fact]
     public void The_same_inputs_give_identical_bytes_and_fingerprints_and_a_change_changes_them()

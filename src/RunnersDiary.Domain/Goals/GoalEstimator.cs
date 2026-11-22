@@ -124,6 +124,7 @@ public static class GoalEstimator
         .. facts
             .Where(f => f.Status == RunStatus.Completed && f.Date <= today && f.Date > today.AddDays(-RaceTimePredictor.FallbackLookbackDays)
                 && f.DistanceMeters is > 0 && f.DurationSeconds is > 0
+                && f.Surface != Surface.Treadmill // belt pace is not outdoor fitness (same as the easy pace); trail stays, km-effort covers the climbing
                 && RunTypeCatalog.Find(f.RunTypeId) is { Category: RunTypeCategory.Training })
             .Select(f => new EffortFact(f.Id, f.Date, EffortKind.Training, f.DistanceMeters!.Value, f.DurationSeconds!.Value, f.ElevationGainMeters)),
     ];

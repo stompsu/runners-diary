@@ -6,8 +6,9 @@ namespace RunnersDiary.Domain.Goals.Planning;
 /// <summary>The goal as the model sees it: planning fields only. Never the title, event name, notes or location (ADR 0040 §3).</summary>
 /// <param name="PredictionBasis">v3 (M9.1): what the prediction came from (a race, a hard training run or the recent-training fallback); null without a prediction. Never the basis run id.</param>
 /// <param name="PredictionConfidence">v3: the prediction's confidence; null without a prediction.</param>
-/// <param name="FitnessPaceSecondsPerKm">v3: the prediction's pace (the pace current fitness supports); null without a prediction.</param>
+/// <param name="FitnessPaceSecondsPerKm">v3: the prediction's FLAT-basis pace (same prediction for the goal distance with no climbing; the pace current fitness supports on flat ground); null without a prediction.</param>
 /// <param name="AmbitiousTarget">v3: the target is more than 5 % faster than the prediction (<see cref="GoalEstimator.IsAmbitiousTarget"/>).</param>
+/// <param name="TargetFarBeyondPrediction">v3: the target is more than 15 % faster than the prediction (<see cref="IsFarBeyondPrediction"/>); only then may the notes say the target does not look realistic by its date (prompt v4).</param>
 public sealed record PlanGoalFacts(
     GoalType Type,
     double DistanceMeters,
@@ -21,7 +22,19 @@ public sealed record PlanGoalFacts(
     EffortKind? PredictionBasis = null,
     PredictionConfidence? PredictionConfidence = null,
     int? FitnessPaceSecondsPerKm = null,
-    bool AmbitiousTarget = false);
+    bool AmbitiousTarget = false,
+    bool TargetFarBeyondPrediction = false)
+{
+    /// <summary>The share of the predicted time below which the target is "far beyond" the prediction: more than 15 % faster (prompt v4).</summary>
+    public const double FarBeyondShareOfPrediction = 0.85;
+
+    /// <summary>
+    /// The target is more than 15 % faster than the predicted time (target &lt; 0.85 x predicted): the plan notes may then say plainly that it does
+    /// not look realistic by its date (user decision on M9.1 review L3); a target 5-15 % faster is only "ambitious".
+    /// </summary>
+    public static bool IsFarBeyondPrediction(int? targetDurationSeconds, int? predictedDurationSeconds) =>
+        targetDurationSeconds is { } target && predictedDurationSeconds is { } predicted && target < FarBeyondShareOfPrediction * predicted;
+}
 
 public sealed record PlanHistoryWeek(
     DateOnly Start,

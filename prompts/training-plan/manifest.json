@@ -22,7 +22,7 @@
     },
     "4": {
       "file": "v4.md",
-      "sha256": "6933c75748c2e33bf871faf2f9ec32afdd75166c26b54560e399a9e21316443e",
+      "sha256": "f280c814830668d7a5812af87bbdf92e7c1e6f642419c92dc41db7a679891d7a",
       "denyList": {
         "en": ["injur*", "overtrain*", "diagnos*", "medical", "illness", "disease", "cardiac", "risk of", "doctor", "physio*", "pain*", "hurt*", "strain*", "tendon*", "tendin*", "fractur*"],
         "pl": ["kontuzj*", "uraz*", "przetrenow*", "diagnoz*", "medyczn*", "chorob*", "zachorow*", "chory", "chora", "chore", "chorego", "chorej", "chorzy", "sercow*", "zawal", "zawalu", "zawalem", "zawaly", "zawalow", "zawalom", "zawalami", "zawalach", "lekarz*", "lekark*", "lekarsk*", "fizjoterap*", "bol", "bolu", "bolem", "bole", "bolow", "bolom", "bolami", "bolach", "boli", "bola", "bolal", "bolala", "bolalo", "bolaly", "bolec", "bolesn*", "obolal*", "naciagn*", "nadwyrez*", "sciegn*", "sciegien", "achilles*", "zapalenie", "zapalenia", "zapaleniu", "zapaleniem", "zapalen", "zapaleniom", "zapaleniami", "zapaleniach", "zlaman* zmeczeniow*", "zlaman* kosc*", "zlaman* przeciazeniow*", "zlaman* nog*", "peknieci*", "pekniet*", "naderw*", "zapaln*", "rehabilitac*", "ortoped*", "szpital*", "dolegliwos*", "ryzyko", "ryzyka", "ryzyku", "ryzykiem"]
